@@ -1,0 +1,12 @@
+id: no-swiftui-in-domain
+language: Swift
+severity: error
+message: "Domain must stay UI-framework independent."
+rule:
+  any:
+    - pattern: "import SwiftUI"
+    - pattern: "import UIKit"
+    - pattern: "import MapKit"
+    - pattern: "import CoreLocation"
+files:
+  - "FamilyTracker/Domain/**/*.swift"

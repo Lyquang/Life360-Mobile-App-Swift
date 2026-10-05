@@ -1,0 +1,7 @@
+ruleDirs:
+  - .ast-grep/rules
+testConfigs: []
+utilDirs: []
+languageGlobs:
+  swift:
+    - "FamilyTracker/**/*.swift"

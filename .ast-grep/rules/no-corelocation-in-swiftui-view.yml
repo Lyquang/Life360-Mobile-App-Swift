@@ -1,0 +1,12 @@
+id: no-corelocation-in-swiftui-view
+language: Swift
+severity: error
+message: "SwiftUI Views must not import CoreLocation. Route location access through ViewModel -> UseCase -> Core service."
+rule:
+  all:
+    - pattern: "import CoreLocation"
+    - inside:
+        kind: source_file
+files:
+  - "FamilyTracker/Presentation/Scenes/**/*.swift"
+  - "FamilyTracker/Presentation/Common/**/*.swift"

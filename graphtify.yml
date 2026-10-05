@@ -1,0 +1,70 @@
+project:
+  name: FamilyTracker
+  language: swift
+  root: .
+
+include:
+  - FamilyTracker/**/*.swift
+  - project.yml
+  - AI_RULES.md
+  - PROGRESS.md
+  - .spec/**/*.md
+
+ignore:
+  - DerivedData/**
+  - .build/**
+  - build/**
+  - Build/**
+  - Pods/**
+  - Carthage/**
+  - "*.xcodeproj/xcuserdata/**"
+  - "*.xcworkspace/xcuserdata/**"
+  - FamilyTracker/Resources/Assets.xcassets/**
+
+architecture:
+  layers:
+    presentation:
+      path: FamilyTracker/Presentation
+      may_depend_on:
+        - domain
+        - core
+    coordinators:
+      path: FamilyTracker/Presentation/Coordinators
+      owns:
+        - navigation
+        - sheets
+        - modals
+        - deep_links
+    domain:
+      path: FamilyTracker/Domain
+      may_depend_on: []
+      forbidden_imports:
+        - SwiftUI
+        - UIKit
+        - MapKit
+        - CoreLocation
+    data:
+      path: FamilyTracker/Data
+      may_depend_on:
+        - domain
+        - core
+    core:
+      path: FamilyTracker/Core
+      may_depend_on: []
+
+expected_flow:
+  - View
+  - ViewModel
+  - Coordinator
+  - UseCase
+  - RepositoryProtocol
+  - DataRepository
+  - CoreService
+
+queries:
+  viewmodels: "FamilyTracker/Presentation/Scenes/**/*ViewModel.swift"
+  coordinators: "FamilyTracker/Presentation/Coordinators/**/*Coordinator.swift"
+  usecases: "FamilyTracker/Domain/UseCases/**/*.swift"
+  repository_protocols: "FamilyTracker/Domain/Repositories/**/*.swift"
+  repository_impls: "FamilyTracker/Data/Repositories/**/*.swift"
+  core_services: "FamilyTracker/Core/**/*.swift"

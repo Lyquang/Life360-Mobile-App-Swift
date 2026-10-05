@@ -1,0 +1,8 @@
+id: flag-try-question
+language: Swift
+severity: warning
+message: "Avoid try? for user-visible flows unless explicitly best-effort. Prefer typed error propagation."
+rule:
+  pattern: "try? $EXPR"
+files:
+  - "FamilyTracker/**/*.swift"

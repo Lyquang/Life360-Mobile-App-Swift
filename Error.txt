@@ -1,0 +1,150 @@
+Got a keyboard will change frame notification, but keyboard was not even present.
+Got a keyboard will hide notification, but keyboard was not even present.
+Reading from public effective user settings.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+nw_socket_handle_socket_event [C1.1.1:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C1.1.1 ::1.3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_socket_handle_socket_event [C1.1.2:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C1.1.2 127.0.0.1:3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_endpoint_flow_failed_with_error [C1.1.2 127.0.0.1:3000 cancelled socket-flow ((null))] already failing, returning
+Connection 1: received failure notification
+Connection 1: failed to connect 1:61, reason -1
+Connection 1: encountered error(1:61)
+Task <3FAEB76B-647E-4DE4-8ED9-531141F279DF>.<1> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+Task <3FAEB76B-647E-4DE4-8ED9-531141F279DF>.<1> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0x11cf2c6f0 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <3FAEB76B-647E-4DE4-8ED9-531141F279DF>.<1>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <3FAEB76B-647E-4DE4-8ED9-531141F279DF>.<1>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:3000/api/auth/login, NSErrorFailingURLKey=http://localhost:3000/api/auth/login, _kCFStreamErrorDomainKey=1}
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+nw_socket_handle_socket_event [C2.1.1:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C2.1.1 ::1.3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_socket_handle_socket_event [C2.1.2:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C2.1.2 127.0.0.1:3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_endpoint_flow_failed_with_error [C2.1.2 127.0.0.1:3000 cancelled socket-flow ((null))] already failing, returning
+Connection 2: received failure notification
+Connection 2: failed to connect 1:61, reason -1
+Connection 2: encountered error(1:61)
+Task <FF55956F-5CF5-4217-98A9-825F3D844B50>.<2> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+Task <FF55956F-5CF5-4217-98A9-825F3D844B50>.<2> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0x11d6284b0 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <FF55956F-5CF5-4217-98A9-825F3D844B50>.<2>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <FF55956F-5CF5-4217-98A9-825F3D844B50>.<2>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:3000/api/auth/login, NSErrorFailingURLKey=http://localhost:3000/api/auth/login, _kCFStreamErrorDomainKey=1}
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+nw_socket_handle_socket_event [C3.1.1:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C3.1.1 ::1.3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_socket_handle_socket_event [C3.1.2:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C3.1.2 127.0.0.1:3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_endpoint_flow_failed_with_error [C3.1.2 127.0.0.1:3000 cancelled socket-flow ((null))] already failing, returning
+Connection 3: received failure notification
+Connection 3: failed to connect 1:61, reason -1
+Connection 3: encountered error(1:61)
+Task <6479C7D4-F96F-4E1B-8931-6853AF1553B3>.<3> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+Task <6479C7D4-F96F-4E1B-8931-6853AF1553B3>.<3> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0x11d629020 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <6479C7D4-F96F-4E1B-8931-6853AF1553B3>.<3>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <6479C7D4-F96F-4E1B-8931-6853AF1553B3>.<3>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:3000/api/auth/login, NSErrorFailingURLKey=http://localhost:3000/api/auth/login, _kCFStreamErrorDomainKey=1}
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+(501) Invalidation handler invoked, clearing connection
+(501) personaAttributesForPersonaType for type:0 failed with error Error Domain=NSCocoaErrorDomain Code=4099 "The connection to service named com.apple.mobile.usermanagerd.xpc was invalidated from this process." UserInfo={NSDebugDescription=The connection to service named com.apple.mobile.usermanagerd.xpc was invalidated from this process.}
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+<0x11c229cc0> Gesture: System gesture gate timed out.
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+Received port for identifier response: <(null)> with error:Error Domain=RBSServiceErrorDomain Code=1 "Client not entitled" UserInfo={RBSEntitlement=com.apple.runningboard.process-state, NSLocalizedFailureReason=Client not entitled, RBSPermanent=false}
+elapsedCPUTimeForFrontBoard couldn't generate a task port
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+-[RTIInputSystemClient remoteTextInputSessionWithID:performInputOperation:]  perform input operation requires a valid sessionID. inputModality = Keyboard, inputOperation = <null selector>, customInfoType = UIEmojiSearchOperations
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+The variant selector cell index number could not be found.
+nw_path_necp_check_for_updates Failed to copy updated result (22)
+nw_socket_handle_socket_event [C4.1.1:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C4.1.1 ::1.3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_socket_handle_socket_event [C4.1.2:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C4.1.2 127.0.0.1:3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_endpoint_flow_failed_with_error [C4.1.2 127.0.0.1:3000 cancelled socket-flow ((null))] already failing, returning
+Connection 4: received failure notification
+Connection 4: failed to connect 1:61, reason -1
+Connection 4: encountered error(1:61)
+Task <D597AFC3-FC76-4A76-A179-83A640FA0000>.<4> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+Task <D597AFC3-FC76-4A76-A179-83A640FA0000>.<4> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0x11d6b4cf0 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <D597AFC3-FC76-4A76-A179-83A640FA0000>.<4>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <D597AFC3-FC76-4A76-A179-83A640FA0000>.<4>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:3000/api/auth/register, NSErrorFailingURLKey=http://localhost:3000/api/auth/register, _kCFStreamErrorDomainKey=1}
+nw_socket_handle_socket_event [C5.1.1:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C5.1.1 ::1.3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_socket_handle_socket_event [C5.1.2:2] Socket SO_ERROR [61: Connection refused]
+nw_endpoint_flow_failed_with_error [C5.1.2 127.0.0.1:3000 in_progress socket-flow (satisfied (Path is satisfied), viable, interface: lo0)] already failing, returning
+nw_endpoint_flow_failed_with_error [C5.1.2 127.0.0.1:3000 cancelled socket-flow ((null))] already failing, returning
+Connection 5: received failure notification
+Connection 5: failed to connect 1:61, reason -1
+Connection 5: encountered error(1:61)
+Task <935D2A77-3863-4F91-8670-B64DEA1C0746>.<5> HTTP load failed, 0/0 bytes (error code: -1004 [1:61])
+Task <935D2A77-3863-4F91-8670-B64DEA1C0746>.<5> finished with error [-1004] Error Domain=NSURLErrorDomain Code=-1004 "Could not connect to the server." UserInfo={_kCFStreamErrorCodeKey=61, NSUnderlyingError=0x11d6b65b0 {Error Domain=kCFErrorDomainCFNetwork Code=-1004 "(null)" UserInfo={_NSURLErrorNWPathKey=satisfied (Path is satisfied), interface: lo0, _kCFStreamErrorCodeKey=61, _kCFStreamErrorDomainKey=1}}, _NSURLErrorFailingURLSessionTaskErrorKey=LocalDataTask <935D2A77-3863-4F91-8670-B64DEA1C0746>.<5>, _NSURLErrorRelatedURLSessionTaskErrorKey=(
+    "LocalDataTask <935D2A77-3863-4F91-8670-B64DEA1C0746>.<5>"
+), NSLocalizedDescription=Could not connect to the server., NSErrorFailingURLStringKey=http://localhost:3000/api/auth/register, NSErrorFailingURLKey=http://localhost:3000/api/auth/register, _kCFStreamErrorDomainKey=1}
+

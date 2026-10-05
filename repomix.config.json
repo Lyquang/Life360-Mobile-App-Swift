@@ -1,0 +1,29 @@
+{
+  "output": {
+    "filePath": "codebase-skeleton.txt",
+    "style": "markdown",
+    "removeComments": false,
+    "removeEmptyLines": true,
+    "showLineNumbers": false
+  },
+  "include": [
+    "AI_RULES.md",
+    "PROGRESS.md",
+    ".spec/**/*.md",
+    "FamilyTracker/**/*.swift",
+    "project.yml"
+  ],
+  "ignore": {
+    "customPatterns": [
+      "DerivedData/**",
+      ".build/**",
+      "build/**",
+      "Build/**",
+      "Pods/**",
+      "Carthage/**",
+      "*.xcodeproj/xcuserdata/**",
+      "*.xcworkspace/xcuserdata/**",
+      "FamilyTracker/Resources/Assets.xcassets/**"
+    ]
+  }
+}

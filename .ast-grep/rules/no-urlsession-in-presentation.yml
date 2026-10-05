@@ -1,0 +1,8 @@
+id: no-urlsession-in-presentation
+language: Swift
+severity: error
+message: "Presentation must not create URLSession calls. Use Domain UseCases and Data repositories."
+rule:
+  pattern: "URLSession.$_"
+files:
+  - "FamilyTracker/Presentation/**/*.swift"
