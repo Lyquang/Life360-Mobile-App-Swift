@@ -10,6 +10,13 @@ Legend:
 
 ## Feature Status
 
+- `[-]` Notifications: account-scoped local settings, chat/SOS local delivery,
+  OS permission recovery, validated coordinator routing and APNs entitlement
+  plumbing implemented. Server provider/token registration/preferences sync,
+  badge reconciliation and physical-device APNs validation remain outstanding.
+- `[ ]` App Icon artwork: catalog configured; import instructions provided in
+  NOTIFICATIONS.md. No artwork has been supplied or generated.
+
 - `[x]` Vietnamese / English interface: Login and Profile settings picker,
   persistent device preference, localized labels/errors/durations and permission
   purpose strings. Authenticated-screen manual verification remains.
@@ -24,6 +31,14 @@ Legend:
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 
 ## Architecture Decisions
+
+- 2026-10-10: Extend PushNotificationService behind NotificationRepository;
+  persist local preferences per account. Keep existing ObservableObject/iOS 16
+  architecture, coordinator-owned Settings sheet, typed payload parsing in Domain
+  and membership checks before notification navigation. Map focus can wait for
+  realtime data. Do not invent token endpoints: inspected sibling backend has
+  no APNs provider or registration APIs. Settings explicitly states this limitation.
+  Debug/Release APNs entitlements require appropriate Apple provisioning.
 
 - 2026-10-05: Inject language preferences through AppContainer and a MainActor
   settings model. Update root SwiftUI locale without replacing coordinator/state
@@ -96,6 +111,18 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-10: Replaced minimal README with a portfolio guide: badges, feature
+  status, architecture diagram, actual iOS/separate backend trees, verified npm/
+  Docker commands, deployed mobile API setup, tests and roadmap. Read sibling
+  backend source without editing it; did not read private .env or call live APIs.
+  Documented actual Combine observation, banner-only SOS, missing geofences/read
+  receipt UI and best-effort offline buffering instead of unsupported claims.
+  Added NOTIFICATIONS.md for APNs contract, capabilities and icon setup.
+  Notification tests, 249-key localization tests and existing networking contracts
+  passed; unsigned Debug Simulator build passed with Xcode 26.2. Plist checks and
+  all 13 README local links passed. No notification UI/device/APNs end-to-end test
+  was performed; server integration and icon artwork are not marked complete.
 
 - 2026-10-05: Added Vietnamese/English switching and 231 matching translation
   keys. Localization tests, strings plist validation, networking regression tests

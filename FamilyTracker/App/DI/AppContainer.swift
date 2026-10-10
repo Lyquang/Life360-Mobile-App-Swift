@@ -33,6 +33,7 @@ final class AppContainer {
     private(set) lazy var notificationBridge = RealtimeNotificationBridge(
         observeSOS: ObserveSOSAlertsUseCase(repository: realtime),
         observeStayAlerts: ObserveStayAlertsUseCase(repository: realtime),
+        observeMessages: ObserveNewMessagesUseCase(repository: chatRepository),
         push: pushService
     )
 
@@ -46,7 +47,7 @@ final class AppContainer {
         logger = NoopNetworkLogger()
         #endif
         batteryMonitor = BatteryMonitor()
-        pushService = PushNotificationService()
+        pushService = PushNotificationService(store: UserDefaultsNotificationPreferences())
         socketClient = SocketIOClientAdapter(url: environment.socketURL, logger: logger)
         locationService = CLLocationService(battery: batteryMonitor.snapshot)
 
@@ -77,6 +78,7 @@ final class AppContainer {
     }
 
     func logout() {
+        pushService.deactivate()
         LogoutUseCase(session: session, realtime: realtime, shareLocation: shareLocation)()
     }
 

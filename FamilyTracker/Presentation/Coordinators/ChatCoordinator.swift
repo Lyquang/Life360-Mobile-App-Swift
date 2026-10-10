@@ -32,11 +32,15 @@ final class ChatCoordinator: NavigationCoordinator {
     }
 
     func didOpen(conversationId: String) {
+        container.pushService.activeConversationId = conversationId
         listViewModel.activeConversationId = conversationId
         listViewModel.markRead(conversationId)
     }
 
     func didClose(conversationId: String) {
+        if container.pushService.activeConversationId == conversationId {
+            container.pushService.activeConversationId = nil
+        }
         if listViewModel.activeConversationId == conversationId {
             listViewModel.activeConversationId = nil
         }

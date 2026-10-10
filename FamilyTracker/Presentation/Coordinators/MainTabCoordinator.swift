@@ -10,6 +10,9 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     @Published var selectedTab: Tab = .map
+    @Published var showsNotificationSettings = false
+    @Published var notificationRouteError: String?
+    private var routeTask: Task<Void, Never>?
 
     let currentUser: User
     let map: MapCoordinator
@@ -41,6 +44,7 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func start() {
+        container.pushService.activate(userId: currentUser.id)
         container.shareLocation.start()
         container.notificationBridge.start()
         emergency.start()
@@ -53,10 +57,11 @@ final class MainTabCoordinator: ObservableObject {
             }
             .store(in: &cancellables)
 
-        Task { await container.pushService.requestAuthorization() }
+        Task { await container.pushService.refreshPermission() }
     }
 
     func stop() {
+        routeTask?.cancel()
         emergency.stop()
         container.notificationBridge.stop()
         cancellables.removeAll()
@@ -78,14 +83,44 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func handle(_ deeplink: NotificationDeeplink) {
-        switch deeplink {
-        case .sos(let userId), .member(let userId):
-            selectedTab = .map
-            map.focus(onMember: userId)
-        case .conversation(let id):
-            selectedTab = .chat
-            chat.openConversation(id: id, title: "")
+        routeTask?.cancel()
+        routeTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                switch deeplink {
+                case .conversation(let id):
+                    let conversations = try await container.fetchConversations()
+                    try Task.checkCancellation()
+                    guard let conversation = conversations.first(where: { $0.id == id }) else {
+                        throw DomainError.validation("Không còn quyền truy cập nội dung thông báo.")
+                    }
+                    showsNotificationSettings = false
+                    openConversation(id: id, title: conversation.displayName)
+                case .sos(let userId), .member(let userId):
+                    let circles = try await container.fetchMyCircles()
+                    var allowed = false
+                    for circle in circles {
+                        let members = try await container.fetchCircleMembers(circleId: circle.id)
+                        if members.contains(where: { $0.id == userId }) { allowed = true; break }
+                    }
+                    try Task.checkCancellation()
+                    guard allowed else { throw DomainError.validation("Không còn quyền truy cập nội dung thông báo.") }
+                    showsNotificationSettings = false
+                    selectedTab = .map
+                    map.focus(onMember: userId)
+                }
+            } catch is CancellationError { return }
+            catch { notificationRouteError = error.localizedDescription }
         }
+    }
+
+    func makeNotificationSettingsViewModel() -> NotificationSettingsViewModel {
+        NotificationSettingsViewModel(repository: container.pushService)
+    }
+
+    func openSystemNotificationSettings() {
+        guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     // MARK: - Factories for tabs without their own navigation
@@ -140,11 +175,18 @@ struct MainTabView: View {
                 .tabItem { tabLabel("Địa điểm", icon: "star", tab: .places) }
                 .tag(MainTabCoordinator.Tab.places)
 
-            ProfileView(viewModel: coordinator.makeProfileViewModel())
+            ProfileView(viewModel: coordinator.makeProfileViewModel(),
+                        onNotifications: { coordinator.showsNotificationSettings = true })
                 .tabItem { Label("Cá nhân", systemImage: "person.fill") }
                 .tag(MainTabCoordinator.Tab.profile)
         }
         .tint(FTColors.primary)
+        .sheet(isPresented: $coordinator.showsNotificationSettings) {
+            NotificationSettingsView(viewModel: coordinator.makeNotificationSettingsViewModel(),
+                                     onOpenSettings: coordinator.openSystemNotificationSettings,
+                                     onClose: { coordinator.showsNotificationSettings = false })
+        }
+        .ftErrorAlert($coordinator.notificationRouteError)
         .modifier(EmergencyPresentation(coordinator: coordinator.emergency))
         .onAppear(perform: configureTabBarAppearance)
     }

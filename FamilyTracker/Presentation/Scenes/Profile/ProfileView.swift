@@ -3,9 +3,11 @@ import SwiftUI
 struct ProfileView: View {
     @StateObject private var viewModel: ProfileViewModel
     @State private var showLogoutConfirm = false
+    let onNotifications: () -> Void
 
-    init(viewModel: @autoclosure @escaping () -> ProfileViewModel) {
+    init(viewModel: @autoclosure @escaping () -> ProfileViewModel, onNotifications: @escaping () -> Void) {
         _viewModel = StateObject(wrappedValue: viewModel())
+        self.onNotifications = onNotifications
     }
 
     var body: some View {
@@ -31,6 +33,7 @@ struct ProfileView: View {
 
                 Section("Cài đặt") {
                     LanguagePicker()
+                    Button(action: onNotifications) { Label("Thông báo", systemImage: "bell.badge") }
                 }
 
                 Section("Thông tin ứng dụng") {

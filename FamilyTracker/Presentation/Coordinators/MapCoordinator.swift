@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 @MainActor
 final class MapCoordinator: NavigationCoordinator {
@@ -13,6 +14,8 @@ final class MapCoordinator: NavigationCoordinator {
     var onRequestSOS: (() -> Void)?
 
     private let container: AppContainer
+    private var pendingMemberId: String?
+    private var memberSubscription: AnyCancellable?
 
     init(container: AppContainer, currentUser: User) {
         self.container = container
@@ -24,6 +27,12 @@ final class MapCoordinator: NavigationCoordinator {
             observeDeviceLocation: container.observeDeviceLocation,
             getCurrentLocation: container.getCurrentLocation
         )
+        memberSubscription = viewModel.$memberLocations.sink { [weak self] members in
+            guard let self, let id = self.pendingMemberId,
+                  let member = members.first(where: { $0.id == id }) else { return }
+            self.pendingMemberId = nil
+            self.viewModel.centerOnMember(member)
+        }
     }
 
     func showJourney(of member: MemberLocation) {
@@ -35,12 +44,15 @@ final class MapCoordinator: NavigationCoordinator {
     }
 
     func focus(on point: GeoPoint) {
+        pendingMemberId = nil
         viewModel.focus(on: point)
     }
 
     func focus(onMember userId: String) {
         popToRoot()
+        pendingMemberId = userId
         if let member = viewModel.memberLocations.first(where: { $0.id == userId }) {
+            pendingMemberId = nil
             viewModel.centerOnMember(member)
         }
     }

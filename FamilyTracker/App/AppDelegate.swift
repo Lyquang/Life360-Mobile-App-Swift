@@ -21,6 +21,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
-        // Expected until the Push Notifications capability is enabled for the app ID.
+        container.pushService.didFailRegistration()
     }
 }
