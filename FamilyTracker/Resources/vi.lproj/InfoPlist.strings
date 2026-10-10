@@ -1,0 +1,4 @@
+"NSLocalNetworkUsageDescription" = "Kết nối Pulse trên máy Mac để xem log khi bạn bật Remote Logging.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "FamilyTracker cần vị trí nền để cập nhật liên tục.";
+"NSLocationWhenInUseUsageDescription" = "FamilyTracker cần vị trí của bạn để chia sẻ với gia đình.";
+"NSMotionUsageDescription" = "FamilyTracker dùng dữ liệu chuyển động để tiết kiệm pin khi bạn đứng yên.";

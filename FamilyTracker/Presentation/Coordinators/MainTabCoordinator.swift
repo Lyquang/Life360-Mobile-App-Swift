@@ -84,7 +84,7 @@ final class MainTabCoordinator: ObservableObject {
             map.focus(onMember: userId)
         case .conversation(let id):
             selectedTab = .chat
-            chat.openConversation(id: id, title: "Tin nhắn")
+            chat.openConversation(id: id, title: "")
         }
     }
 
@@ -150,7 +150,7 @@ struct MainTabView: View {
     }
 
     private func tabLabel(_ title: String, icon: String, tab: MainTabCoordinator.Tab) -> some View {
-        Label(title, systemImage: coordinator.selectedTab == tab ? "\(icon).fill" : icon)
+        Label(LocalizedStringKey(title), systemImage: coordinator.selectedTab == tab ? "\(icon).fill" : icon)
     }
 
     private func configureTabBarAppearance() {

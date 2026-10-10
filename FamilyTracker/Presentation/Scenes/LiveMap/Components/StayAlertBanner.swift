@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct StayAlertBanner: View {
+    @Environment(\.locale) private var locale
     let alert: LocationStayAlert
     let onDismiss: () -> Void
     let onNavigate: (() -> Void)?
@@ -36,7 +37,7 @@ struct StayAlertBanner: View {
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(alertTitle)
+                    AppLocalizedText(alertTitle)
                         .font(FTFont.headline())
                         .foregroundColor(.white)
 
@@ -81,7 +82,7 @@ struct StayAlertBanner: View {
             HStack {
                 Image(systemName: "clock.fill")
                     .font(.system(size: 12))
-                Text("Đã ở đây: \(alert.durationFormatted)")
+                Text("Đã ở đây: \(L10n.duration(minutes: alert.durationMinutes, language: AppLanguage(locale: locale)))")
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
             }

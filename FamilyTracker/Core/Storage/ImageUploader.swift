@@ -13,7 +13,7 @@ enum ImageUploadError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .insecureURL: return "URL tải ảnh không an toàn."
-        case .failed(let code): return "Tải ảnh thất bại (\(code.map(String.init) ?? "network"))."
+        case .failed: return "Không thể tải ảnh lên. Vui lòng thử lại."
         }
     }
 }

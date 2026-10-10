@@ -1,0 +1,4 @@
+"NSLocalNetworkUsageDescription" = "Connect to Pulse on your Mac to view logs when you enable Remote Logging.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "FamilyTracker uses background location to keep your family updated.";
+"NSLocationWhenInUseUsageDescription" = "FamilyTracker uses your location to share it with your family.";
+"NSMotionUsageDescription" = "FamilyTracker uses motion activity to reduce battery use when you are stationary.";

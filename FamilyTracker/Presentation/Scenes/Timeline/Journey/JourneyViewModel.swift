@@ -39,10 +39,10 @@ final class JourneyViewModel: ObservableObject {
         }
     }
 
-    var formattedDisplayDate: String {
+    func formattedDisplayDate(locale: Locale) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, d MMMM, yyyy"
-        formatter.locale = Locale(identifier: "vi_VN")
+        formatter.locale = locale
         return formatter.string(from: displayDate).capitalized
     }
 

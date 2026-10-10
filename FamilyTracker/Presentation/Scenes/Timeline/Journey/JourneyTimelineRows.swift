@@ -21,7 +21,7 @@ struct StayPointMapMarker: View {
             }
             .animation(.spring(), value: isSelected)
 
-            Text(stayPoint.durationFormatted)
+            LocalizedDurationText(minutes: stayPoint.durationMinutes)
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundColor(.white)
                 .padding(.horizontal, 5)
@@ -37,6 +37,7 @@ struct StayPointMapMarker: View {
 
 /// Timeline row for a stay point.
 struct StayPointRow: View {
+    @Environment(\.locale) private var locale
     let stayPoint: StayPoint
     let address: String
     let isFirst: Bool
@@ -78,7 +79,7 @@ struct StayPointRow: View {
                         .foregroundColor(isSelected ? FTColors.primary : FTColors.textPrimary)
                         .fontWeight(isSelected ? .semibold : .regular)
                     Spacer()
-                    Text(stayPoint.durationFormatted)
+                    LocalizedDurationText(minutes: stayPoint.durationMinutes)
                         .font(FTFont.caption())
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
@@ -91,7 +92,7 @@ struct StayPointRow: View {
                     Image(systemName: "location.fill")
                         .font(.system(size: 10))
                         .foregroundColor(FTColors.textTertiary)
-                    Text(address)
+                    AppLocalizedText(address)
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textSecondary)
                         .lineLimit(2)
@@ -101,7 +102,7 @@ struct StayPointRow: View {
                     HStack(spacing: FTSpacing.lg) {
                         detail("Đến", stayPoint.arrivalTime, color: FTColors.textPrimary)
                         detail("Rời", stayPoint.departureTime, color: FTColors.textPrimary)
-                        detail("Ở lại", stayPoint.durationFormatted, color: FTColors.accent)
+                        detail("Ở lại", L10n.duration(minutes: stayPoint.durationMinutes, language: AppLanguage(locale: locale)), color: FTColors.accent)
                     }
                     .padding(.top, 4)
                     .transition(.opacity.combined(with: .scale))
@@ -120,7 +121,7 @@ struct StayPointRow: View {
 
     private func detail(_ title: String, _ value: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
+            AppLocalizedText(title)
                 .font(.system(size: 10))
                 .foregroundColor(FTColors.textTertiary)
             Text(value)
@@ -133,6 +134,7 @@ struct StayPointRow: View {
 
 /// Timeline row for movement between stay points.
 struct MovingSegmentRow: View {
+    @Environment(\.locale) private var locale
     let segment: MovingSegment
     let isFirst: Bool
     let isLast: Bool
@@ -162,7 +164,7 @@ struct MovingSegmentRow: View {
                 HStack(spacing: 6) {
                     Image(systemName: "figure.walk")
                         .font(.system(size: 13))
-                    Text("Di chuyển · \(segment.durationFormatted)")
+                    Text("Di chuyển · \(L10n.duration(minutes: segment.durationMinutes, language: AppLanguage(locale: locale)))")
                         .font(FTFont.caption())
                 }
                 .foregroundColor(FTColors.textTertiary)

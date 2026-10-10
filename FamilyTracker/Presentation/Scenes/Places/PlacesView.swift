@@ -143,7 +143,7 @@ struct PlacesView: View {
             HStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 11))
-                Text(label)
+                AppLocalizedText(label)
                     .font(FTFont.caption())
                     .fontWeight(isSelected ? .semibold : .regular)
             }
@@ -179,7 +179,7 @@ struct PlaceCard: View {
                         .font(FTFont.subheadline())
                         .foregroundColor(FTColors.textPrimary)
 
-                    Text(place.category.displayName)
+                    AppLocalizedText(place.category.displayName)
                         .font(FTFont.caption())
                         .foregroundColor(color)
                         .padding(.horizontal, 8)

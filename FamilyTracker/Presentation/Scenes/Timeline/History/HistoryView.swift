@@ -5,6 +5,7 @@ import SwiftUI
 import MapKit
 
 struct HistoryView: View {
+    @Environment(\.locale) private var locale
     @StateObject private var viewModel: HistoryViewModel
     private let onShowJourney: () -> Void
 
@@ -73,7 +74,7 @@ struct HistoryView: View {
                 Text("Lịch sử vị trí")
                     .font(FTFont.title2())
                     .foregroundColor(FTColors.textPrimary)
-                Text(viewModel.formattedDisplayDate)
+                Text(viewModel.formattedDisplayDate(locale: locale))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
             }
@@ -96,7 +97,7 @@ struct HistoryView: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 Image(systemName: icon)
-                Text(title).font(FTFont.caption())
+                AppLocalizedText(title).font(FTFont.caption())
             }
             .foregroundColor(color)
             .padding(.horizontal, FTSpacing.sm)
@@ -127,10 +128,10 @@ struct HistoryView: View {
             Image(systemName: icon)
                 .foregroundColor(color)
                 .font(.system(size: 16))
-            Text(value)
+            AppLocalizedText(value)
                 .font(FTFont.headline())
                 .foregroundColor(FTColors.textPrimary)
-            Text(label)
+            AppLocalizedText(label)
                 .font(FTFont.caption())
                 .foregroundColor(FTColors.textSecondary)
         }
@@ -256,7 +257,7 @@ struct HistoryTimelineRow: View {
     }
 
     private func tag(_ text: String, color: Color) -> some View {
-        Text(text)
+        AppLocalizedText(text)
             .font(FTFont.caption())
             .foregroundColor(.white)
             .padding(.horizontal, 6)

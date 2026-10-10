@@ -91,7 +91,7 @@ struct RegisterView: View {
                             if let error = viewModel.errorMessage {
                                 HStack(spacing: FTSpacing.xs) {
                                     Image(systemName: "exclamationmark.circle.fill")
-                                    Text(error)
+                                    AppLocalizedText(error)
                                         .font(FTFont.caption())
                                 }
                                 .foregroundColor(FTColors.danger)
@@ -181,7 +181,7 @@ struct PasswordStrengthView: View {
                 Text("Độ mạnh:")
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
-                Text(strengthText)
+                AppLocalizedText(strengthText)
                     .font(FTFont.caption())
                     .foregroundColor(strengthColor)
                     .fontWeight(.semibold)
@@ -199,4 +199,3 @@ struct PasswordStrengthView: View {
         }
     }
 }
-

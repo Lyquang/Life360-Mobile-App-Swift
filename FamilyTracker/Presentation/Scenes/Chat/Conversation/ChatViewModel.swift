@@ -162,7 +162,7 @@ final class ChatViewModel: ObservableObject {
 
     private func receive(_ event: TypingEvent) {
         guard event.conversationId == conversationId, event.userId != currentUserId else { return }
-        typers[event.userId] = event.isTyping ? (event.name ?? "Ai đó") : nil
+        typers[event.userId] = event.isTyping ? (event.name ?? L10n.text("Ai đó")) : nil
         typingNames = Array(typers.values)
     }
 

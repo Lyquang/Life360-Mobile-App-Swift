@@ -81,12 +81,13 @@ struct DurationView: View {
     private func legendDot(color: Color, label: String) -> some View {
         HStack(spacing: 3) {
             Circle().fill(color).frame(width: 8, height: 8)
-            Text(label).font(.system(size: 10)).foregroundColor(FTColors.textTertiary)
+            AppLocalizedText(label).font(.system(size: 10)).foregroundColor(FTColors.textTertiary)
         }
     }
 }
 
 struct DurationMemberCard: View {
+    @Environment(\.locale) private var locale
     let member: MemberLocation
 
     var body: some View {
@@ -98,11 +99,11 @@ struct DurationMemberCard: View {
                     .font(FTFont.headline())
                     .foregroundColor(FTColors.textPrimary)
 
-                if member.isStaying, let formatted = member.durationFormatted {
+                if member.isStaying {
                     HStack(spacing: 4) {
                         Image(systemName: "clock.fill")
                             .font(.system(size: 11))
-                        Text("Đã ở đây \(formatted)")
+                        Text("Đã ở đây \(L10n.duration(minutes: member.durationAtLocation ?? 0, language: AppLanguage(locale: locale)))")
                             .font(FTFont.subheadline())
                     }
                     .foregroundColor(stayColor)

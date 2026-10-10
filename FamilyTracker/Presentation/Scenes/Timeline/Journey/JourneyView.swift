@@ -5,6 +5,7 @@ import SwiftUI
 import MapKit
 
 struct JourneyView: View {
+    @Environment(\.locale) private var locale
     @StateObject private var viewModel: JourneyViewModel
     @State private var showMap = true
     @Environment(\.dismiss) private var dismiss
@@ -31,7 +32,7 @@ struct JourneyView: View {
                         icon: "figure.walk.motion",
                         title: "Chưa có dữ liệu",
                         subtitle: viewModel.errorMessage
-                            ?? "Lộ trình của \(viewModel.memberName) trong ngày này sẽ xuất hiện ở đây khi có GPS data.",
+                            ?? L10n.format("Lộ trình của %@ trong ngày này sẽ xuất hiện ở đây khi có GPS data.", viewModel.memberName, language: AppLanguage(locale: locale)),
                         actionTitle: nil,
                         action: nil
                     )
@@ -67,7 +68,7 @@ struct JourneyView: View {
                     Text("Lộ trình của \(viewModel.memberName)")
                         .font(FTFont.headline())
                         .foregroundColor(FTColors.textPrimary)
-                    Text(viewModel.formattedDisplayDate)
+                    Text(viewModel.formattedDisplayDate(locale: locale))
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textSecondary)
                 }
@@ -158,9 +159,9 @@ struct JourneyView: View {
             HStack(spacing: 0) {
                 summaryItem(value: "\(viewModel.stayPoints.count)", label: "Điểm dừng", icon: "mappin.circle.fill", color: FTColors.primary)
                 Divider().frame(height: 44)
-                summaryItem(value: viewModel.summary?.totalStayFormatted ?? "--", label: "Thời gian ở", icon: "clock.fill", color: FTColors.accent)
+                summaryItem(value: viewModel.summary.map { L10n.duration(minutes: $0.totalStayMinutes, language: AppLanguage(locale: locale)) } ?? "--", label: "Thời gian ở", icon: "clock.fill", color: FTColors.accent)
                 Divider().frame(height: 44)
-                summaryItem(value: viewModel.summary?.totalMovingFormatted ?? "--", label: "Di chuyển", icon: "figure.walk", color: FTColors.warning)
+                summaryItem(value: viewModel.summary.map { L10n.duration(minutes: $0.totalMovingMinutes, language: AppLanguage(locale: locale)) } ?? "--", label: "Di chuyển", icon: "figure.walk", color: FTColors.warning)
             }
             .padding(FTSpacing.md)
             .ftCard()
@@ -190,7 +191,7 @@ struct JourneyView: View {
                 .foregroundColor(FTColors.textPrimary)
                 .minimumScaleFactor(0.8)
                 .lineLimit(1)
-            Text(label)
+            AppLocalizedText(label)
                 .font(FTFont.caption())
                 .foregroundColor(FTColors.textSecondary)
         }

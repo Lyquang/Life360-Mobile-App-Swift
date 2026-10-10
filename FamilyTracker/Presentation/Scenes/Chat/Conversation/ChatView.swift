@@ -22,7 +22,7 @@ struct ChatView: View {
             }
             inputBar
         }
-        .navigationTitle(viewModel.title)
+        .navigationTitle(viewModel.title.isEmpty ? Text("Tin nhắn") : Text(verbatim: viewModel.title))
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.start() }
         .onDisappear { viewModel.stopTyping() }

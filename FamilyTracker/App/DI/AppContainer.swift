@@ -5,6 +5,7 @@ import Foundation
 @MainActor
 final class AppContainer {
     let environment: AppEnvironment
+    let languageSettings: LanguageSettingsViewModel
 
     // MARK: Core
     let logger: NetworkLogger
@@ -37,6 +38,7 @@ final class AppContainer {
 
     init(environment: AppEnvironment = .current) {
         self.environment = environment
+        languageSettings = LanguageSettingsViewModel(preferences: UserDefaultsLanguagePreferences())
 
         #if DEBUG
         logger = PulseDiagnostics.shared

@@ -39,13 +39,14 @@ final class HistoryViewModel: ObservableObject {
         historyMapRegion = MKCoordinateRegion(center: entry.coordinate, delta: 0.005)
     }
 
-    var formattedDisplayDate: String {
+    func formattedDisplayDate(locale: Locale) -> String {
         let input = DateFormatter()
+        input.locale = Locale(identifier: "en_US_POSIX")
         input.dateFormat = "yyyy-MM-dd"
         guard let date = input.date(from: displayDate) else { return displayDate }
         let output = DateFormatter()
         output.dateFormat = "d MMMM, yyyy"
-        output.locale = Locale(identifier: "vi_VN")
+        output.locale = locale
         return output.string(from: date)
     }
 

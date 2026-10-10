@@ -21,7 +21,7 @@ struct FTTextField: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FTSpacing.xs) {
             // Label
-            Text(title)
+            AppLocalizedText(title)
                 .font(FTFont.caption())
                 .foregroundColor(FTColors.textSecondary)
                 .textCase(.uppercase)
@@ -36,7 +36,7 @@ struct FTTextField: View {
                     .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
                 
                 // TextField
-                TextField(placeholder, text: $text)
+                TextField(LocalizedStringKey(placeholder), text: $text)
                     .font(FTFont.body())
                     .keyboardType(keyboardType)
                     .textInputAutocapitalization(autocapitalization)
@@ -67,7 +67,7 @@ struct FTSecureField: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: FTSpacing.xs) {
-            Text(title)
+            AppLocalizedText(title)
                 .font(FTFont.caption())
                 .foregroundColor(FTColors.textSecondary)
                 .textCase(.uppercase)
@@ -80,11 +80,11 @@ struct FTSecureField: View {
                 
                 // Hiển thị SecureField hoặc TextField tùy trạng thái
                 if isVisible {
-                    TextField(placeholder, text: $text)
+                    TextField(LocalizedStringKey(placeholder), text: $text)
                         .font(FTFont.body())
                         .autocorrectionDisabled()
                 } else {
-                    SecureField(placeholder, text: $text)
+                    SecureField(LocalizedStringKey(placeholder), text: $text)
                         .font(FTFont.body())
                 }
                 
@@ -132,7 +132,7 @@ struct FTButton: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                         .scaleEffect(0.8)
                 }
-                Text(isLoading ? "Đang xử lý..." : title)
+                AppLocalizedText(isLoading ? "Đang xử lý..." : title)
                     .font(FTFont.headline())
             }
             .frame(maxWidth: .infinity)

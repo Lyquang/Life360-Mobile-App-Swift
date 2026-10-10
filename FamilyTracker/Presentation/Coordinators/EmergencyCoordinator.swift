@@ -39,7 +39,7 @@ final class EmergencyCoordinator: ObservableObject {
 
     func confirmSOS() {
         isSending = true
-        sendSOS()
+        sendSOS(message: L10n.text("Tôi cần giúp đỡ khẩn cấp!"))
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             self?.isSending = false

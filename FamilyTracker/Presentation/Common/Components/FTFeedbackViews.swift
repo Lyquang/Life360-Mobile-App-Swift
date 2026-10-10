@@ -11,7 +11,7 @@ struct FTErrorView: View {
                 .font(.system(size: 40))
                 .foregroundColor(FTColors.warning)
 
-            Text(message)
+            AppLocalizedText(message)
                 .font(FTFont.body())
                 .foregroundColor(FTColors.textSecondary)
                 .multilineTextAlignment(.center)
@@ -41,18 +41,18 @@ struct FTEmptyView: View {
                 .foregroundColor(FTColors.textTertiary)
                 .padding(.bottom, FTSpacing.sm)
 
-            Text(title)
+            AppLocalizedText(title)
                 .font(FTFont.title3())
                 .foregroundColor(FTColors.textPrimary)
 
-            Text(subtitle)
+            AppLocalizedText(subtitle)
                 .font(FTFont.body())
                 .foregroundColor(FTColors.textSecondary)
                 .multilineTextAlignment(.center)
 
             if let actionTitle = actionTitle, let action = action {
                 Button(action: action) {
-                    Text(actionTitle)
+                    AppLocalizedText(actionTitle)
                         .font(FTFont.headline())
                         .foregroundColor(.white)
                         .padding(.horizontal, FTSpacing.xl)
@@ -82,7 +82,7 @@ struct FTLoadingOverlay: View {
                     .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
                     .scaleEffect(1.5)
 
-                Text(message)
+                AppLocalizedText(message)
                     .font(FTFont.subheadline())
                     .foregroundColor(FTColors.textPrimary)
             }
@@ -123,7 +123,7 @@ struct FTToast: View {
         HStack(spacing: FTSpacing.sm) {
             Image(systemName: type.icon)
                 .foregroundColor(type.color)
-            Text(message)
+            AppLocalizedText(message)
                 .font(FTFont.subheadline())
                 .foregroundColor(FTColors.textPrimary)
                 .lineLimit(2)
@@ -160,7 +160,7 @@ extension View {
         )) {
             Button("OK") { message.wrappedValue = nil }
         } message: {
-            Text(message.wrappedValue ?? "")
+            AppLocalizedText(message.wrappedValue ?? "")
         }
     }
 }

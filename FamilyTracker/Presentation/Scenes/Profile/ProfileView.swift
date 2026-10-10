@@ -29,10 +29,20 @@ struct ProfileView: View {
                     .padding(.vertical, FTSpacing.sm)
                 }
 
+                Section("Cài đặt") {
+                    LanguagePicker()
+                }
+
                 Section("Thông tin ứng dụng") {
                     InfoRow(label: "Phiên bản", value: viewModel.appVersion)
                     InfoRow(label: "Backend", value: viewModel.backendHost)
-                    InfoRow(label: "Socket", value: viewModel.connectionLabel)
+                    HStack {
+                        Text("Socket")
+                        Spacer()
+                        AppLocalizedText(viewModel.connectionLabel)
+                            .font(FTFont.footnote())
+                            .foregroundColor(FTColors.textSecondary)
+                    }
                 }
 
                 #if DEBUG
@@ -71,7 +81,7 @@ struct InfoRow: View {
 
     var body: some View {
         HStack {
-            Text(label)
+            AppLocalizedText(label)
                 .foregroundColor(FTColors.textPrimary)
             Spacer()
             Text(value)

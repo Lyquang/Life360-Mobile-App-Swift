@@ -118,7 +118,7 @@ struct JourneyMemberRow: View {
                                 .cornerRadius(FTRadius.full)
                         }
                     }
-                    Text(subtitle)
+                    AppLocalizedText(subtitle)
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textSecondary)
                 }

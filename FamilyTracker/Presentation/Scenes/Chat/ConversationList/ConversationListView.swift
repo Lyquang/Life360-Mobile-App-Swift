@@ -37,6 +37,7 @@ struct ConversationListView: View {
 }
 
 private struct ConversationRow: View {
+    @Environment(\.locale) private var locale
     let conversation: Conversation
 
     var body: some View {
@@ -85,8 +86,8 @@ private struct ConversationRow: View {
     }
 
     private var preview: String {
-        guard let message = conversation.lastMessage else { return "Chưa có tin nhắn" }
+        guard let message = conversation.lastMessage else { return L10n.text("Chưa có tin nhắn", language: AppLanguage(locale: locale)) }
         let sender = message.senderName.map { "\($0): " } ?? ""
-        return sender + (message.type == .image ? "📷 Hình ảnh" : message.content)
+        return sender + (message.type == .image ? L10n.text("📷 Hình ảnh", language: AppLanguage(locale: locale)) : message.content)
     }
 }

@@ -22,7 +22,7 @@ struct AddPlaceSheet: View {
                 Section("Loại địa điểm") {
                     Picker("Danh mục", selection: $category) {
                         ForEach(PlaceCategory.allCases) { category in
-                            Label(category.displayName, systemImage: category.iconName).tag(category)
+                            Label(LocalizedStringKey(category.displayName), systemImage: category.iconName).tag(category)
                         }
                     }
                     .pickerStyle(.menu)
@@ -71,7 +71,7 @@ struct AddPlaceSheet: View {
 
     private func coordinateField(_ label: String, placeholder: String, text: Binding<String>) -> some View {
         HStack {
-            Text(label)
+            AppLocalizedText(label)
                 .font(FTFont.caption())
                 .foregroundColor(FTColors.textSecondary)
             TextField(placeholder, text: text)

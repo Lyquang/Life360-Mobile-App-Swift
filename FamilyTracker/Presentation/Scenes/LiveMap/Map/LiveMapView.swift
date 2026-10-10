@@ -75,7 +75,7 @@ struct LiveMapView: View {
                     Circle()
                         .fill(viewModel.isConnected ? FTColors.accent : FTColors.danger)
                         .frame(width: 6, height: 6)
-                    Text(viewModel.isConnected ? "Đang kết nối" : "Offline")
+                    AppLocalizedText(viewModel.isConnected ? "Đang kết nối" : "Offline")
                         .font(FTFont.caption())
                         .foregroundColor(.white.opacity(0.7))
                 }

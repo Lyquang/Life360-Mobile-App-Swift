@@ -31,7 +31,7 @@ struct MemberRowView: View {
                     Circle()
                         .fill(member.isOnline == true ? FTColors.accent : FTColors.textTertiary)
                         .frame(width: 6, height: 6)
-                    Text(member.isOnline == true ? "Đang online" : "Offline")
+                    AppLocalizedText(member.isOnline == true ? "Đang online" : "Offline")
                         .font(FTFont.caption())
                         .foregroundColor(
                             member.isOnline == true ? FTColors.accent : FTColors.textTertiary

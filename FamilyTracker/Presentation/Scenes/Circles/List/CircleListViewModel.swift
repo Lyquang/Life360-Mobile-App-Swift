@@ -66,7 +66,7 @@ final class CircleListViewModel: ObservableObject {
         do {
             let group = try await createCircle(name: name)
             groups.insert(group, at: 0)
-            successMessage = "Tạo nhóm '\(group.name)' thành công! Mã mời: \(group.inviteCode ?? "")"
+            successMessage = L10n.format("Tạo nhóm '%@' thành công! Mã mời: %@", group.name, group.inviteCode ?? "")
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -83,7 +83,7 @@ final class CircleListViewModel: ObservableObject {
             if !groups.contains(where: { $0.id == group.id }) {
                 groups.insert(group, at: 0)
             }
-            successMessage = "Tham gia nhóm '\(group.name)' thành công!"
+            successMessage = L10n.format("Tham gia nhóm '%@' thành công!", group.name)
             return true
         } catch {
             errorMessage = error.localizedDescription

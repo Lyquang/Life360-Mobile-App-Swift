@@ -1,0 +1,23 @@
+name: FamilyTrackerLanguageChecks
+options:
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  LocalizationUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ../LocalizationUITests.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lyq02.familytracker.localization-uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  LocalizationUITests:
+    build:
+      targets:
+        LocalizationUITests: [test]
+    test:
+      targets: [LocalizationUITests]

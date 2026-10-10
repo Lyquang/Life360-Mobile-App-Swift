@@ -26,7 +26,7 @@ struct DurationBadge: View {
         HStack(spacing: 3) {
             Image(systemName: "clock.fill")
                 .font(.system(size: 9, weight: .semibold))
-            Text(durationFormatted)
+            LocalizedDurationText(minutes: durationMinutes)
                 .font(.system(size: 10, weight: .semibold))
                 .lineLimit(1)
         }
@@ -47,7 +47,7 @@ struct DurationBadgeLarge: View {
     let member: MemberLocation
 
     var body: some View {
-        if member.isStaying, let formatted = member.durationFormatted {
+        if member.isStaying {
             HStack(spacing: FTSpacing.xs) {
                 Image(systemName: "mappin.and.ellipse")
                     .font(.system(size: 12))
@@ -55,7 +55,7 @@ struct DurationBadgeLarge: View {
                     Text("Đang ở đây")
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textSecondary)
-                    Text(formatted)
+                    LocalizedDurationText(minutes: member.durationAtLocation ?? 0)
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(stayColor(minutes: member.durationAtLocation ?? 0))
                 }

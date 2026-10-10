@@ -10,6 +10,10 @@ Legend:
 
 ## Feature Status
 
+- `[x]` Vietnamese / English interface: Login and Profile settings picker,
+  persistent device preference, localized labels/errors/durations and permission
+  purpose strings. Authenticated-screen manual verification remains.
+
 - `[x]` Debug tooling: Pulse/PulseUI 5.2.3 console, Debug root button/keyboard
   shortcut, HTTP/upload/socket logging, local AI JSON export and manual remote logging.
 
@@ -20,6 +24,12 @@ Legend:
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 
 ## Architecture Decisions
+
+- 2026-10-05: Inject language preferences through AppContainer and a MainActor
+  settings model. Update root SwiftUI locale without replacing coordinator/state
+  identity. Use explicit localized bundles for non-View strings; keep user/server
+  content verbatim. OS-owned dialogs follow the OS-selected language. See
+  `.spec/app-language.md` and `LOCALIZATION.md`.
 
 - 2026-10-02: Both Debug and Release now select the deployed REST `/api/v1`
   and root Socket.IO host at life360-backend-latest.onrender.com, per user request.
@@ -86,6 +96,23 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-05: Added Vietnamese/English switching and 231 matching translation
+  keys. Localization tests, strings plist validation, networking regression tests
+  and unsigned Debug Simulator build passed. Login UI test verified immediate
+  switching, preservation of typed email and persistence on relaunch; both
+  language screenshots inspected. No live-account/backend mutations performed.
+  Profile/authenticated screens and physical-device permission prompts still
+  need manual checks. Standalone UI test harness does not alter app targets.
+
+- 2026-10-05: Added `FRONTEND_SWIFT_DESIGN_PATTERNS.md`, a source-grounded iOS
+  architecture/pattern interview guide with per-pattern classification, code,
+  trade-offs and STAR answers plus five advanced scenarios. Documented current
+  Combine observation, REST image-message creation, factory scope, SOS presentation
+  limits and best-effort offline delivery without claiming unimplemented features.
+  Verified 21 Swift excerpts against source, 47 local links and all six requested
+  fields across 19 pattern/mechanism sections; five interview scenarios included.
+  Documentation only; no Swift edits, new app test results or performance claims.
 
 - 2026-10-05: Added `SWIFT_BASICS_AUTH.md`, a beginner Auth walkthrough with
   verified source excerpts, value/reference semantics examples, defer execution

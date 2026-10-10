@@ -22,12 +22,14 @@ final class RealtimeNotificationBridge {
 
         tasks.append(Task { [weak self] in
             for await alert in sosStream {
-                self?.notify(title: "🚨 SOS từ \(alert.name)", body: alert.message, deeplink: .sos(userId: alert.userId))
+                self?.notify(title: L10n.format("SOS từ %@", alert.name), body: alert.message, deeplink: .sos(userId: alert.userId))
             }
         })
         tasks.append(Task { [weak self] in
             for await alert in stayStream {
-                self?.notify(title: "⏱ \(alert.name)", body: alert.message, deeplink: .member(userId: alert.userId))
+                self?.notify(title: alert.name,
+                             body: L10n.format("Đã ở đây %@", L10n.duration(minutes: alert.durationMinutes)),
+                             deeplink: .member(userId: alert.userId))
             }
         })
     }

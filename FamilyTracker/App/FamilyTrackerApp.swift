@@ -7,6 +7,7 @@ import SwiftUI
 struct FamilyTrackerApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appCoordinator = AppCoordinator(container: CompositionRoot.container)
+    @StateObject private var languageSettings = CompositionRoot.container.languageSettings
 
     var body: some Scene {
         WindowGroup {
@@ -14,6 +15,8 @@ struct FamilyTrackerApp: App {
                 #if DEBUG
                 .modifier(DebugOverlay())
                 #endif
+                .environmentObject(languageSettings)
+                .environment(\.locale, languageSettings.language.locale)
         }
     }
 }

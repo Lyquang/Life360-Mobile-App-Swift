@@ -61,6 +61,10 @@ struct LoginView: View {
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             
+                            LanguagePicker()
+                                .tint(.white)
+                                .padding(.vertical, FTSpacing.xs)
+
                             Text("Kết nối gia đình, mọi lúc mọi nơi")
                                 .font(FTFont.subheadline())
                                 .foregroundColor(.white.opacity(0.6))
@@ -102,7 +106,7 @@ struct LoginView: View {
                             if let error = viewModel.errorMessage {
                                 HStack(spacing: FTSpacing.xs) {
                                     Image(systemName: "exclamationmark.circle.fill")
-                                    Text(error)
+                                    AppLocalizedText(error)
                                         .font(FTFont.caption())
                                 }
                                 .foregroundColor(FTColors.danger)

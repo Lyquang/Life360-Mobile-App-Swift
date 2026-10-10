@@ -1,5 +1,6 @@
 name: FamilyTracker
 options:
+  developmentLanguage: vi
   bundleIdPrefix: com.lyq02
   deploymentTarget:
     iOS: "16.0"

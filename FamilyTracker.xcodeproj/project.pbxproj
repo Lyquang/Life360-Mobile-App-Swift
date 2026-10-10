@@ -111,9 +111,10 @@
 				};
 			};
 			buildConfigurationList = D97A9375637B9B2B3E3F7392 /* Build configuration list for PBXProject "FamilyTracker" */;
-			developmentRegion = en;
+			developmentRegion = vi;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				vi,
 				Base,
 				en,
 			);

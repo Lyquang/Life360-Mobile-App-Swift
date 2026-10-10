@@ -53,7 +53,7 @@ struct MemberInfoCard: View {
         }
     }
 
-    private var updatedText: String {
+    private var updatedText: LocalizedStringKey {
         ISO8601.date(from: member.timestamp) == nil
             ? "Vừa cập nhật"
             : "Cập nhật lúc \(DisplayFormat.time(iso: member.timestamp))"
