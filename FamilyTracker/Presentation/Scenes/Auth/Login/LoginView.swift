@@ -123,6 +123,14 @@ struct LoginView: View {
                                 Task { await viewModel.submit() }
                             }
                             .padding(.top, FTSpacing.xs)
+
+                            // MARK: Google Sign-In
+                            OrDivider()
+                                .padding(.vertical, FTSpacing.xs)
+
+                            GoogleSignInButton(isLoading: viewModel.isLoading) {
+                                Task { await viewModel.signInWithGoogle() }
+                            }
                         }
                         .padding(FTSpacing.lg)
                         .background(.ultraThinMaterial) // Glassmorphism blur background

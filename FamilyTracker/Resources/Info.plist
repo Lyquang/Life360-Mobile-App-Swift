@@ -54,5 +54,20 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+
+	<!-- Google Sign-In: iOS Client ID -->
+	<key>GIDClientID</key>
+	<string>144558699513-j2tppssoktc7trltn5h5st64btu38cc1.apps.googleusercontent.com</string>
+
+	<!-- Google Sign-In: URL Scheme (reversed iOS Client ID) để nhận callback từ Google -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.144558699513-j2tppssoktc7trltn5h5st64btu38cc1</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

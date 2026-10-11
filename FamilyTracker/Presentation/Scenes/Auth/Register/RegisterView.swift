@@ -112,7 +112,15 @@ struct RegisterView: View {
                                 Task { await viewModel.submit() }
                             }
                             .padding(.top, FTSpacing.sm)
-                            
+
+                            // MARK: Google Sign-In
+                            OrDivider()
+                                .padding(.vertical, FTSpacing.xs)
+
+                            GoogleSignInButton(isLoading: viewModel.isLoading) {
+                                Task { await viewModel.signInWithGoogle() }
+                            }
+
                             // Terms text
                             Text("Bằng cách đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi.")
                                 .font(FTFont.caption())

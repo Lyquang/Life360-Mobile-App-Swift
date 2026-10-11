@@ -1,4 +1,5 @@
 import UIKit
+import GoogleSignIn
 
 @MainActor
 final class AppDelegate: NSObject, UIApplicationDelegate {
@@ -22,5 +23,12 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         // Expected until the Push Notifications capability is enabled for the app ID.
+    }
+
+    // MARK: - Google Sign-In URL Handler
+    // GIDSignIn cần handle URL callback sau khi Safari/SafariVC trả về app.
+    func application(_ app: UIApplication, open url: URL,
+                     options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+        return GIDSignIn.sharedInstance.handle(url)
     }
 }

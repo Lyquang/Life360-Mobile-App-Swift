@@ -23,6 +23,14 @@ final class AuthRepositoryImpl: AuthRepository {
         }
     }
 
+    func socialLogin(idToken: String) async throws -> AuthSession {
+        try await withDomainErrors {
+            try await api.send(AuthEndpoint.googleLogin(idToken: idToken), as: APIResponseDTO<AuthDataDTO>.self)
+                .unwrap(fallbackMessage: "Đăng nhập Google thất bại.")
+                .toDomain()
+        }
+    }
+
     func fetchCurrentUser() async throws -> User {
         try await withDomainErrors {
             try await api.send(AuthEndpoint.me, as: APIResponseDTO<UserDTO>.self)

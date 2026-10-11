@@ -1,4 +1,5 @@
 import Foundation
+import GoogleSignIn
 
 /// Composition root: builds Core services and Data repositories once, hands out use cases.
 /// Nothing outside App/ should reach into this container directly except coordinators.
@@ -27,6 +28,7 @@ final class AppContainer {
     let deviceLocation: DeviceLocationRepository
     let deviceStatus: DeviceStatusRepository
     let geocoding: GeocodingRepository
+    let googleSignInService: GoogleSignInService
 
     // MARK: Long-lived use cases / services
     let shareLocation: ShareLocationUseCase
@@ -62,6 +64,7 @@ final class AppContainer {
         deviceLocation = DeviceLocationRepositoryImpl(service: locationService)
         deviceStatus = DeviceStatusRepositoryImpl(battery: batteryMonitor)
         geocoding = GeocodingRepositoryImpl(geocoder: ReverseGeocoder(), cache: GeocodeCache())
+        googleSignInService = GoogleSignInService()
 
         shareLocation = ShareLocationUseCase(
             deviceLocation: deviceLocation,
@@ -94,6 +97,9 @@ final class AppContainer {
 extension AppContainer {
     var login: LoginUseCase { LoginUseCase(auth: authRepository, session: session, realtime: realtime) }
     var register: RegisterUseCase { RegisterUseCase(auth: authRepository, session: session, realtime: realtime) }
+    var googleSignIn: GoogleSignInUseCase {
+        GoogleSignInUseCase(googleSignIn: googleSignInService, auth: authRepository, session: session, realtime: realtime)
+    }
 
     var fetchMyCircles: FetchMyCirclesUseCase { FetchMyCirclesUseCase(repository: circleRepository) }
     var createCircle: CreateCircleUseCase { CreateCircleUseCase(repository: circleRepository) }

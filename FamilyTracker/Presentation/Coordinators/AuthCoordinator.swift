@@ -1,3 +1,6 @@
+// MARK: - AuthCoordinator.swift
+// Điều phối luồng Auth: Login ↔ Register, cả hai đều có nút Google Sign-In.
+
 import SwiftUI
 
 @MainActor
@@ -8,8 +11,19 @@ final class AuthCoordinator: ObservableObject {
     let registerViewModel: RegisterViewModel
 
     init(container: AppContainer, onAuthenticated: @escaping (User) -> Void) {
-        loginViewModel = LoginViewModel(login: container.login, onAuthenticated: onAuthenticated)
-        registerViewModel = RegisterViewModel(register: container.register, onAuthenticated: onAuthenticated)
+        // Tạo 1 lần, share cùng googleSignIn usecase instance
+        let googleSignIn = container.googleSignIn
+
+        loginViewModel = LoginViewModel(
+            login: container.login,
+            googleSignIn: googleSignIn,
+            onAuthenticated: onAuthenticated
+        )
+        registerViewModel = RegisterViewModel(
+            register: container.register,
+            googleSignIn: googleSignIn,
+            onAuthenticated: onAuthenticated
+        )
     }
 
     func showRegister() {

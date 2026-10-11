@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 struct LoginUseCase {
     let auth: AuthRepository
@@ -42,6 +43,31 @@ struct RegisterUseCase {
     static func isValidEmail(_ email: String) -> Bool {
         let regex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
         return NSPredicate(format: "SELF MATCHES %@", regex).evaluate(with: email)
+    }
+}
+
+// MARK: - Google Sign-In UseCase
+
+/// Điều phối toàn bộ luồng Google Sign-In:
+/// 1. Lấy Google ID Token qua SDK
+/// 2. Gửi lên backend /auth/social-login
+/// 3. Lưu JWT vào Keychain và kết nối Socket
+struct GoogleSignInUseCase {
+    let googleSignIn: GoogleSignInServiceProtocol
+    let auth: AuthRepository
+    let session: SessionRepository
+    let realtime: RealtimeSessionRepository
+
+    @MainActor
+    func callAsFunction(presentingViewController: UIViewController) async throws -> User {
+        // 1. Lấy Google ID Token từ SDK
+        let idToken = try await googleSignIn.signIn(presentingViewController: presentingViewController)
+        // 2. Gửi ID Token lên backend → nhận AuthSession (JWT + user)
+        let result = try await auth.socialLogin(idToken: idToken)
+        // 3. Lưu token an toàn vào Keychain và kết nối realtime
+        session.save(result)
+        realtime.connect(token: result.token)
+        return result.user
     }
 }
 

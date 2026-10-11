@@ -9,11 +9,14 @@
 /* Begin PBXBuildFile section */
 		3372FABDDCE8E2441A92EE92 /* PulseUI in Frameworks */ = {isa = PBXBuildFile; productRef = 33A098995B743DC5E225F5E2 /* PulseUI */; };
 		765CA7B39F560284DD796E55 /* SocketIO in Frameworks */ = {isa = PBXBuildFile; productRef = F52EF343645E700D31007C3C /* SocketIO */; };
+		84923CEA307A403100098CB9 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 84923CE9307A403100098CB9 /* GoogleSignIn */; };
+		84923CEC307A403100098CB9 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 84923CEB307A403100098CB9 /* GoogleSignInSwift */; };
 		87DD1BAC4C60239808E0E68E /* Pulse in Frameworks */ = {isa = PBXBuildFile; productRef = 8F72F6BE8374060B8324FDD0 /* Pulse */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		518E9D1E4EC4E23B75232C69 /* FamilyTracker.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = FamilyTracker.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		84923CF2307A42D200098CB9 /* FamilyTracker.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = FamilyTracker.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -42,7 +45,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				84923CEC307A403100098CB9 /* GoogleSignInSwift in Frameworks */,
 				765CA7B39F560284DD796E55 /* SocketIO in Frameworks */,
+				84923CEA307A403100098CB9 /* GoogleSignIn in Frameworks */,
 				87DD1BAC4C60239808E0E68E /* Pulse in Frameworks */,
 				3372FABDDCE8E2441A92EE92 /* PulseUI in Frameworks */,
 			);
@@ -54,6 +59,7 @@
 		10C614B79569E653D299560D = {
 			isa = PBXGroup;
 			children = (
+				84923CF2307A42D200098CB9 /* FamilyTracker.entitlements */,
 				CC38B586E99176B4EBF23847 /* FamilyTracker */,
 				94947A52AD3D3CE326C80E0D /* Products */,
 			);
@@ -90,6 +96,8 @@
 				F52EF343645E700D31007C3C /* SocketIO */,
 				8F72F6BE8374060B8324FDD0 /* Pulse */,
 				33A098995B743DC5E225F5E2 /* PulseUI */,
+				84923CE9307A403100098CB9 /* GoogleSignIn */,
+				84923CEB307A403100098CB9 /* GoogleSignInSwift */,
 			);
 			productName = FamilyTracker;
 			productReference = 518E9D1E4EC4E23B75232C69 /* FamilyTracker.app */;
@@ -123,6 +131,7 @@
 			packageReferences = (
 				87EAC794E1D94CEA2EEA8604 /* XCRemoteSwiftPackageReference "Pulse" */,
 				A7DBC5CB2099E00E15AE4621 /* XCRemoteSwiftPackageReference "socket" */,
+				84923CE8307A403100098CB9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 94947A52AD3D3CE326C80E0D /* Products */;
@@ -277,8 +286,10 @@
 		C9E4356D9322AEFE5AE8A4F5 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APNS_ENVIRONMENT = development;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FamilyTracker.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -301,8 +312,10 @@
 		F08CD05B469D493C3C0E21C7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				APNS_ENVIRONMENT = production;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = FamilyTracker.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
@@ -346,6 +359,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		84923CE8307A403100098CB9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 10.0.0;
+			};
+		};
 		87EAC794E1D94CEA2EEA8604 /* XCRemoteSwiftPackageReference "Pulse" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/kean/Pulse";
@@ -369,6 +390,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 87EAC794E1D94CEA2EEA8604 /* XCRemoteSwiftPackageReference "Pulse" */;
 			productName = PulseUI;
+		};
+		84923CE9307A403100098CB9 /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 84923CE8307A403100098CB9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		84923CEB307A403100098CB9 /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 84923CE8307A403100098CB9 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
 		};
 		8F72F6BE8374060B8324FDD0 /* Pulse */ = {
 			isa = XCSwiftPackageProductDependency;
