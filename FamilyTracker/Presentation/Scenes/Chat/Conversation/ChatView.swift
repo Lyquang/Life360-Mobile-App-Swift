@@ -89,9 +89,24 @@ struct ChatView: View {
                 }
                 .padding(FTSpacing.md)
             }
+            .onAppear {
+                scrollToLatest(using: proxy, animated: false)
+            }
             .onChange(of: viewModel.messages.last?.id) { id in
-                guard let id else { return }
+                guard id != nil else { return }
+                scrollToLatest(using: proxy, animated: true)
+            }
+        }
+    }
+
+    private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
+        guard let id = viewModel.messages.last?.id else { return }
+        Task { @MainActor in
+            await Task.yield()
+            if animated {
                 withAnimation { proxy.scrollTo(id, anchor: .bottom) }
+            } else {
+                proxy.scrollTo(id, anchor: .bottom)
             }
         }
     }
