@@ -1,14 +1,18 @@
 import CoreLocation
 
-/// Adapts Core/Location (CLLocation) to the Domain (GeoPoint).
+/// Adapts Core/Location (CLLocation) to framework-independent Domain values.
 final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
     private let service: LocationService
     private let broadcaster = AsyncBroadcaster<GeoPoint>()
+    private let fixBroadcaster = AsyncBroadcaster<LocationFix>()
 
     init(service: LocationService) {
         self.service = service
         service.onLocationUpdate = { [weak self] location in
-            self?.broadcaster.send(Self.point(location))
+            guard let self else { return }
+            let fix = Self.fix(location)
+            self.fixBroadcaster.send(fix)
+            self.broadcaster.send(fix.point)
         }
     }
 
@@ -21,15 +25,24 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
         }
     }
 
-    var lastKnownLocation: GeoPoint? { service.lastLocation.map(Self.point) }
+    var lastKnownLocation: GeoPoint? { lastKnownFix?.point }
+    var lastKnownFix: LocationFix? { service.lastLocation.map(Self.fix) }
 
     func requestPermission() { service.requestAuthorization() }
     func startTracking() { service.start() }
     func stopTracking() { service.stop() }
     func observeLocations() -> AsyncStream<GeoPoint> { broadcaster.stream() }
+    func observeFixes() -> AsyncStream<LocationFix> { fixBroadcaster.stream() }
 
-    private static func point(_ location: CLLocation) -> GeoPoint {
-        GeoPoint(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+    static func fix(_ location: CLLocation) -> LocationFix {
+        LocationFix(
+            latitude: location.coordinate.latitude,
+            longitude: location.coordinate.longitude,
+            timestamp: location.timestamp,
+            horizontalAccuracy: location.horizontalAccuracy,
+            speed: location.speed,
+            course: location.course
+        )
     }
 }
 
