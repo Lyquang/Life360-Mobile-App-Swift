@@ -30,7 +30,7 @@ struct ChatView: View {
             guard let item else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self) {
-                    await viewModel.sendPhoto(data)
+                    viewModel.sendPhoto(data)
                 }
                 photoItem = nil
             }
@@ -47,9 +47,11 @@ struct ChatView: View {
                             .font(FTFont.caption())
                             .padding(.top, FTSpacing.sm)
                     }
-                    ForEach(viewModel.messages) { message in
-                        MessageBubble(message: message, isMine: viewModel.isMine(message))
-                            .id(message.id)
+                    ForEach(viewModel.messages) { item in
+                        MessageBubble(item: item, isMine: viewModel.isMine(item.message), playback: viewModel.playback,
+                                      onRetry: { viewModel.retry(id: item.id) },
+                                      onCancel: { viewModel.cancelUpload(id: item.id) })
+                            .id(item.id)
                     }
                 }
                 .padding(FTSpacing.md)
@@ -70,13 +72,28 @@ struct ChatView: View {
             }
             .disabled(viewModel.isSending)
 
-            TextField("Nhắn tin…", text: $viewModel.draft, axis: .vertical)
+            Button(action: viewModel.toggleRecording) {
+                Image(systemName: viewModel.isRecording ? "stop.circle.fill" : "mic.fill")
+                    .font(.system(size: 20))
+                    .foregroundColor(viewModel.isRecording ? .red : FTColors.primary)
+            }
+            .accessibilityLabel(L10n.text(viewModel.isRecording ? "Dừng ghi âm" : "Ghi âm"))
+
+            if viewModel.isRecording {
+                Text(verbatim: L10n.format("Đang ghi %@", duration(viewModel.recordingDuration)))
+                    .font(FTFont.body())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button(action: viewModel.cancelRecording) { Image(systemName: "xmark.circle") }
+                    .accessibilityLabel(L10n.text("Hủy ghi âm"))
+            } else {
+                TextField("Nhắn tin…", text: $viewModel.draft, axis: .vertical)
                 .lineLimit(1...4)
                 .padding(.horizontal, FTSpacing.sm)
                 .padding(.vertical, 8)
                 .background(FTColors.surface)
                 .cornerRadius(FTRadius.lg)
                 .onChange(of: viewModel.draft) { _ in viewModel.draftChanged() }
+            }
 
             Button {
                 Task { await viewModel.send() }
@@ -94,11 +111,20 @@ struct ChatView: View {
         .padding(FTSpacing.sm)
         .background(FTColors.card)
     }
+
+    private func duration(_ value: TimeInterval) -> String {
+        String(format: "%02d:%02d", Int(value) / 60, Int(value) % 60)
+    }
 }
 
 struct MessageBubble: View {
-    let message: ChatMessage
+    let item: ChatMessageItem
     let isMine: Bool
+    @ObservedObject var playback: VoicePlaybackController
+    let onRetry: () -> Void
+    let onCancel: () -> Void
+
+    private var message: ChatMessage { item.message }
 
     var body: some View {
         HStack {
@@ -110,6 +136,7 @@ struct MessageBubble: View {
                         .foregroundColor(FTColors.textSecondary)
                 }
                 content
+                deliveryState
                 Text(DisplayFormat.time(message.createdAt))
                     .font(.system(size: 10))
                     .foregroundColor(FTColors.textTertiary)
@@ -120,18 +147,63 @@ struct MessageBubble: View {
 
     @ViewBuilder
     private var content: some View {
-        if message.type == .image, let url = message.attachment.flatMap({ URL(string: $0.url) }) {
-            AsyncImage(url: url) { image in
-                image.resizable().scaledToFit()
-            } placeholder: {
-                ProgressView().frame(width: 180, height: 140)
+        if message.type == .image {
+            if let data = item.previewData, let image = UIImage(data: data) {
+                Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: 220).cornerRadius(FTRadius.md)
+            } else if let attachment = message.attachment, let url = URL(string: attachment.url) {
+                CachedMediaImage(url: url, blurhash: attachment.blurhash)
+                    .aspectRatio(imageRatio(attachment), contentMode: .fit)
+                    .frame(maxWidth: 220).cornerRadius(FTRadius.md)
             }
-            .frame(maxWidth: 220)
-            .cornerRadius(FTRadius.md)
             if !message.content.isEmpty { textBubble }
+        } else if message.type == .voice {
+            voiceBubble
         } else {
             textBubble
         }
+    }
+
+    private var voiceBubble: some View {
+        HStack(spacing: FTSpacing.sm) {
+            Button {
+                if let value = message.mediaUrl, let url = URL(string: value) { playback.toggle(url: url) }
+            } label: {
+                Image(systemName: playback.activeURL?.absoluteString == message.mediaUrl && playback.isPlaying
+                      ? "pause.fill" : "play.fill")
+            }
+            ProgressView(value: playback.activeURL?.absoluteString == message.mediaUrl ? playback.progress : 0)
+                .frame(width: 100)
+            Text(duration(message.duration ?? 0)).font(FTFont.caption())
+        }
+        .padding(FTSpacing.sm)
+        .background(isMine ? FTColors.primary.opacity(0.16) : FTColors.surface)
+        .cornerRadius(FTRadius.lg)
+    }
+
+    @ViewBuilder private var deliveryState: some View {
+        switch item.delivery {
+        case .sent: EmptyView()
+        case .sending(let value):
+            HStack(spacing: 6) {
+                ProgressView(value: value).frame(width: 70)
+                Button(action: onCancel) { Image(systemName: "xmark.circle") }
+            }.font(FTFont.caption())
+        case .failed(let message):
+            Button(action: onRetry) { Label(message, systemImage: "arrow.clockwise") }
+                .font(FTFont.caption()).foregroundColor(.red)
+        case .uncertain:
+            Button(action: onRetry) { Label("Chưa xác nhận - kiểm tra và gửi lại", systemImage: "questionmark.circle") }
+                .font(FTFont.caption()).foregroundColor(.orange)
+        }
+    }
+
+    private func imageRatio(_ attachment: ChatAttachment) -> CGFloat {
+        guard let width = attachment.width, let height = attachment.height, height > 0 else { return 4 / 3 }
+        return CGFloat(width) / CGFloat(height)
+    }
+
+    private func duration(_ value: TimeInterval) -> String {
+        String(format: "%d:%02d", Int(value) / 60, Int(value) % 60)
     }
 
     private var textBubble: some View {

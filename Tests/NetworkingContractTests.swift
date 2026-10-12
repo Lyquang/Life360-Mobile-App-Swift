@@ -32,20 +32,110 @@ private final class ProtocolStub: URLProtocol {
     override func stopLoading() {}
 }
 
+private actor RefreshStub: AccessTokenRefreshing {
+    private(set) var calls = 0
+    func refreshAccessToken() async throws -> String {
+        calls += 1
+        try await Task.sleep(nanoseconds: 50_000_000)
+        return "refreshed-token"
+    }
+}
+
+private final class RefreshingTokenStub: AccessTokenProvider, AccessTokenRefreshing {
+    var accessToken: String? = "expired"
+    var invalidated: [String] = []
+    var refreshCalls = 0
+    func invalidate(token: String) { invalidated.append(token); if accessToken == token { accessToken = nil } }
+    func refreshAccessToken() async throws -> String {
+        refreshCalls += 1; accessToken = "fresh"; return "fresh"
+    }
+}
+
 @main
 enum NetworkingContractTests {
     static func main() async throws {
         try documentedResponses()
         try requests()
+        try mediaContracts()
         try redaction()
-        try check(AppEnvironment.current.apiBaseURL.absoluteString == "https://life360-backend-latest.onrender.com/api/v1", "Deployed REST host")
-        try check(AppEnvironment.current.socketURL.absoluteString == "https://life360-backend-latest.onrender.com", "Deployed Socket.IO host")
+        try check(AppEnvironment.current.apiBaseURL.absoluteString == "https://life360-backend-6v9n.onrender.com/api/v1", "Deployed REST host")
+        try check(AppEnvironment.current.socketURL.absoluteString == "https://life360-backend-6v9n.onrender.com", "Deployed Socket.IO host")
         try await transport()
-        print("PASS: documented REST responses, request contracts, authenticated transport and errors")
+        try await mediaTransport()
+        try await singleFlightRefresh()
+        print("PASS: REST contracts, auth refresh, media ticket/PUT retry, decoding and errors")
+    }
+
+    static func mediaContracts() throws {
+        try check(MediaUploadPolicy.mimeType(for: .image) == "image/jpeg", "Image MIME")
+        try check(MediaUploadPolicy.fileExtension(for: .image) == "jpg", "Image extension")
+        try check(MediaUploadPolicy.mimeType(for: .voice) == "audio/mp4", "Voice MIME")
+        try check(MediaUploadPolicy.fileExtension(for: .voice) == "m4a", "Voice extension")
+        try check(MediaUploadPolicy.maxImageBytes == 10 * 1024 * 1024, "Image limit")
+        try check(MediaUploadPolicy.maxVoiceBytes == 25 * 1024 * 1024, "Voice limit")
+        try check(MediaUploadPolicy.maxVoiceDuration == 900, "Voice duration")
+
+        let endpoint = ChatEndpoint.mediaTicket(conversationId: "conversation", kind: .voice, fileSize: 123456)
+        try check(endpoint.path == "/chat/media/presigned-url", "Media ticket path")
+        let body = try JSONSerialization.jsonObject(with: endpoint.encodedBody()!) as! [String: Any]
+        try check(body["mimeType"] as? String == "audio/mp4" && body["extension"] as? String == "m4a", "Voice ticket body")
+        try check(body["fileSize"] as? Int == 123456, "Compressed file size")
+
+        let decoder = BackendJSONCoding.makeDecoder()
+        let image = try decoder.decode(ChatMessageDTO.self, from: Data(#"{"id":"i","conversationId":"c","senderId":"u","type":"image","content":"Hi","attachment":{"url":"https://cdn.test/i.jpg","mimeType":"image/jpeg","size":42,"width":1170,"height":2532,"blurhash":"LEHV6nWB2yk8pyo0adR*.7kCMdnj"},"createdAt":"2026-10-12T08:16:00.123Z"}"#.utf8))
+        try check(image.attachment?.blurhash?.count == 28 && image.createdAt.timeIntervalSince1970 > 0, "Image and millisecond date decode")
+        let voice = try decoder.decode(ChatMessageDTO.self, from: Data(#"{"id":"v","conversationId":"c","senderId":"u","type":"voice","content":"","attachment":null,"mediaUrl":"https://cdn.test/v.m4a","duration":12.4,"fileSize":123456,"mimeType":"audio/mp4","createdAt":"2026-10-12T08:16:00.000Z"}"#.utf8))
+        try check(voice.attachment == nil && voice.mediaUrl?.hasSuffix(".m4a") == true && voice.duration == 12.4, "Voice decode")
+    }
+
+    static func singleFlightRefresh() async throws {
+        let coordinator = TokenRefreshCoordinator()
+        let refresher = RefreshStub()
+        async let first = coordinator.refresh(using: refresher)
+        async let second = coordinator.refresh(using: refresher)
+        let values = try await [first, second]
+        try check(values == ["refreshed-token", "refreshed-token"], "Refresh result")
+        let calls = await refresher.calls
+        try check(calls == 1, "Refresh was not single-flight")
+    }
+
+    static func mediaTransport() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ProtocolStub.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); ProtocolStub.handler = nil }
+        let token = RefreshingTokenStub()
+        let client = URLSessionAPIClient(baseURL: URL(string: "https://api.test/api/v1")!, session: session,
+                                         tokenProvider: token, logger: NoopNetworkLogger(), tokenRefresher: token)
+        let service = MediaUploadService(api: client, session: session)
+        var ticketCalls = 0, putCalls = 0
+        ProtocolStub.handler = { request in
+            if request.url?.host == "api.test" {
+                if request.value(forHTTPHeaderField: "Authorization") == "Bearer expired" {
+                    return (401, Data(#"{"success":false,"code":"UNAUTHORIZED"}"#.utf8))
+                }
+                ticketCalls += 1
+                let index = ticketCalls
+                let json = #"{"success":true,"data":{"uploadUrl":"https://r2.test/upload?X-Amz-Signature=secret"#
+                    + String(index) + #"","method":"PUT","headers":{"Content-Type":"image/jpeg","Content-Length":"4"},"key":"key"#
+                    + String(index) + #"","publicUrl":"https://cdn.test/file"# + String(index)
+                    + #".jpg","expiresIn":300,"expiresAt":"2099-10-12T08:15:00.000Z"}}"#
+                return (201, Data(json.utf8))
+            }
+            putCalls += 1
+            try check(request.httpMethod == "PUT", "R2 method")
+            try check(request.value(forHTTPHeaderField: "Authorization") == nil, "Bearer leaked to R2")
+            try check(request.value(forHTTPHeaderField: "Content-Type") == "image/jpeg", "Signed MIME changed")
+            return (putCalls == 1 ? 403 : 204, Data())
+        }
+        let ticket = try await service.uploadWithFreshTicket(Data([1, 2, 3, 4]), conversationId: "c", kind: .image)
+        try check(token.refreshCalls == 1 && token.accessToken == "fresh", "Ticket 401 refresh retry")
+        try check(ticketCalls == 2 && putCalls == 2, "PUT 403 did not obtain a fresh ticket")
+        try check(ticket.publicURL.absoluteString == "https://cdn.test/file2.jpg", "Retry reused stale public URL")
     }
 
     static func documentedResponses() throws {
-        let document = try String(contentsOfFile: "API_INTERGRATION.MD", encoding: .utf8)
+        let document = try String(contentsOfFile: "study/API_INTERGRATION.MD", encoding: .utf8)
         let rest = String(document.components(separatedBy: "## 9. Socket.io")[0])
         let regex = try NSRegularExpression(pattern: "```json\\s*([\\s\\S]*?)\\s*```")
         var count = 0
@@ -56,10 +146,10 @@ enum NetworkingContractTests {
             guard object?["success"] as? Bool == true else { continue }
             let prefix = rest[..<range.lowerBound]
             let heading = prefix.components(separatedBy: "\n").last(where: { $0.hasPrefix("### ") }) ?? ""
-            let decoder = JSONDecoder()
+            let decoder = BackendJSONCoding.makeDecoder()
             func decode<T: Codable>(_ type: T.Type) throws {
                 let result = try decoder.decode(type, from: data)
-                _ = try decoder.decode(type, from: JSONEncoder().encode(result))
+                _ = try decoder.decode(type, from: BackendJSONCoding.makeEncoder().encode(result))
             }
             switch heading {
             case "### Register", "### Login", "### Social Login - Google": try decode(APIResponse<AuthDataDTO>.self)
@@ -157,11 +247,11 @@ enum NetworkingContractTests {
             (ChatEndpoint.openDirect(userId: "u"), "/conversations/direct", .POST),
             (ChatEndpoint.update(conversationId: "c", request: .init(name: "n")), "/conversations/c", .PATCH),
             (firstPage, "/conversations/c/messages", .GET),
-            (ChatEndpoint.send(conversationId: "c", request: .init(type: "text", content: "Hi", attachmentUrl: nil, metadata: nil)), "/conversations/c/messages", .POST),
+            (ChatEndpoint.send(conversationId: "c", request: .init(type: "text", content: "Hi")), "/conversations/c/messages", .POST),
             (ChatEndpoint.markRead(conversationId: "c", messageId: nil), "/conversations/c/read", .POST),
             (ChatEndpoint.unread(conversationId: "c"), "/conversations/c/unread", .GET),
             (ChatEndpoint.unreadSummary, "/conversations/unread-summary", .GET),
-            (ChatEndpoint.uploadTicket(conversationId: "c", contentType: "image/jpeg", contentLength: 42), "/chat/upload-ticket", .POST),
+            (ChatEndpoint.mediaTicket(conversationId: "c", kind: .image, fileSize: 42), "/chat/media/presigned-url", .POST),
             (HistoryEndpoint.today(userId: "u"), "/history/u", .GET),
             (HistoryEndpoint.journey(userId: "u", date: "2026-10-01"), "/history/u/journey", .GET),
             (HealthEndpoint.check, "/health", .GET)

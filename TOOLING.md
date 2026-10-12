@@ -138,8 +138,8 @@ use the button or keyboard shortcut.
 
 The supplied log's `::1.3000 / Connection refused` came from the old localhost
 configuration. Both Debug and Release now use the deployed backend as requested:
-REST `https://life360-backend-latest.onrender.com/api/v1` and Socket.IO
-`https://life360-backend-latest.onrender.com`. No localhost fallback is configured.
+REST `https://life360-backend-6v9n.onrender.com/api/v1` and Socket.IO
+`https://life360-backend-6v9n.onrender.com`. No localhost fallback is configured.
 
 Verification: `bash scripts/test_networking.sh` includes nested JSON/header/query
 redaction checks and ensures redaction never mutates the actual network request.

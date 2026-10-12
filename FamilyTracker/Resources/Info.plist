@@ -32,6 +32,8 @@
 	<string>FamilyTracker cần vị trí của bạn để chia sẻ với gia đình.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>FamilyTracker dùng dữ liệu chuyển động để tiết kiệm pin khi bạn đứng yên.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>FamilyTracker cần quyền micro để gửi tin nhắn thoại.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

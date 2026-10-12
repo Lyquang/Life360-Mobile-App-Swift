@@ -32,6 +32,7 @@ struct Conversation: Identifiable {
 enum ChatMessageType: String {
     case text
     case image
+    case voice
 }
 
 struct ChatAttachment {
@@ -39,6 +40,8 @@ struct ChatAttachment {
     let width: Int?
     let height: Int?
     let mimeType: String?
+    let size: Int?
+    let blurhash: String?
 }
 
 struct ChatMessage: Identifiable, Equatable {
@@ -49,6 +52,10 @@ struct ChatMessage: Identifiable, Equatable {
     let type: ChatMessageType
     let content: String
     let attachment: ChatAttachment?
+    let mediaUrl: String?
+    let duration: Double?
+    let fileSize: Int?
+    let mimeType: String?
     let createdAt: Date
 
     static func == (lhs: ChatMessage, rhs: ChatMessage) -> Bool {
@@ -76,4 +83,11 @@ struct ImageAttachmentInput {
     let height: Int
     let mimeType: String
     let blurhash: String
+}
+
+struct VoiceAttachmentInput {
+    let fileURL: URL
+    let duration: Double
+    let fileSize: Int
+    let mimeType: String
 }

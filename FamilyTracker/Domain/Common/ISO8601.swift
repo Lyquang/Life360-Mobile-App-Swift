@@ -14,6 +14,10 @@ enum ISO8601 {
         guard let string, !string.isEmpty else { return nil }
         return withFraction.date(from: string) ?? plain.date(from: string)
     }
+
+    static func string(from date: Date) -> String {
+        withFraction.string(from: date)
+    }
 }
 
 extension String {

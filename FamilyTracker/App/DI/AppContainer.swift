@@ -60,7 +60,9 @@ final class AppContainer {
         historyRepository = HistoryRepositoryImpl(api: api)
         realtime = SocketRealtimeRepository(socket: socketClient, offlineQueue: OfflineQueue())
         chatRepository = ChatRepositoryImpl(api: api, socket: socketClient)
-        mediaRepository = MediaRepositoryImpl(api: api, uploader: ImageUploader(logger: logger))
+        mediaRepository = MediaRepositoryImpl(
+            uploader: MediaUploadService(api: api, logger: logger)
+        )
         deviceLocation = DeviceLocationRepositoryImpl(service: locationService)
         deviceStatus = DeviceStatusRepositoryImpl(battery: batteryMonitor)
         geocoding = GeocodingRepositoryImpl(geocoder: ReverseGeocoder(), cache: GeocodeCache())
@@ -126,7 +128,11 @@ extension AppContainer {
     var fetchConversations: FetchConversationsUseCase { FetchConversationsUseCase(repository: chatRepository) }
     var fetchMessages: FetchMessagesUseCase { FetchMessagesUseCase(repository: chatRepository) }
     var sendTextMessage: SendTextMessageUseCase { SendTextMessageUseCase(repository: chatRepository) }
-    var sendImageMessage: SendImageMessageUseCase { SendImageMessageUseCase(chat: chatRepository, media: mediaRepository) }
+    var prepareImage: PrepareImageUseCase { PrepareImageUseCase(media: mediaRepository) }
+    var uploadImage: UploadImageUseCase { UploadImageUseCase(media: mediaRepository) }
+    var sendImageMessage: SendImageMessageUseCase { SendImageMessageUseCase(chat: chatRepository) }
+    var uploadVoice: UploadVoiceUseCase { UploadVoiceUseCase(media: mediaRepository) }
+    var sendVoiceMessage: SendVoiceMessageUseCase { SendVoiceMessageUseCase(chat: chatRepository) }
     var markConversationRead: MarkConversationReadUseCase { MarkConversationReadUseCase(repository: chatRepository) }
     var observeNewMessages: ObserveNewMessagesUseCase { ObserveNewMessagesUseCase(repository: chatRepository) }
     var observeTyping: ObserveTypingUseCase { ObserveTypingUseCase(repository: chatRepository) }

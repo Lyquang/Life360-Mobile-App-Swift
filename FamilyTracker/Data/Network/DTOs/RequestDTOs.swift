@@ -29,10 +29,17 @@ struct CreatePlaceRequestDTO: Codable, Sendable {
     let longitude: Double
 }
 
-struct UploadTicketRequestDTO: Codable, Sendable {
+struct PresignedMediaRequestDTO: Codable, Sendable {
     let conversationId: String
-    let contentType: String
-    let contentLength: Int
+    let mediaType: MediaKind
+    let fileExtension: String
+    let mimeType: String
+    let fileSize: Int
+
+    enum CodingKeys: String, CodingKey {
+        case conversationId, mediaType, mimeType, fileSize
+        case fileExtension = "extension"
+    }
 }
 
 struct ImageMetadataDTO: Codable, Sendable {
@@ -48,6 +55,23 @@ struct SendMessageRequestDTO: Codable, Sendable {
     let content: String?
     let attachmentUrl: String?
     let metadata: ImageMetadataDTO?
+    let mediaUrl: String?
+    let duration: Double?
+    let fileSize: Int?
+    let mimeType: String?
+
+    init(type: String, content: String? = nil, attachmentUrl: String? = nil,
+         metadata: ImageMetadataDTO? = nil, mediaUrl: String? = nil,
+         duration: Double? = nil, fileSize: Int? = nil, mimeType: String? = nil) {
+        self.type = type
+        self.content = content
+        self.attachmentUrl = attachmentUrl
+        self.metadata = metadata
+        self.mediaUrl = mediaUrl
+        self.duration = duration
+        self.fileSize = fileSize
+        self.mimeType = mimeType
+    }
 }
 
 /// PATCH needs three states: omitted, explicitly cleared, or replaced.

@@ -27,12 +27,12 @@ Quan trọng:
 | Environment | Base URL |
 | --- | --- |
 | Local | `http://localhost:3000/api/v1` |
-| Production Render | `https://life360-backend-latest.onrender.com/api/v1` |
+| Production Render | `https://life360-backend-6v9n.onrender.com/api/v1` |
 
 Swagger Production:
 
 ```txt
-https://life360-backend-latest.onrender.com/api-docs
+https://life360-backend-6v9n.onrender.com/api-docs
 ```
 
 ## 3. Backend Environment Required
@@ -131,7 +131,7 @@ POST /auth/social-login
 Production full URL:
 
 ```txt
-https://life360-backend-latest.onrender.com/api/v1/auth/social-login
+https://life360-backend-6v9n.onrender.com/api/v1/auth/social-login
 ```
 
 Auth:
@@ -288,7 +288,7 @@ HTTP `400`:
 ## 8. cURL Test
 
 ```bash
-curl -X POST https://life360-backend-latest.onrender.com/api/v1/auth/social-login \
+curl -X POST https://life360-backend-6v9n.onrender.com/api/v1/auth/social-login \
   -H "Content-Type: application/json" \
   -H "Accept: application/json" \
   -d '{
@@ -308,7 +308,7 @@ Expected:
 Open:
 
 ```txt
-https://life360-backend-latest.onrender.com/api-docs
+https://life360-backend-6v9n.onrender.com/api-docs
 ```
 
 Find:
@@ -441,7 +441,7 @@ struct User: Decodable {
 }
 
 func socialLoginWithGoogle(idToken: String) async throws -> AuthPayload {
-    let url = URL(string: "https://life360-backend-latest.onrender.com/api/v1/auth/social-login")!
+    let url = URL(string: "https://life360-backend-6v9n.onrender.com/api/v1/auth/social-login")!
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.setValue("application/json", forHTTPHeaderField: "Content-Type")

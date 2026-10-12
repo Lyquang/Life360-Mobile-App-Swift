@@ -15,15 +15,26 @@ final class URLSessionAPIClient: APIClient {
     private let session: URLSession
     private let tokenProvider: AccessTokenProvider
     private let logger: NetworkLogger
+    private let tokenRefresher: AccessTokenRefreshing?
+    private let refreshCoordinator: TokenRefreshCoordinator
 
-    init(baseURL: URL, session: URLSession = .shared, tokenProvider: AccessTokenProvider, logger: NetworkLogger) {
+    init(baseURL: URL, session: URLSession = .shared, tokenProvider: AccessTokenProvider,
+         logger: NetworkLogger, tokenRefresher: AccessTokenRefreshing? = nil,
+         refreshCoordinator: TokenRefreshCoordinator = TokenRefreshCoordinator()) {
         self.baseURL = baseURL
         self.session = session
         self.tokenProvider = tokenProvider
         self.logger = logger
+        self.tokenRefresher = tokenRefresher
+        self.refreshCoordinator = refreshCoordinator
     }
 
     func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T {
+        try await send(endpoint, as: type, mayRefresh: true)
+    }
+
+    private func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
+                                    mayRefresh: Bool) async throws -> T {
         let (request, sentToken) = try makeRequest(for: endpoint)
         let method = endpoint.method.rawValue
         let url = request.url?.absoluteString ?? endpoint.path
@@ -53,12 +64,21 @@ final class URLSessionAPIClient: APIClient {
                            data: endpoint.requiresAuth ? data : Data(),
                            duration: Date().timeIntervalSince(startedAt))
 
-        let decoder = JSONDecoder()
+        let decoder = BackendJSONCoding.makeDecoder()
         let envelope: APIErrorResponseDTO?
         do { envelope = try decoder.decode(APIErrorResponseDTO.self, from: data) }
         catch { envelope = nil } // A proxy may return HTML instead of the API envelope.
 
         if (http.statusCode == 401 || envelope?.code == "UNAUTHORIZED"), let sentToken {
+            if mayRefresh, let tokenRefresher {
+                do {
+                    _ = try await refreshCoordinator.refresh(using: tokenRefresher)
+                    return try await send(endpoint, as: type, mayRefresh: false)
+                } catch {
+                    tokenProvider.invalidate(token: sentToken)
+                    throw APIError.unauthorized
+                }
+            }
             tokenProvider.invalidate(token: sentToken)
             throw APIError.unauthorized
         }

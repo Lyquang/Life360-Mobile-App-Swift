@@ -8,11 +8,21 @@ struct AppEnvironment {
 
     static let production = AppEnvironment(
         name: "Production",
-        apiBaseURL: URL(string: "https://life360-backend-latest.onrender.com/api/v1")!,
-        socketURL: URL(string: "https://life360-backend-latest.onrender.com")!
+        apiBaseURL: URL(string: "https://life360-backend-6v9n.onrender.com/api/v1")!,
+        socketURL: URL(string: "https://life360-backend-6v9n.onrender.com")!
     )
 
+    static func local(host: String = "localhost") -> AppEnvironment {
+        AppEnvironment(
+            name: "Local",
+            apiBaseURL: URL(string: "http://\(host):3000/api/v1")!,
+            socketURL: URL(string: "http://\(host):3000")!
+        )
+    }
+
     static var current: AppEnvironment {
-        return .production
+        let process = ProcessInfo.processInfo.environment
+        guard process["FAMILYTRACKER_USE_LOCAL_BACKEND"] == "1" else { return .production }
+        return .local(host: process["FAMILYTRACKER_LOCAL_HOST"] ?? "localhost")
     }
 }

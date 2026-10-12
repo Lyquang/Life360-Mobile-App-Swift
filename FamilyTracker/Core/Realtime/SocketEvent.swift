@@ -5,6 +5,7 @@ enum SocketEvent {
     static let updateLocation  = "update_location"
     static let sosAlert        = "sos_alert"
     static let chatTyping      = "chat:typing"
+    static let chatSendMessage = "chat:send_message"
 
     // Server → Client
     static let sessionReady        = "session:ready"

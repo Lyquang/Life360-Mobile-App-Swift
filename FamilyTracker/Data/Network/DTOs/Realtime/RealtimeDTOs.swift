@@ -5,7 +5,7 @@ enum JSONPayload {
     static func decode<T: Decodable>(_ type: T.Type, from payload: [String: Any]) -> T? {
         guard JSONSerialization.isValidJSONObject(payload),
               let data = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
-        return try? JSONDecoder().decode(T.self, from: data)
+        return try? BackendJSONCoding.makeDecoder().decode(T.self, from: data)
     }
 }
 
@@ -56,4 +56,13 @@ struct TypingDTO: Decodable {
     let userId: String
     let name: String?
     let isTyping: Bool
+}
+
+struct SocketAcknowledgementDTO<T: Decodable>: Decodable {
+    let success: Bool
+    let data: T?
+    let status: Int?
+    let code: String?
+    let message: String?
+    let errors: [APIFieldErrorDTO]?
 }

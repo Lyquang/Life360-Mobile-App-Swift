@@ -229,3 +229,15 @@
 "%lld online" = "Trực tuyến: %lld";
 "Export failed" = "Xuất dữ liệu thất bại";
 "Export JSON for AI" = "Xuất JSON cho AI";
+"Đang ghi %@" = "Đang ghi %@";
+"Dừng ghi âm" = "Dừng ghi âm";
+"Ghi âm" = "Ghi âm";
+"Hủy ghi âm" = "Hủy ghi âm";
+"Chưa xác nhận - kiểm tra và gửi lại" = "Chưa xác nhận - kiểm tra và gửi lại";
+"Ghi âm đã dừng do phiên âm thanh bị gián đoạn." = "Ghi âm đã dừng do phiên âm thanh bị gián đoạn.";
+"Vui lòng cấp quyền micro trong Cài đặt để gửi tin nhắn thoại." = "Vui lòng cấp quyền micro trong Cài đặt để gửi tin nhắn thoại.";
+"Không thể bắt đầu ghi âm." = "Không thể bắt đầu ghi âm.";
+"Bản ghi âm không hợp lệ." = "Bản ghi âm không hợp lệ.";
+"Bản ghi phải dưới 15 phút và 25 MB." = "Bản ghi phải dưới 15 phút và 25 MB.";
+"Ảnh vẫn lớn hơn 10 MB sau khi nén." = "Ảnh vẫn lớn hơn 10 MB sau khi nén.";
+"Metadata ảnh không hợp lệ." = "Metadata ảnh không hợp lệ.";

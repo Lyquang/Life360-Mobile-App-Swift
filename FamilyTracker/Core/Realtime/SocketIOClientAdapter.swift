@@ -93,6 +93,30 @@ final class SocketIOClientAdapter: SocketClient {
         #endif
     }
 
+    func emitWithAck(_ event: String, _ payload: [String: Any], timeout: TimeInterval) async throws -> [String: Any] {
+        guard status == .connected else { throw SocketClientError.disconnected }
+        logger.logSocket(event: "→ \(event)", payload: payload)
+        #if canImport(SocketIO)
+        guard let socket else { throw SocketClientError.disconnected }
+        return try await withCheckedThrowingContinuation { continuation in
+            socket.emitWithAck(event, payload).timingOut(after: timeout) { [weak self] data in
+                if data.first as? String == SocketAckStatus.noAck.rawValue {
+                    continuation.resume(throwing: SocketClientError.acknowledgementTimeout)
+                    return
+                }
+                guard let payload = data.first as? [String: Any] else {
+                    continuation.resume(throwing: SocketClientError.invalidAcknowledgement)
+                    return
+                }
+                self?.logger.logSocket(event: "← \(event):ack", payload: payload)
+                continuation.resume(returning: payload)
+            }
+        }
+        #else
+        throw SocketClientError.disconnected
+        #endif
+    }
+
     private func dispatch(_ event: String, _ payload: [String: Any]) {
         logger.logSocket(event: event, payload: payload)
         handlers[event]?.forEach { $0(payload) }

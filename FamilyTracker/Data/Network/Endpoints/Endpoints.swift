@@ -100,9 +100,15 @@ enum ChatEndpoint {
         Endpoint(path: "/conversations/direct", method: .POST, payload: DirectConversationRequestDTO(userId: userId))
     }
 
-    static func uploadTicket(conversationId: String, contentType: String, contentLength: Int) -> Endpoint {
-        Endpoint(path: "/chat/upload-ticket", method: .POST,
-                 payload: UploadTicketRequestDTO(conversationId: conversationId, contentType: contentType, contentLength: contentLength))
+    static func mediaTicket(conversationId: String, kind: MediaKind, fileSize: Int) -> Endpoint {
+        Endpoint(path: "/chat/media/presigned-url", method: .POST,
+                 payload: PresignedMediaRequestDTO(
+                    conversationId: conversationId,
+                    mediaType: kind,
+                    fileExtension: MediaUploadPolicy.fileExtension(for: kind),
+                    mimeType: MediaUploadPolicy.mimeType(for: kind),
+                    fileSize: fileSize
+                 ))
     }
 }
 

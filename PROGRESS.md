@@ -20,10 +20,16 @@ Legend:
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[-]` Chat: conversation list, realtime messages, chat repositories.
+- `[x]` Chat media: R2 image/voice upload, optimistic delivery, playback, retry,
+  cancellation and public-URL deduplication.
 - `[-]` Emergency SOS: SOS use cases, alert banner, coordinator-driven emergency flow.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 
 ## Architecture Decisions
+
+- 2026-10-12: Production REST and Socket.IO now use the canonical Render service
+  `life360-backend-6v9n.onrender.com`; networking contract tests and integration
+  documentation were updated with the same host.
 
 - 2026-10-05: Inject language preferences through AppContainer and a MainActor
   settings model. Update root SwiftUI locale without replacing coordinator/state
@@ -31,10 +37,10 @@ Legend:
   content verbatim. OS-owned dialogs follow the OS-selected language. See
   `.spec/app-language.md` and `LOCALIZATION.md`.
 
-- 2026-10-02: Both Debug and Release now select the deployed REST `/api/v1`
-  and root Socket.IO host at life360-backend-latest.onrender.com, per user request.
-  Removed localhost environment. Read-only deployed health check returned HTTP 200
-  and mongodb=connected.
+- 2026-10-12: Both Debug and Release default to deployed REST `/api/v1` and the
+  deployed Socket.IO host. Localhost is available only through the explicit
+  `FAMILYTRACKER_USE_LOCAL_BACKEND=1` launch environment flag; physical devices may
+  provide `FAMILYTRACKER_LOCAL_HOST` for a LAN address.
 - 2026-10-02: Pulse stores sanitized request/response records through NetworkLogger.
   DebugCoordinator owns console/export presentation. Release keeps NoopNetworkLogger.
   No automatic LLM transmission; export contains a prompt plus at most 100 events.
@@ -96,6 +102,16 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-12: Integrated foreground Cloudflare R2 chat media uploads using the
+  documented ticket -> raw PUT -> Socket.IO acknowledgement flow. Added JPEG/BlurHash
+  image preparation, voice recording/playback, optimistic progress/cancellation,
+  timeout reconciliation and self-echo deduplication by public URL, URLCache image
+  loading, strict media limits/date decoding and a single-flight refresh seam.
+  Production remains the default backend; local mode requires an explicit launch
+  environment flag. Networking contract tests and unsigned Simulator build pass.
+  Physical-device weak-network, microphone interruption and two-device realtime
+  checks remain manual; backend `clientMessageId` and refresh rotation are follow-ups.
 
 - 2026-10-05: Added Vietnamese/English switching and 231 matching translation
   keys. Localization tests, strings plist validation, networking regression tests

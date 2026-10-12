@@ -23,15 +23,42 @@ struct SendTextMessageUseCase {
     }
 }
 
-/// Upload ticket → PUT bytes to storage → send image message (backend contract).
+struct PrepareImageUseCase {
+    let media: MediaRepository
+    func callAsFunction(_ data: Data) async throws -> ImageAttachmentInput { try await media.prepareImage(data) }
+}
+
+struct UploadImageUseCase {
+    let media: MediaRepository
+    func callAsFunction(_ image: ImageAttachmentInput, conversationId: String,
+                        progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+        try await media.uploadChatImage(image, conversationId: conversationId, progress: progress)
+    }
+}
+
 struct SendImageMessageUseCase {
     let chat: ChatRepository
-    let media: MediaRepository
 
-    func callAsFunction(imageData: Data, caption: String?, conversationId: String) async throws -> ChatMessage {
-        let image = try media.prepareImage(imageData)
-        let fileUrl = try await media.uploadChatImage(image, conversationId: conversationId)
-        return try await chat.sendImage(attachmentUrl: fileUrl, caption: caption, image: image, conversationId: conversationId)
+    func callAsFunction(image: ImageAttachmentInput, publicURL: String, caption: String?,
+                        conversationId: String) async throws -> ChatMessage {
+        try await chat.sendImage(attachmentUrl: publicURL, caption: caption, image: image,
+                                 conversationId: conversationId)
+    }
+}
+
+struct UploadVoiceUseCase {
+    let media: MediaRepository
+    func callAsFunction(_ voice: VoiceAttachmentInput, conversationId: String,
+                        progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+        try await media.uploadVoice(voice, conversationId: conversationId, progress: progress)
+    }
+}
+
+struct SendVoiceMessageUseCase {
+    let chat: ChatRepository
+    func callAsFunction(voice: VoiceAttachmentInput, publicURL: String,
+                        conversationId: String) async throws -> ChatMessage {
+        try await chat.sendVoice(mediaUrl: publicURL, voice: voice, conversationId: conversationId)
     }
 }
 

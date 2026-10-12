@@ -25,7 +25,11 @@ struct ChatMessageDTO: Codable, Sendable {
     let type: String
     let content: String?
     let attachment: ChatAttachmentDTO?
-    let createdAt: String
+    let mediaUrl: String?
+    let duration: Double?
+    let fileSize: Int?
+    let mimeType: String?
+    let createdAt: Date
 }
 
 struct ConversationDTO: Codable, Sendable {
@@ -67,6 +71,22 @@ struct UploadTicketDTO: Codable, Sendable {
     let key: String?
     let expiresIn: Int?
     let expiresAt: String?
+}
+
+struct PresignedMediaTicketDTO: Codable, Sendable {
+    let uploadUrl: URL
+    let method: String
+    let headers: [String: String]
+    let key: String
+    let publicUrl: URL
+    let expiresIn: Int
+    let expiresAt: Date
+
+    func toDomain() -> MediaUploadTicket {
+        MediaUploadTicket(uploadURL: uploadUrl, method: method, headers: headers,
+                          key: key, publicURL: publicUrl, expiresIn: expiresIn,
+                          expiresAt: expiresAt)
+    }
 }
 
 struct ConversationUnreadDTO: Codable, Sendable {

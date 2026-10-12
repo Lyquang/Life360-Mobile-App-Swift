@@ -60,7 +60,19 @@ final class ChatRepositoryImpl: ChatRepository {
             ] as [String: Any]
         ]
         if let caption, !caption.isEmpty { body["content"] = caption }
-        return try await send(body: body, conversationId: conversationId)
+        body["conversationId"] = conversationId
+        return try await sendWithAcknowledgement(body)
+    }
+
+    func sendVoice(mediaUrl: String, voice: VoiceAttachmentInput, conversationId: String) async throws -> ChatMessage {
+        try await sendWithAcknowledgement([
+            "conversationId": conversationId,
+            "type": "voice",
+            "mediaUrl": mediaUrl,
+            "duration": voice.duration,
+            "fileSize": voice.fileSize,
+            "mimeType": voice.mimeType
+        ])
     }
 
     func markRead(conversationId: String, messageId: String?) async throws {
@@ -93,35 +105,59 @@ final class ChatRepositoryImpl: ChatRepository {
                 .toDomain()
         }
     }
+
+    private func sendWithAcknowledgement(_ payload: [String: Any]) async throws -> ChatMessage {
+        do {
+            let raw = try await socket.emitWithAck(SocketEvent.chatSendMessage, payload, timeout: 10)
+            guard let ack = JSONPayload.decode(SocketAcknowledgementDTO<ChatMessageDTO>.self, from: raw) else {
+                throw SocketClientError.invalidAcknowledgement
+            }
+            guard ack.success, let message = ack.data else {
+                if ack.status == 403 { throw MediaUploadError.forbidden }
+                throw MediaUploadError.socketRejected(message: ack.message ?? "Gửi tin nhắn thất bại.")
+            }
+            return message.toDomain()
+        } catch SocketClientError.acknowledgementTimeout {
+            throw MediaUploadError.acknowledgementTimeout
+        } catch SocketClientError.disconnected {
+            throw MediaUploadError.acknowledgementTimeout
+        }
+    }
 }
 
 final class MediaRepositoryImpl: MediaRepository {
-    private let api: APIClient
-    private let uploader: ImageUploader
+    private let uploader: MediaUploadService
     private let processor: ImageProcessor
 
-    init(api: APIClient, uploader: ImageUploader, processor: ImageProcessor = ImageProcessor()) {
-        self.api = api
+    init(uploader: MediaUploadService, processor: ImageProcessor = ImageProcessor()) {
         self.uploader = uploader
         self.processor = processor
     }
 
-    func prepareImage(_ data: Data) throws -> ImageAttachmentInput {
-        let image = try processor.process(data)
+    func prepareImage(_ data: Data) async throws -> ImageAttachmentInput {
+        let processor = self.processor
+        let image = try await Task.detached(priority: .userInitiated) {
+            try processor.process(data)
+        }.value
         return ImageAttachmentInput(data: image.data, width: image.width, height: image.height,
                                     mimeType: image.mimeType, blurhash: image.blurhash)
     }
 
-    func uploadChatImage(_ image: ImageAttachmentInput, conversationId: String) async throws -> String {
-        let ticket = try await withDomainErrors {
-            try await api.send(
-                ChatEndpoint.uploadTicket(conversationId: conversationId, contentType: image.mimeType, contentLength: image.data.count),
-                as: APIResponseDTO<UploadTicketDTO>.self
-            ).unwrap(fallbackMessage: "Không thể tạo phiên tải ảnh.")
+    func uploadChatImage(_ image: ImageAttachmentInput, conversationId: String,
+                         progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+        let ticket = try await uploader.uploadWithFreshTicket(image.data, conversationId: conversationId,
+                                                              kind: .image, progress: progress)
+        return ticket.publicURL.absoluteString
+    }
+
+    func uploadVoice(_ voice: VoiceAttachmentInput, conversationId: String,
+                     progress: @escaping @Sendable (Double) -> Void) async throws -> String {
+        let data = try Data(contentsOf: voice.fileURL, options: .mappedIfSafe)
+        guard data.count == voice.fileSize else {
+            throw MediaUploadError.fileSizeMismatch(expected: voice.fileSize, actual: data.count)
         }
-        guard let url = URL(string: ticket.uploadUrl) else { throw DomainError.server("URL tải ảnh không hợp lệ.") }
-        let target = UploadTarget(url: url, method: ticket.method ?? "PUT", headers: ticket.headers ?? [:])
-        try await uploader.upload(image.data, to: target)
-        return ticket.fileUrl
+        let ticket = try await uploader.uploadWithFreshTicket(data, conversationId: conversationId,
+                                                              kind: .voice, progress: progress)
+        return ticket.publicURL.absoluteString
     }
 }

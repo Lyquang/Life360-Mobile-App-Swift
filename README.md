@@ -197,8 +197,8 @@ Both Debug and Release currently use the **deployed HTTPS backend**, not localho
 
 | Connection | Configured URL |
 | --- | --- |
-| REST | `https://life360-backend-latest.onrender.com/api/v1` |
-| Socket.IO | `https://life360-backend-latest.onrender.com` |
+| REST | `https://life360-backend-6v9n.onrender.com/api/v1` |
+| Socket.IO | `https://life360-backend-6v9n.onrender.com` |
 
 The source of truth is [AppEnvironment.swift](FamilyTracker/App/DI/AppEnvironment.swift).
 No production credentials are embedded in this guide, and backend availability

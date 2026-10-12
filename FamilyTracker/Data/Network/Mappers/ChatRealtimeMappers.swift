@@ -10,9 +10,14 @@ extension ChatMessageDTO {
             type: ChatMessageType(rawValue: type) ?? .text,
             content: content ?? "",
             attachment: attachment.map {
-                ChatAttachment(url: $0.url, width: $0.width, height: $0.height, mimeType: $0.mimeType)
+                ChatAttachment(url: $0.url, width: $0.width, height: $0.height,
+                               mimeType: $0.mimeType, size: $0.size, blurhash: $0.blurhash)
             },
-            createdAt: ISO8601.date(from: createdAt) ?? Date()
+            mediaUrl: mediaUrl,
+            duration: duration,
+            fileSize: fileSize,
+            mimeType: mimeType,
+            createdAt: createdAt
         )
     }
 }

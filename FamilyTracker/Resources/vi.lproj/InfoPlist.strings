@@ -2,3 +2,4 @@
 "NSLocationAlwaysAndWhenInUseUsageDescription" = "FamilyTracker cần vị trí nền để cập nhật liên tục.";
 "NSLocationWhenInUseUsageDescription" = "FamilyTracker cần vị trí của bạn để chia sẻ với gia đình.";
 "NSMotionUsageDescription" = "FamilyTracker dùng dữ liệu chuyển động để tiết kiệm pin khi bạn đứng yên.";
+"NSMicrophoneUsageDescription" = "FamilyTracker cần quyền micro để ghi tin nhắn thoại.";

@@ -49,11 +49,17 @@ final class ChatCoordinator: NavigationCoordinator {
             currentUserId: currentUser.id,
             fetchMessages: container.fetchMessages,
             sendText: container.sendTextMessage,
+            prepareImage: container.prepareImage,
+            uploadImage: container.uploadImage,
             sendImage: container.sendImageMessage,
+            uploadVoice: container.uploadVoice,
+            sendVoice: container.sendVoiceMessage,
             markRead: container.markConversationRead,
             observeNewMessages: container.observeNewMessages,
             observeTyping: container.observeTyping,
-            sendTyping: container.sendTyping
+            sendTyping: container.sendTyping,
+            recorder: AudioRecorderService(),
+            onForbidden: { [weak self] in self?.popToRoot() }
         )
     }
 }

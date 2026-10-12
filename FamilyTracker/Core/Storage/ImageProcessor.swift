@@ -22,12 +22,24 @@ struct ImageProcessor {
     func process(_ data: Data) throws -> ProcessedImage {
         guard let image = UIImage(data: data) else { throw ImageProcessingError.invalidImage }
         let resized = resize(image)
-        guard let jpeg = resized.jpegData(compressionQuality: compressionQuality) else {
-            throw ImageProcessingError.invalidImage
+        var jpeg: Data?
+        for quality in [compressionQuality, 0.7, 0.6, 0.5, 0.4] {
+            jpeg = resized.jpegData(compressionQuality: quality)
+            if let jpeg, jpeg.count <= MediaUploadPolicy.maxImageBytes { break }
+        }
+        guard let jpeg else { throw ImageProcessingError.invalidImage }
+        guard jpeg.count <= MediaUploadPolicy.maxImageBytes else {
+            throw MediaUploadError.invalidMedia("Ảnh vẫn lớn hơn 10 MB sau khi nén.")
         }
         let pixelWidth = Int(resized.size.width * resized.scale)
         let pixelHeight = Int(resized.size.height * resized.scale)
         let blurhash = BlurHashEncoder.encode(resized) ?? BlurHashEncoder.fallback
+
+        guard MediaUploadPolicy.validImageDimension.contains(pixelWidth),
+              MediaUploadPolicy.validImageDimension.contains(pixelHeight),
+              MediaUploadPolicy.validBlurHashLength.contains(blurhash.count) else {
+            throw MediaUploadError.invalidMedia("Metadata ảnh không hợp lệ.")
+        }
 
         return ProcessedImage(data: jpeg, width: pixelWidth, height: pixelHeight, mimeType: "image/jpeg", blurhash: blurhash)
     }

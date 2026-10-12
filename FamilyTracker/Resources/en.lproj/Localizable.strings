@@ -229,3 +229,15 @@
 "%lld online" = "Online: %lld";
 "Export failed" = "Export failed";
 "Export JSON for AI" = "Export JSON for AI";
+"Đang ghi %@" = "Recording %@";
+"Dừng ghi âm" = "Stop recording";
+"Ghi âm" = "Record voice note";
+"Hủy ghi âm" = "Cancel recording";
+"Chưa xác nhận - kiểm tra và gửi lại" = "Unconfirmed - check and retry";
+"Ghi âm đã dừng do phiên âm thanh bị gián đoạn." = "Recording stopped because the audio session was interrupted.";
+"Vui lòng cấp quyền micro trong Cài đặt để gửi tin nhắn thoại." = "Allow microphone access in Settings to send voice notes.";
+"Không thể bắt đầu ghi âm." = "Could not start recording.";
+"Bản ghi âm không hợp lệ." = "The recording is invalid.";
+"Bản ghi phải dưới 15 phút và 25 MB." = "Voice notes must be under 15 minutes and 25 MB.";
+"Ảnh vẫn lớn hơn 10 MB sau khi nén." = "The image is still larger than 10 MB after compression.";
+"Metadata ảnh không hợp lệ." = "The image metadata is invalid.";
