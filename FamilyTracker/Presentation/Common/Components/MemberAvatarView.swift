@@ -44,8 +44,6 @@ enum AvatarSize {
 
 // MARK: - MemberAvatarView
 struct MemberAvatarView: View {
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-
     let name: String
     let size: AvatarSize
     let isOnline: Bool
@@ -109,19 +107,20 @@ struct MemberAvatarView: View {
                 Circle()
                     .fill(isOnline ? FTColors.accent : FTColors.textTertiary)
                     .frame(width: size.onlineDotSize, height: size.onlineDotSize)
-                    .overlay {
-                        if isOnline && !reduceMotion {
-                            Circle()
-                                .fill(FTColors.accent.opacity(0.3))
-                                .frame(width: size.onlineDotSize)
-                                .scaleEffect(1.5)
-                                .opacity(0)
-                                .animation(
-                                    .easeInOut(duration: 1.5).repeatForever(autoreverses: true),
-                                    value: isOnline
-                                )
-                        }
-                    }
+                    // Hiệu ứng nhấp nháy khi online
+                    .overlay(
+                        Circle()
+                            .fill(FTColors.accent.opacity(0.3))
+                            .frame(width: size.onlineDotSize)
+                            .scaleEffect(isOnline ? 1.5 : 0)
+                            .opacity(isOnline ? 0 : 1)
+                            .animation(
+                                isOnline
+                                    ? .easeInOut(duration: 1.5).repeatForever(autoreverses: true)
+                                    : .default,
+                                value: isOnline
+                            )
+                    )
             }
             .offset(x: 2, y: 2)
         }

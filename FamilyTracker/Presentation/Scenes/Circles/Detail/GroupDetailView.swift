@@ -4,10 +4,7 @@ import SwiftUI
 struct GroupDetailView: View {
     let group: FamilyGroup
     @ObservedObject var viewModel: CircleListViewModel
-    let currentUserId: String
     let onOpenChat: (() -> Void)?
-    let onMessageMember: (User) -> Void
-    let onRetryDirectChat: () -> Void
     let onClose: () -> Void
 
     var body: some View {
@@ -69,35 +66,7 @@ struct GroupDetailView: View {
                             .frame(maxWidth: .infinity)
                     } else {
                         ForEach(viewModel.members) { member in
-                            let isCurrentUser = member.id == currentUserId
-                            MemberRowView(
-                                member: member,
-                                isCurrentUser: isCurrentUser,
-                                isOpeningChat: viewModel.openingDirectMemberId == member.id,
-                                isMessageDisabled: viewModel.isOpeningDirectChat,
-                                onMessageTap: isCurrentUser ? nil : { onMessageMember(member) }
-                            )
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                if !isCurrentUser {
-                                    Button {
-                                        onMessageMember(member)
-                                    } label: {
-                                        Label("Nhắn tin", systemImage: "message.fill")
-                                    }
-                                    .tint(FTColors.primary)
-                                    .disabled(viewModel.isOpeningDirectChat)
-                                }
-                            }
-                        }
-
-                        if isCurrentUserOnly {
-                            AppLocalizedText(
-                                group.inviteCode == nil
-                                    ? "Hãy mời thêm người thân vào nhóm."
-                                    : "Hãy chia sẻ mã mời phía trên để thêm người thân."
-                            )
-                            .font(FTFont.footnote())
-                            .foregroundColor(FTColors.textSecondary)
+                            MemberRowView(member: member)
                         }
                     }
                 }
@@ -110,17 +79,5 @@ struct GroupDetailView: View {
                 }
             }
         }
-        .alert(item: $viewModel.directChatFailure) { failure in
-            Alert(
-                title: Text("Không thể mở cuộc trò chuyện"),
-                message: Text(verbatim: failure.message),
-                primaryButton: .default(Text("Thử lại"), action: onRetryDirectChat),
-                secondaryButton: .cancel(Text("Đóng"))
-            )
-        }
-    }
-
-    private var isCurrentUserOnly: Bool {
-        viewModel.members.count == 1 && viewModel.members.first?.id == currentUserId
     }
 }

@@ -2,19 +2,6 @@ import Foundation
 
 @MainActor
 final class CircleListViewModel: ObservableObject {
-    struct DirectChatRoute {
-        let conversation: Conversation
-        let fallbackTitle: String
-    }
-
-    struct DirectChatFailure: Identifiable, Equatable {
-        let memberId: String
-        let memberName: String
-        let message: String
-
-        var id: String { memberId }
-    }
-
     @Published private(set) var groups: [FamilyGroup] = []
     @Published private(set) var members: [User] = []
     @Published private(set) var isLoading = false
@@ -24,15 +11,12 @@ final class CircleListViewModel: ObservableObject {
     /// Loading errors shown as an alert on the list.
     @Published var loadErrorMessage: String?
     @Published var successMessage: String?
-    @Published private(set) var openingDirectMemberId: String?
-    @Published var directChatFailure: DirectChatFailure?
 
     private let fetchMyCircles: FetchMyCirclesUseCase
     private let createCircle: CreateCircleUseCase
     private let joinCircle: JoinCircleUseCase
     private let fetchMembers: FetchCircleMembersUseCase
     private let observePresence: ObservePresenceUseCase
-    private let openDirectChat: OpenDirectChatUseCase
     private var presenceTask: Task<Void, Never>?
 
     init(
@@ -40,15 +24,13 @@ final class CircleListViewModel: ObservableObject {
         createCircle: CreateCircleUseCase,
         joinCircle: JoinCircleUseCase,
         fetchMembers: FetchCircleMembersUseCase,
-        observePresence: ObservePresenceUseCase,
-        openDirectChat: OpenDirectChatUseCase
+        observePresence: ObservePresenceUseCase
     ) {
         self.fetchMyCircles = fetchMyCircles
         self.createCircle = createCircle
         self.joinCircle = joinCircle
         self.fetchMembers = fetchMembers
         self.observePresence = observePresence
-        self.openDirectChat = openDirectChat
     }
 
     deinit {
@@ -122,59 +104,6 @@ final class CircleListViewModel: ObservableObject {
     func clearMessages() {
         errorMessage = nil
         successMessage = nil
-    }
-
-    var isOpeningDirectChat: Bool { openingDirectMemberId != nil }
-
-    func openDirectChat(with member: User) async -> DirectChatRoute? {
-        guard openingDirectMemberId == nil else { return nil }
-        return await performOpenDirectChat(memberId: member.id, memberName: member.name)
-    }
-
-    func retryDirectChat() async -> DirectChatRoute? {
-        guard openingDirectMemberId == nil, let failure = directChatFailure else { return nil }
-        return await performOpenDirectChat(memberId: failure.memberId, memberName: failure.memberName)
-    }
-
-    func cancelDirectChatOpening() {
-        openingDirectMemberId = nil
-    }
-
-    private func performOpenDirectChat(memberId: String, memberName: String) async -> DirectChatRoute? {
-        openingDirectMemberId = memberId
-        directChatFailure = nil
-        defer {
-            if openingDirectMemberId == memberId {
-                openingDirectMemberId = nil
-            }
-        }
-
-        do {
-            let conversation = try await openDirectChat(userId: memberId)
-            guard !Task.isCancelled else { return nil }
-            return DirectChatRoute(conversation: conversation, fallbackTitle: memberName)
-        } catch {
-            guard !Task.isCancelled else { return nil }
-            directChatFailure = DirectChatFailure(
-                memberId: memberId,
-                memberName: memberName,
-                message: Self.directChatMessage(for: error)
-            )
-            return nil
-        }
-    }
-
-    private static func directChatMessage(for error: Error) -> String {
-        switch error {
-        case DomainError.forbidden:
-            return L10n.text("Người này không còn trong nhóm.")
-        case DomainError.network:
-            return L10n.text("Không có kết nối mạng. Hãy thử lại.")
-        case DomainError.unauthorized:
-            return DomainError.unauthorized.localizedDescription
-        default:
-            return L10n.text("Có lỗi xảy ra. Hãy thử lại sau.")
-        }
     }
 
     private func updateMemberStatus(userId: String, isOnline: Bool) {

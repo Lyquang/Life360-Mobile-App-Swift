@@ -126,7 +126,6 @@ extension AppContainer {
     var addPlace: AddPlaceUseCase { AddPlaceUseCase(repository: placeRepository) }
 
     var fetchConversations: FetchConversationsUseCase { FetchConversationsUseCase(repository: chatRepository) }
-    var openDirectChat: OpenDirectChatUseCase { OpenDirectChatUseCase(repository: chatRepository) }
     var fetchMessages: FetchMessagesUseCase { FetchMessagesUseCase(repository: chatRepository) }
     var sendTextMessage: SendTextMessageUseCase { SendTextMessageUseCase(repository: chatRepository) }
     var prepareImage: PrepareImageUseCase { PrepareImageUseCase(media: mediaRepository) }

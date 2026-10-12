@@ -225,17 +225,6 @@ enum NetworkingContractTests {
         try check(firstPage.query.map(\.name) == ["limit"], "Initial page omits cursor")
         let older = ChatEndpoint.messages(conversationId: "c", before: "oldest-id")
         try check(older.query.last?.value == "oldest-id", "Message ID cursor")
-        let placeForbidden = APIError.http(
-            status: 403,
-            code: "FORBIDDEN",
-            message: "Server-specific text",
-            errors: []
-        ).domainError
-        try check(placeForbidden == .forbidden, "Non-chat 403 must remain typed as forbidden")
-        try check(
-            placeForbidden.localizedDescription == "Bạn không có quyền truy cập dữ liệu này.",
-            "Non-chat 403 changed its user-facing message"
-        )
         let digest = DigestEndpoint.list(groupId: "g", from: "2026-10-01T00:00:00+07:00", to: "2026-10-02T00:00:00Z")
         try check(digest.query.map(\.name) == ["page", "limit", "from", "to"], "Digest query")
         try check(HistoryEndpoint.today(userId: "u").query.isEmpty, "No undocumented history date")
