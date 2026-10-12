@@ -21,6 +21,12 @@ Legend:
   shortcut, HTTP/upload/socket logging, local AI JSON export and manual remote logging.
 
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
+- `[x]` Location P1: accepted GPS fixes now retain timestamp, horizontal accuracy,
+  speed and course through the Domain repository and sharing use case. The 50 m/30 s
+  send rule, heartbeat clock, GeoPoint Map/SOS API and socket payload are unchanged.
+  Unsigned Simulator build, networking and localization scripts pass. XCTest source
+  is present but cannot run until the missing test target is configured; SwiftLint
+  is not installed on this machine.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
@@ -39,6 +45,11 @@ Legend:
   pass; saved XCTest target and physical-device checks remain.
 - `[-]` Emergency SOS: SOS use cases, alert banner, coordinator-driven emergency flow.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
+- `[x]` Realtime location/battery architecture study: cross-checked Mobile and
+  sibling Backend flows, current thresholds, optional Redis cache, Mongo history,
+  map rendering and unimplemented optimization targets. See
+  `study/REALTIME_LOCATION_AND_BATTERY_OPTIMIZATION.md` (the existing lowercase
+  directory; this macOS volume treats `Study/` as the same path).
 
 ## Architecture Decisions
 
@@ -122,6 +133,12 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-13: Added `LocationFix` with the approved `course` field and a parallel
+  repository fix stream, preserving the GeoPoint projection for other screens.
+  Regression source covers CLLocation metadata (including negative speed/course),
+  old send decisions, compatibility projection and `update_location` payload.
+  See `.spec/location-fix.md` and `study/location/P1-location-fix.md`.
 
 - 2026-10-12: Implemented the approved Refresh Token Rotation plan in iOS 16/Combine.
   Added atomic token-pair Keychain updates with legacy JWT fallback, refresh error

@@ -44,7 +44,7 @@ final class ShareLocationUseCase {
 
     private var streamTask: Task<Void, Never>?
     private var heartbeatTask: Task<Void, Never>?
-    private var lastSent: (point: GeoPoint, date: Date)?
+    private var lastSent: (fix: LocationFix, sentAt: Date)?
 
     private(set) var isSharing = false
 
@@ -68,10 +68,10 @@ final class ShareLocationUseCase {
         deviceLocation.requestPermission()
         deviceLocation.startTracking()
 
-        let stream = deviceLocation.observeLocations()
+        let stream = deviceLocation.observeFixes()
         streamTask = Task { [weak self] in
-            for await point in stream {
-                self?.handle(point)
+            for await fix in stream {
+                self?.handle(fix)
             }
         }
 
@@ -80,8 +80,8 @@ final class ShareLocationUseCase {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: interval)
                 guard let self else { return }
-                if let point = self.deviceLocation.lastKnownLocation {
-                    self.handle(point)
+                if let fix = self.deviceLocation.lastKnownFix {
+                    self.handle(fix)
                 }
             }
         }
@@ -97,13 +97,13 @@ final class ShareLocationUseCase {
         deviceLocation.stopTracking()
     }
 
-    func handle(_ point: GeoPoint, now: Date = Date()) {
+    func handle(_ fix: LocationFix, now: Date = Date()) {
         if let last = lastSent,
-           point.distance(to: last.point) < minDistance,
-           now.timeIntervalSince(last.date) < minInterval {
+           fix.point.distance(to: last.fix.point) < minDistance,
+           now.timeIntervalSince(last.sentAt) < minInterval {
             return
         }
-        lastSent = (point, now)
-        liveLocation.sendLocation(point, batteryLevel: deviceStatus.batteryLevel)
+        lastSent = (fix, now)
+        liveLocation.sendLocation(fix.point, batteryLevel: deviceStatus.batteryLevel)
     }
 }

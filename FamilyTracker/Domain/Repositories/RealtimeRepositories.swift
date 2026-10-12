@@ -22,10 +22,12 @@ protocol SOSRepository: AnyObject {
 protocol DeviceLocationRepository: AnyObject {
     var authorization: LocationAuthorization { get }
     var lastKnownLocation: GeoPoint? { get }
+    var lastKnownFix: LocationFix? { get }
     func requestPermission()
     func startTracking()
     func stopTracking()
     func observeLocations() -> AsyncStream<GeoPoint>
+    func observeFixes() -> AsyncStream<LocationFix>
 }
 
 @MainActor
