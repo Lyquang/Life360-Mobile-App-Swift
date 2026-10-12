@@ -1,13 +1,13 @@
 {
-  "originHash" : "3ab79b7ccdd49afa31faf25a8057e02e8a534551df4c522e14e57440bd52ae16",
+  "originHash" : "0ed5f9f72ff8b9bd62f243f4c951cc48bd0e8a422dd1d4b8096911da8979b28b",
   "pins" : [
     {
       "identity" : "app-check",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/google/app-check.git",
       "state" : {
-        "revision" : "c7eb17e5545f36e43dc50e70da09c2e999714e16",
-        "version" : "12.0.0"
+        "revision" : "97f7d74dd0e8f3d0fe5fc75cc8957aa73bdc948a",
+        "version" : "11.3.2"
       }
     },
     {

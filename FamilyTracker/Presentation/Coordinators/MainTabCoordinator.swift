@@ -29,7 +29,7 @@ final class MainTabCoordinator: ObservableObject {
         self.onLogout = onLogout
 
         map = MapCoordinator(container: container, currentUser: currentUser)
-        circles = CirclesCoordinator(container: container)
+        circles = CirclesCoordinator(container: container, currentUser: currentUser)
         chat = ChatCoordinator(container: container, currentUser: currentUser)
         timeline = TimelineCoordinator(container: container, currentUser: currentUser)
         places = PlacesCoordinator(container: container)
@@ -38,6 +38,9 @@ final class MainTabCoordinator: ObservableObject {
         map.onRequestSOS = { [weak self] in self?.emergency.requestSOS() }
         emergency.onShowLocation = { [weak self] alert in self?.showOnMap(alert.point) }
         circles.onOpenConversation = { [weak self] id, title in self?.openConversation(id: id, title: title) }
+        circles.onOpenDirectConversation = { [weak self] conversation, fallbackTitle in
+            self?.openDirectConversation(conversation, fallbackTitle: fallbackTitle)
+        }
     }
 
     func start() {
@@ -75,6 +78,11 @@ final class MainTabCoordinator: ObservableObject {
     func openConversation(id: String, title: String) {
         selectedTab = .chat
         chat.openConversation(id: id, title: title)
+    }
+
+    func openDirectConversation(_ conversation: Conversation, fallbackTitle: String) {
+        selectedTab = .chat
+        chat.openDirectConversation(conversation, fallbackTitle: fallbackTitle)
     }
 
     func handle(_ deeplink: NotificationDeeplink) {
