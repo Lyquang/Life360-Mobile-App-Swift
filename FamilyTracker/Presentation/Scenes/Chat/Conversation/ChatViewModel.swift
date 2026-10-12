@@ -22,7 +22,7 @@ struct ChatMessageItem: Identifiable {
 final class ChatViewModel: ObservableObject {
     @Published private(set) var messages: [ChatMessageItem] = []
     @Published private(set) var hasMore = false
-    @Published private(set) var isLoading = false
+    @Published private(set) var isLoading = true
     @Published private(set) var isSending = false
     @Published private(set) var isRecording = false
     @Published private(set) var recordingDuration: TimeInterval = 0
@@ -32,6 +32,7 @@ final class ChatViewModel: ObservableObject {
 
     let conversationId: String
     let title: String
+    let emptyGreetingName: String?
     let currentUserId: String
     let playback = VoicePlaybackController()
 
@@ -55,7 +56,7 @@ final class ChatViewModel: ObservableObject {
     private var isTypingSent = false
     private var typers: [String: String] = [:]
 
-    init(conversationId: String, title: String, currentUserId: String,
+    init(conversationId: String, title: String, emptyGreetingName: String? = nil, currentUserId: String,
          fetchMessages: FetchMessagesUseCase, sendText: SendTextMessageUseCase,
          prepareImage: PrepareImageUseCase, uploadImage: UploadImageUseCase,
          sendImage: SendImageMessageUseCase, uploadVoice: UploadVoiceUseCase,
@@ -63,7 +64,8 @@ final class ChatViewModel: ObservableObject {
          observeNewMessages: ObserveNewMessagesUseCase, observeTyping: ObserveTypingUseCase,
          sendTyping: SendTypingUseCase, recorder: AudioRecorderService,
          onForbidden: @escaping () -> Void) {
-        self.conversationId = conversationId; self.title = title; self.currentUserId = currentUserId
+        self.conversationId = conversationId; self.title = title
+        self.emptyGreetingName = emptyGreetingName; self.currentUserId = currentUserId
         self.fetchMessages = fetchMessages; self.sendText = sendText
         self.prepareImage = prepareImage; self.uploadImage = uploadImage; self.sendImage = sendImage
         self.uploadVoice = uploadVoice; self.sendVoice = sendVoice; self.markRead = markRead
