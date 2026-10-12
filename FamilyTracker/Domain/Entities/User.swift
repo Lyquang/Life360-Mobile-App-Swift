@@ -19,5 +19,5 @@ struct User: Identifiable, Equatable {
 
 struct AuthSession {
     let user: User
-    let token: String
+    let tokens: AuthTokens
 }

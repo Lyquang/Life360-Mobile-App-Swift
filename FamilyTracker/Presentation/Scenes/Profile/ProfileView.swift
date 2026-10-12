@@ -3,6 +3,7 @@ import SwiftUI
 struct ProfileView: View {
     @StateObject private var viewModel: ProfileViewModel
     @State private var showLogoutConfirm = false
+    @State private var showLogoutAllConfirm = false
 
     init(viewModel: @autoclosure @escaping () -> ProfileViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel())
@@ -61,6 +62,11 @@ struct ProfileView: View {
                     } label: {
                         Label("Đăng xuất", systemImage: "rectangle.portrait.and.arrow.right")
                     }
+                    Button(role: .destructive) {
+                        showLogoutAllConfirm = true
+                    } label: {
+                        Label("Đăng xuất mọi thiết bị", systemImage: "rectangle.stack.badge.minus")
+                    }
                 }
             }
             .navigationTitle("Tài khoản")
@@ -71,6 +77,13 @@ struct ProfileView: View {
             Button("Hủy", role: .cancel) {}
         } message: {
             Text("Bạn sẽ cần đăng nhập lại để sử dụng ứng dụng.")
+        }
+        .confirmationDialog("Đăng xuất khỏi mọi thiết bị?", isPresented: $showLogoutAllConfirm,
+                            titleVisibility: .visible) {
+            Button("Đăng xuất mọi thiết bị", role: .destructive, action: viewModel.logoutAll)
+            Button("Hủy", role: .cancel) {}
+        } message: {
+            Text("Tất cả thiết bị sẽ cần đăng nhập lại.")
         }
     }
 }

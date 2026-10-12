@@ -1,5 +1,19 @@
 import Foundation
+import Combine
 import GoogleSignIn
+
+@MainActor
+final class SessionExpiryEvents {
+    let publisher = PassthroughSubject<Void, Never>()
+    private var didExpire = false
+
+    func reset() { didExpire = false }
+    func expire() {
+        guard !didExpire else { return }
+        didExpire = true
+        publisher.send(())
+    }
+}
 
 /// Composition root: builds Core services and Data repositories once, hands out use cases.
 /// Nothing outside App/ should reach into this container directly except coordinators.
@@ -7,6 +21,7 @@ import GoogleSignIn
 final class AppContainer {
     let environment: AppEnvironment
     let languageSettings: LanguageSettingsViewModel
+    let sessionEvents = SessionExpiryEvents()
 
     // MARK: Core
     let logger: NetworkLogger
@@ -17,6 +32,7 @@ final class AppContainer {
 
     // MARK: Data
     let session: KeychainSessionRepository
+    let tokenRefreshCoordinator: TokenRefreshCoordinator
     let api: APIClient
     let authRepository: AuthRepository
     let circleRepository: CircleRepository
@@ -49,16 +65,56 @@ final class AppContainer {
         #endif
         batteryMonitor = BatteryMonitor()
         pushService = PushNotificationService()
-        socketClient = SocketIOClientAdapter(url: environment.socketURL, logger: logger)
-        locationService = CLLocationService(battery: batteryMonitor.snapshot)
-
         session = KeychainSessionRepository()
-        api = URLSessionAPIClient(baseURL: environment.apiBaseURL, tokenProvider: session, logger: logger)
+        socketClient = SocketIOClientAdapter(url: environment.socketURL, logger: logger, tokenProvider: session)
+        locationService = CLLocationService(battery: batteryMonitor.snapshot)
+        let refreshTransport = URLSessionRefreshTransport(baseURL: environment.apiBaseURL, logger: logger)
+        let events = sessionEvents
+        let socket = socketClient
+        let sessionStore = session
+        let offlineQueue = OfflineQueue()
+        tokenRefreshCoordinator = TokenRefreshCoordinator(
+            store: session, transport: refreshTransport,
+            onRotated: { token in await MainActor.run { socket.connect(token: token) } },
+            onExpired: { generation in
+                await MainActor.run {
+                    guard sessionStore.clear(ifGeneration: generation) else { return }
+                    socket.disconnect()
+                    offlineQueue.clear()
+                    events.expire()
+                }
+            }
+        )
+        let coordinator = tokenRefreshCoordinator
+        let diagnostics = logger
+        socketClient.onAuthenticationFailure = { sentToken in
+            Task {
+                do {
+                    _ = try await coordinator.validAccessToken(afterUnauthorized: sentToken)
+                } catch let failure as RefreshFailure {
+                    let category: String
+                    switch failure {
+                    case .invalidSession: category = "invalid_session"
+                    case .rateLimited: category = "rate_limited"
+                    case .network: category = "network"
+                    case .ambiguousNetwork: category = "ambiguous_network"
+                    case .server: category = "server"
+                    case .storage: category = "storage"
+                    case .cancelled: category = "cancelled"
+                    }
+                    diagnostics.logSocket(event: "auth_refresh_failed", payload: ["category": category])
+                } catch {
+                    diagnostics.logSocket(event: "auth_refresh_failed", payload: ["category": "unknown"])
+                }
+            }
+        }
+        api = URLSessionAPIClient(baseURL: environment.apiBaseURL, tokenProvider: session,
+                                  logger: logger, refreshCoordinator: tokenRefreshCoordinator)
         authRepository = AuthRepositoryImpl(api: api)
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)
         historyRepository = HistoryRepositoryImpl(api: api)
-        realtime = SocketRealtimeRepository(socket: socketClient, offlineQueue: OfflineQueue())
+        realtime = SocketRealtimeRepository(socket: socketClient, offlineQueue: offlineQueue)
         chatRepository = ChatRepositoryImpl(api: api, socket: socketClient)
         mediaRepository = MediaRepositoryImpl(
             uploader: MediaUploadService(api: api, logger: logger)
@@ -81,8 +137,10 @@ final class AppContainer {
         await RestoreSessionUseCase(auth: authRepository, session: session, realtime: realtime)()
     }
 
-    func logout() {
-        LogoutUseCase(session: session, realtime: realtime, shareLocation: shareLocation)()
+    func logout(allDevices: Bool = false) async -> Bool {
+        await tokenRefreshCoordinator.cancelSession()
+        return await LogoutUseCase(auth: authRepository, session: session, realtime: realtime,
+                                   shareLocation: shareLocation)(allDevices: allDevices)
     }
 
     /// iOS relaunched the app in the background for a location event: resume sharing without UI.

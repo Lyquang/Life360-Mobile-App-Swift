@@ -9,13 +9,16 @@ final class ProfileViewModel: ObservableObject {
 
     private let observeConnection: ObserveConnectionStateUseCase
     private let onLogout: () -> Void
+    private let onLogoutAll: () -> Void
     private var task: Task<Void, Never>?
 
-    init(user: User, backendHost: String, observeConnection: ObserveConnectionStateUseCase, onLogout: @escaping () -> Void) {
+    init(user: User, backendHost: String, observeConnection: ObserveConnectionStateUseCase,
+         onLogout: @escaping () -> Void, onLogoutAll: @escaping () -> Void) {
         self.user = user
         self.backendHost = backendHost
         self.observeConnection = observeConnection
         self.onLogout = onLogout
+        self.onLogoutAll = onLogoutAll
         self.connectionState = observeConnection.current
     }
 
@@ -47,4 +50,6 @@ final class ProfileViewModel: ObservableObject {
     func logout() {
         onLogout()
     }
+
+    func logoutAll() { onLogoutAll() }
 }

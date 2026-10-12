@@ -7,6 +7,7 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Domain/Errors/DomainError.swift \
   FamilyTracker/Domain/Common/ISO8601.swift \
   FamilyTracker/Domain/Entities/MediaUpload.swift \
+  FamilyTracker/Domain/Entities/AuthTokens.swift \
   FamilyTracker/App/DI/AppEnvironment.swift \
   FamilyTracker/Core/Logging/NetworkLogger.swift \
   FamilyTracker/Core/Logging/DiagnosticRedactor.swift \

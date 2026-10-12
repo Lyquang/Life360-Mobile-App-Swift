@@ -39,6 +39,8 @@ final class PlacesViewModel: ObservableObject {
             if selectedGroupId == nil, let first = groups.first {
                 await selectGroup(first.id)
             }
+        } catch is CancellationError {
+            return
         } catch {
             loadErrorMessage = error.localizedDescription
         }

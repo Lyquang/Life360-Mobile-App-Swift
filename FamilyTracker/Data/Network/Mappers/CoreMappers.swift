@@ -17,8 +17,13 @@ extension UserDTO {
 
 extension AuthDataDTO {
     func toDomain() throws -> AuthSession {
-        guard let token = token ?? accessToken else { throw APIError.serverError("Thiếu token đăng nhập.") }
-        return AuthSession(user: user.toDomain(), token: token)
+        guard let accessToken, let refreshToken, let expiresIn,
+              !accessToken.isEmpty, !refreshToken.isEmpty, expiresIn > 0 else {
+            throw APIError.decodingError("Thiếu cặp token đăng nhập.")
+        }
+        return AuthSession(user: user.toDomain(), tokens: AuthTokens(
+            accessToken: accessToken, refreshToken: refreshToken, expiresIn: expiresIn
+        ))
     }
 }
 

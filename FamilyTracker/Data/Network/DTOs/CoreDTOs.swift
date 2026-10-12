@@ -76,7 +76,17 @@ struct AuthDataDTO: Codable, Sendable {
     let token: String?
     let accessToken: String?
     let refreshToken: String?
+    let expiresIn: Int?
 }
+
+struct RefreshDataDTO: Codable, Sendable {
+    let token: String?
+    let accessToken: String
+    let refreshToken: String
+    let expiresIn: Int
+}
+
+struct EmptyAuthDTO: Codable, Sendable {}
 
 struct GroupDTO: Codable, Sendable {
     let id: String
@@ -92,7 +102,7 @@ struct GroupDTO: Codable, Sendable {
 }
 
 struct GroupMembersDTO: Codable, Sendable {
-    let groupId: String
+    let groupId: String?
     let groupName: String
     let inviteCode: String?
     let conversationId: String?

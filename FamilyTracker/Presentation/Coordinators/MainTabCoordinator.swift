@@ -21,12 +21,15 @@ final class MainTabCoordinator: ObservableObject {
 
     private let container: AppContainer
     private let onLogout: () -> Void
+    private let onLogoutAll: () -> Void
     private var cancellables = Set<AnyCancellable>()
 
-    init(container: AppContainer, currentUser: User, onLogout: @escaping () -> Void) {
+    init(container: AppContainer, currentUser: User, onLogout: @escaping () -> Void,
+         onLogoutAll: @escaping () -> Void) {
         self.container = container
         self.currentUser = currentUser
         self.onLogout = onLogout
+        self.onLogoutAll = onLogoutAll
 
         map = MapCoordinator(container: container, currentUser: currentUser)
         circles = CirclesCoordinator(container: container, currentUser: currentUser)
@@ -69,6 +72,8 @@ final class MainTabCoordinator: ObservableObject {
         onLogout()
     }
 
+    func logoutAll() { onLogoutAll() }
+
     func showOnMap(_ point: GeoPoint?) {
         selectedTab = .map
         map.popToRoot()
@@ -109,7 +114,8 @@ final class MainTabCoordinator: ObservableObject {
             user: currentUser,
             backendHost: host,
             observeConnection: container.observeConnectionState,
-            onLogout: { [weak self] in self?.logout() }
+            onLogout: { [weak self] in self?.logout() },
+            onLogoutAll: { [weak self] in self?.logoutAll() }
         )
     }
 }

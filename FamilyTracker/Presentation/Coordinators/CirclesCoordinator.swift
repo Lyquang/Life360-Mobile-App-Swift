@@ -42,6 +42,7 @@ final class CirclesCoordinator: ObservableObject {
     var onOpenDirectConversation: ((_ conversation: Conversation, _ fallbackTitle: String) -> Void)?
 
     private var openDirectTask: Task<Void, Never>?
+    private var membersTask: Task<Void, Never>?
     private var directRouteStore = DirectChatSheetRouteStore()
 
     init(container: AppContainer, currentUser: User) {
@@ -58,6 +59,7 @@ final class CirclesCoordinator: ObservableObject {
 
     deinit {
         openDirectTask?.cancel()
+        membersTask?.cancel()
     }
 
     func showCreate() { sheet = .create }
@@ -65,7 +67,14 @@ final class CirclesCoordinator: ObservableObject {
 
     func showDetail(of group: FamilyGroup) {
         sheet = .detail(group)
-        Task { await viewModel.loadMembers(for: group) }
+        loadMembers(for: group)
+    }
+
+    func loadMembers(for group: FamilyGroup) {
+        membersTask?.cancel()
+        membersTask = Task { [weak viewModel] in
+            await viewModel?.loadMembers(for: group)
+        }
     }
 
     func dismissSheet() {
@@ -93,6 +102,9 @@ final class CirclesCoordinator: ObservableObject {
     }
 
     func didDismissSheet() {
+        membersTask?.cancel()
+        membersTask = nil
+        viewModel.clearMembers()
         if let route = directRouteStore.consume() {
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             onOpenDirectConversation?(route.conversation, route.fallbackTitle)
@@ -150,6 +162,7 @@ struct CirclesCoordinatorView: View {
                     currentUserId: coordinator.currentUserId,
                     onOpenChat: group.conversationId == nil ? nil : { coordinator.openChat(for: group) },
                     onMessageMember: coordinator.openDirectChat(with:),
+                    onRetryMembers: { coordinator.loadMembers(for: group) },
                     onRetryDirectChat: coordinator.retryDirectChat,
                     onClose: coordinator.dismissSheet
                 )

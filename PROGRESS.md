@@ -22,11 +22,21 @@ Legend:
 
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
 - `[-]` Circles: create/join/list/detail family groups.
+- `[x]` Circle members response compatibility: deployed 200 payload may omit
+  `groupId`; detail sheet now shows retryable load errors and ignores stale member
+  responses. Networking contract and Simulator build pass; device check remains.
+- `[x]` Groups request cancellation: Circle refresh keeps one ViewModel-owned load
+  alive across SwiftUI refresh-task cancellation; Circle, Places, and Journey do
+  not show cancellation as a network-error alert. XCTest source added; app build
+  passes, but the Xcode project still has no configured test target.
 - `[-]` Chat: conversation list, realtime messages, chat repositories.
 - `[x]` Direct message entry: accessible member-row action, get-or-create 1-1 flow,
   ordered sheet-to-tab routing, idempotent conversation upsert and empty-chat state.
 - `[x]` Chat media: R2 image/voice upload, optimistic delivery, playback, retry,
   cancellation and public-URL deduplication.
+- `[-]` Refresh Token Rotation: token-pair Keychain storage, shared single-flight
+  refresh, auth/logout flows and Socket.IO rotation integrated. Contract/build/lint
+  pass; saved XCTest target and physical-device checks remain.
 - `[-]` Emergency SOS: SOS use cases, alert banner, coordinator-driven emergency flow.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 
@@ -112,6 +122,23 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-12: Implemented the approved Refresh Token Rotation plan in iOS 16/Combine.
+  Added atomic token-pair Keychain updates with legacy JWT fallback, refresh error
+  classification/cooldown, one app-wide actor, stale-401 and session-generation guards,
+  one retry, auth-body omission from Pulse, logout/logout-all cleanup, Login expiry
+  message, fresh-token Socket.IO reconnect and offline queue cleanup. Networking and
+  localization contracts, unsigned Simulator build and SwiftLint passed. XCTest source
+  was added under `FamilyTrackerTests`, but `xcodebuild test` reports the checked-in
+  scheme is not configured for Test Action; no project target was created by the agent.
+  See `study/refresh-token-interview-notes.md` and `.spec/refresh-token-rotation.md`.
+
+- 2026-10-12: Audited the new Refresh Token Rotation contract against the iOS session,
+  networking, Socket.IO and Pulse code. Wrote the gap analysis and G1-G5 approval plan
+  in `study/refresh-token-mobile-integration.md`. No Swift implementation has begun.
+  The checked-in Xcode project still lacks a discoverable `FamilyTrackerTests` target;
+  its shared scheme has an empty Test Action. Decisions on ambiguous refresh failures
+  and the Profile logout-all entry are pending plan approval.
 
 - 2026-10-12: Connected Circle members to direct chat through the existing use case and
   MVVM-C routing. Added self-row protection, 44 pt button/loading state, swipe/context
