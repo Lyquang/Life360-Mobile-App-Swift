@@ -23,8 +23,6 @@ Legend:
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[-]` Chat: conversation list, realtime messages, chat repositories.
-- `[x]` Direct message entry: accessible member-row action, get-or-create 1-1 flow,
-  ordered sheet-to-tab routing, idempotent conversation upsert and empty-chat state.
 - `[x]` Chat media: R2 image/voice upload, optimistic delivery, playback, retry,
   cancellation and public-URL deduplication.
 - `[-]` Emergency SOS: SOS use cases, alert banner, coordinator-driven emergency flow.
@@ -112,14 +110,6 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
-
-- 2026-10-12: Connected Circle members to direct chat through the existing use case and
-  MVVM-C routing. Added self-row protection, 44 pt button/loading state, swipe/context
-  shortcuts, friendly retryable errors, localized accessibility, Reduce Motion support,
-  ordered sheet dismissal, timestamp-aware conversation upsert and background
-  reconciliation. No undocumented socket join event was added. XCTest sources are in
-  `FamilyTrackerTests`; the target still needs to be present in the saved Xcode project
-  before command-line tests can execute.
 
 - 2026-10-12: Added GitHub Actions for an unsigned FamilyTracker Simulator build,
   networking/localization contract tests, non-strict SwiftLint and full-history secret

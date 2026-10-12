@@ -241,17 +241,3 @@
 "Bản ghi phải dưới 15 phút và 25 MB." = "Voice notes must be under 15 minutes and 25 MB.";
 "Ảnh vẫn lớn hơn 10 MB sau khi nén." = "The image is still larger than 10 MB after compression.";
 "Metadata ảnh không hợp lệ." = "The image metadata is invalid.";
-"Bạn" = "You";
-"Đang hoạt động" = "Active now";
-"Nhắn tin" = "Message";
-"Nhắn tin cho %@" = "Message %@";
-"Đang mở cuộc trò chuyện với %@" = "Opening conversation with %@";
-"Mở cuộc trò chuyện riêng" = "Open a private conversation";
-"Pin %lld phần trăm" = "Battery %lld percent";
-"Người này không còn trong nhóm." = "This person is no longer in your circle.";
-"Không có kết nối mạng. Hãy thử lại." = "No network connection. Please try again.";
-"Có lỗi xảy ra. Hãy thử lại sau." = "Something went wrong. Please try again later.";
-"Không thể mở cuộc trò chuyện" = "Unable to open conversation";
-"Hãy mời thêm người thân vào nhóm." = "Invite family members to this circle.";
-"Hãy chia sẻ mã mời phía trên để thêm người thân." = "Share the invite code above to add family members.";
-"Hãy gửi lời chào đến %@" = "Say hello to %@";

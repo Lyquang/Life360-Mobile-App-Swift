@@ -49,28 +49,6 @@ final class ConversationListViewModel: ObservableObject {
         conversations[index].unreadCount = 0
     }
 
-    func upsert(_ incoming: Conversation) {
-        guard let index = conversations.firstIndex(where: { $0.id == incoming.id }) else {
-            conversations.insert(incoming, at: 0)
-            return
-        }
-
-        let existing = conversations.remove(at: index)
-        var merged = incoming
-        if Self.isActivityNewer(in: existing, than: incoming) {
-            merged.lastMessage = existing.lastMessage
-            merged.lastMessageAt = existing.lastMessageAt
-            merged.unreadCount = existing.unreadCount
-        }
-        conversations.insert(merged, at: 0)
-    }
-
-    func refreshInBackground() {
-        Task { [weak self] in
-            await self?.load()
-        }
-    }
-
     private func apply(_ message: ChatMessage) {
         guard let index = conversations.firstIndex(where: { $0.id == message.conversationId }) else {
             Task { await load() }
@@ -83,11 +61,5 @@ final class ConversationListViewModel: ObservableObject {
             conversation.unreadCount += 1
         }
         conversations.insert(conversation, at: 0)
-    }
-
-    private static func isActivityNewer(in existing: Conversation, than incoming: Conversation) -> Bool {
-        guard let existingDate = existing.lastMessageAt else { return false }
-        guard let incomingDate = incoming.lastMessageAt else { return true }
-        return existingDate > incomingDate
     }
 }

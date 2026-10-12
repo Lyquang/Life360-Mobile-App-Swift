@@ -56,7 +56,7 @@ enum APIError: LocalizedError {
             }
             switch status {
             case 401: return .server(message ?? "Thông tin đăng nhập không hợp lệ.")
-            case 403: return .forbidden
+            case 403: return .server("Bạn không có quyền truy cập dữ liệu này.")
             case 404: return .server("Không tìm thấy dữ liệu yêu cầu.")
             case 409: return .server(message ?? "Dữ liệu đã tồn tại.")
             case 429: return .server("Quá nhiều yêu cầu. Vui lòng thử lại sau.")

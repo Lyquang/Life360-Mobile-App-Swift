@@ -39,39 +39,6 @@ struct ChatView: View {
     }
 
     private var messageList: some View {
-        Group {
-            if viewModel.isLoading && viewModel.messages.isEmpty {
-                ProgressView("Đang tải tin nhắn...")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if viewModel.messages.isEmpty {
-                emptyConversation
-            } else {
-                populatedMessageList
-            }
-        }
-    }
-
-    private var emptyConversation: some View {
-        VStack(spacing: FTSpacing.sm) {
-            Image(systemName: "hand.wave.fill")
-                .font(.system(size: 32))
-                .foregroundColor(FTColors.primary)
-            if let name = viewModel.emptyGreetingName {
-                Text(verbatim: L10n.format("Hãy gửi lời chào đến %@", name))
-                    .font(FTFont.body())
-                    .foregroundColor(FTColors.textSecondary)
-                    .multilineTextAlignment(.center)
-            } else {
-                Text("Chưa có tin nhắn")
-                    .font(FTFont.body())
-                    .foregroundColor(FTColors.textSecondary)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(FTSpacing.xl)
-    }
-
-    private var populatedMessageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(spacing: FTSpacing.sm) {
@@ -89,24 +56,9 @@ struct ChatView: View {
                 }
                 .padding(FTSpacing.md)
             }
-            .onAppear {
-                scrollToLatest(using: proxy, animated: false)
-            }
             .onChange(of: viewModel.messages.last?.id) { id in
-                guard id != nil else { return }
-                scrollToLatest(using: proxy, animated: true)
-            }
-        }
-    }
-
-    private func scrollToLatest(using proxy: ScrollViewProxy, animated: Bool) {
-        guard let id = viewModel.messages.last?.id else { return }
-        Task { @MainActor in
-            await Task.yield()
-            if animated {
+                guard let id else { return }
                 withAnimation { proxy.scrollTo(id, anchor: .bottom) }
-            } else {
-                proxy.scrollTo(id, anchor: .bottom)
             }
         }
     }
