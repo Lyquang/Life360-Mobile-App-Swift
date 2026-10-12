@@ -1,0 +1,25 @@
+only_rules:
+  - colon
+  - comma
+  - control_statement
+  - duplicate_imports
+  - empty_count
+  - empty_string
+  - force_cast
+  - force_try
+  - unused_import
+
+included:
+  - FamilyTracker
+
+excluded:
+  - .build
+  - Build
+  - build
+  - Carthage
+  - DerivedData
+  - Pods
+  - SourcePackages
+
+# The measured baseline is 11 warnings and 0 errors. Tighten incrementally.
+warning_threshold: 20

@@ -10,6 +10,9 @@ Legend:
 
 ## Feature Status
 
+- `[x]` Engineering CI: unsigned Xcode 26.2 Simulator build, networking/localization
+  contract tests, SwiftLint baseline, full-history Gitleaks scan and weekly Dependabot.
+
 - `[x]` Vietnamese / English interface: Login and Profile settings picker,
   persistent device preference, localized labels/errors/durations and permission
   purpose strings. Authenticated-screen manual verification remains.
@@ -26,6 +29,11 @@ Legend:
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 
 ## Architecture Decisions
+
+- 2026-10-12: Split CI by workload: Xcode build and contract tests run on pinned
+  `macos-15`; SwiftLint and Gitleaks use checksum-verified official Linux binaries.
+  Workflows have read-only permissions, immutable action SHAs, superseded-run
+  cancellation and no signing credentials. XCTest target creation remains separate.
 
 - 2026-10-12: Production REST and Socket.IO now use the canonical Render service
   `life360-backend-6v9n.onrender.com`; networking contract tests and integration
@@ -102,6 +110,15 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-12: Added GitHub Actions for an unsigned FamilyTracker Simulator build,
+  networking/localization contract tests, non-strict SwiftLint and full-history secret
+  scanning. Added weekly SPM/Actions Dependabot, exact allowlisting for two reviewed
+  truncated historical fixtures, failure-only `.xcresult` upload, README badges and CI
+  interview notes. Removed the empty orphaned npm lockfile. Temporary runner paths are
+  resolved only inside workflow steps, where the GitHub `runner` context is available.
+  Repository rulesets and GitHub code-security switches still require one-time
+  configuration in the web UI.
 
 - 2026-10-12: Integrated foreground Cloudflare R2 chat media uploads using the
   documented ticket -> raw PUT -> Socket.IO acknowledgement flow. Added JPEG/BlurHash

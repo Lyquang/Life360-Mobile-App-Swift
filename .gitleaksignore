@@ -1,0 +1,4 @@
+# Reviewed truncated Google ID-token fixture in historical API documentation.
+# Exact fingerprints retain detection for any new credential-like value.
+8dd7ff6a5524a02a5b44bfae7541dce915ef7ef9:GOOGLE_OAUTH2_MOBILE_API_DOC.md:generic-api-key:162
+31d5de76124b5ef27f27ee7547cde30e015b5cdc:GOOGLE_OAUTH2_MOBILE_API_DOC.md:generic-api-key:162

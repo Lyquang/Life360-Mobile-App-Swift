@@ -2,6 +2,8 @@
 
 **Real-time family location sharing, built with native SwiftUI and a layered Node.js backend.**
 
+[![iOS CI](https://github.com/Lyquang/Life360-Mobile-App-Swift/actions/workflows/ci.yml/badge.svg)](https://github.com/Lyquang/Life360-Mobile-App-Swift/actions/workflows/ci.yml)
+[![Code Quality](https://github.com/Lyquang/Life360-Mobile-App-Swift/actions/workflows/quality.yml/badge.svg)](https://github.com/Lyquang/Life360-Mobile-App-Swift/actions/workflows/quality.yml)
 ![Swift](https://img.shields.io/badge/Swift-5-F05138?logo=swift&logoColor=white)
 ![SwiftUI](https://img.shields.io/badge/SwiftUI-iOS_16%2B-007AFF?logo=swift&logoColor=white)
 ![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodedotjs&logoColor=white)

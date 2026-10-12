@@ -1,0 +1,109 @@
+name: iOS CI
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "study/**"
+      - "api-docs/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "study/**"
+      - "api-docs/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Contract Tests
+    runs-on: macos-15
+    timeout-minutes: 12
+    env:
+      XCODE_PATH: /Applications/Xcode_26.2.app/Contents/Developer
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode 26.2
+        run: |
+          sudo xcode-select --switch "$XCODE_PATH"
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Restore Swift package cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/SourcePackages
+          key: spm-${{ runner.os }}-xcode-26.2-${{ hashFiles('**/Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode-26.2-
+
+      - name: Resolve Swift packages
+        run: |
+          xcodebuild -resolvePackageDependencies \
+            -project FamilyTracker.xcodeproj \
+            -scheme FamilyTracker \
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
+
+      - name: Build unsigned Simulator app
+        shell: bash
+        run: |
+          set -o pipefail
+          build_command=(
+            xcodebuild build
+            -project FamilyTracker.xcodeproj
+            -scheme FamilyTracker
+            -configuration Debug
+            -destination "generic/platform=iOS Simulator"
+            -clonedSourcePackagesDirPath "$RUNNER_TEMP/SourcePackages"
+            -derivedDataPath "$RUNNER_TEMP/DerivedData"
+            -resultBundlePath "$RUNNER_TEMP/FamilyTracker.xcresult"
+            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_REQUIRED=NO
+          )
+
+          if command -v xcbeautify >/dev/null 2>&1; then
+            "${build_command[@]}" | xcbeautify
+          else
+            echo "xcbeautify is unavailable; using raw xcodebuild output."
+            "${build_command[@]}"
+          fi
+
+      - name: Run networking contract tests
+        run: bash scripts/test_networking.sh
+
+      - name: Run localization contract tests
+        run: bash scripts/test_localization.sh
+
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: FamilyTracker-xcresult-${{ github.run_id }}
+          path: ${{ runner.temp }}/FamilyTracker.xcresult
+          if-no-files-found: warn
+          retention-days: 5
+
+      - name: Publish job summary
+        if: always()
+        run: |
+          {
+            echo "## FamilyTracker iOS CI"
+            echo ""
+            echo "- Result: **${{ job.status }}**"
+            echo "- Runner: \`macos-15\`"
+            echo "- Xcode: \`26.2\`"
+            echo "- Destination: generic iOS Simulator"
+            echo "- Contract suites: networking and localization"
+          } >> "$GITHUB_STEP_SUMMARY"
