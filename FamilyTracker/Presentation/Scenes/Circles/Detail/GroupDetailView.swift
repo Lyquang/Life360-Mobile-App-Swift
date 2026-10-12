@@ -7,6 +7,7 @@ struct GroupDetailView: View {
     let currentUserId: String
     let onOpenChat: (() -> Void)?
     let onMessageMember: (User) -> Void
+    let onRetryMembers: () -> Void
     let onRetryDirectChat: () -> Void
     let onClose: () -> Void
 
@@ -67,6 +68,12 @@ struct GroupDetailView: View {
                     if viewModel.isMembersLoading {
                         ProgressView()
                             .frame(maxWidth: .infinity)
+                    } else if let error = viewModel.membersErrorMessage {
+                        VStack(alignment: .leading, spacing: FTSpacing.sm) {
+                            Text(error)
+                                .foregroundColor(FTColors.textSecondary)
+                            Button("Thử lại", action: onRetryMembers)
+                        }
                     } else {
                         ForEach(viewModel.members) { member in
                             let isCurrentUser = member.id == currentUserId

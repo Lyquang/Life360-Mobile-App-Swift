@@ -1,6 +1,14 @@
 import Foundation
 
 enum DiagnosticRedactor {
+    static func isAuthenticationURL(_ url: URL?) -> Bool {
+        url?.path.contains("/auth/") == true
+    }
+
+    static func responseBody(_ data: Data?, for url: URL?) -> Data? {
+        isAuthenticationURL(url) ? nil : body(data)
+    }
+
     static func url(_ url: URL) -> URL {
         guard var parts = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return url }
         parts.user = nil
@@ -47,7 +55,7 @@ enum DiagnosticRedactor {
         copy.url = request.url.map(url)
         copy.allHTTPHeaderFields = headers(request.allHTTPHeaderFields ?? [:])
         copy.httpBodyStream = nil
-        copy.httpBody = body(request.httpBody)
+        copy.httpBody = isAuthenticationURL(request.url) ? nil : body(request.httpBody)
         return copy
     }
 }

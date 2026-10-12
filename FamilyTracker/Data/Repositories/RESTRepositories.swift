@@ -38,6 +38,19 @@ final class AuthRepositoryImpl: AuthRepository {
                 .toDomain()
         }
     }
+
+    func logout(refreshToken: String) async throws {
+        _ = try await api.send(AuthEndpoint.logout(refreshToken: refreshToken), as: APIResponseDTO<EmptyAuthDTO>.self)
+    }
+
+    func logoutAll() async throws {
+        _ = try await api.send(AuthEndpoint.logoutAll, as: APIResponseDTO<EmptyAuthDTO>.self)
+    }
+
+    func changePassword(currentPassword: String, newPassword: String) async throws {
+        _ = try await api.send(AuthEndpoint.changePassword(current: currentPassword, new: newPassword),
+                               as: APIResponseDTO<EmptyAuthDTO>.self)
+    }
 }
 
 final class CircleRepositoryImpl: CircleRepository {

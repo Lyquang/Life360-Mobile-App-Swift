@@ -24,6 +24,8 @@ final class MemberPickerViewModel: ObservableObject {
         defer { isLoading = false }
         do {
             groups = try await fetchMyCircles()
+        } catch is CancellationError {
+            return
         } catch {
             errorMessage = error.localizedDescription
             return

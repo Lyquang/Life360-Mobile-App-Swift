@@ -3,6 +3,85 @@ import XCTest
 
 @MainActor
 final class DirectMessageFlowTests: XCTestCase {
+    func testMembersFailureOffersRetryAndSuccessfulRetryClearsError() async {
+        let circle = CircleRepositoryMock()
+        circle.membersHandler = { _ in throw DomainError.decoding("Missing field") }
+        let viewModel = makeCircleViewModel(chat: ChatRepositoryMock(), circle: circle)
+        let group = FamilyGroup(id: "group-1", name: "Family")
+
+        await viewModel.loadMembers(for: group)
+        XCTAssertNotNil(viewModel.membersErrorMessage)
+        XCTAssertFalse(viewModel.isMembersLoading)
+
+        circle.membersHandler = { _ in [User(id: "member-1", name: "Ly", email: "")] }
+        await viewModel.loadMembers(for: group)
+        XCTAssertEqual(viewModel.members.map(\.id), ["member-1"])
+        XCTAssertNil(viewModel.membersErrorMessage)
+    }
+
+    func testLateMembersResponseCannotReplaceAnotherCircle() async {
+        let gate = GroupMemberGate()
+        let circle = CircleRepositoryMock()
+        circle.membersHandler = { id in
+            if id == "old" { return try await gate.wait() }
+            return [User(id: "new-member", name: "New", email: "")]
+        }
+        let viewModel = makeCircleViewModel(chat: ChatRepositoryMock(), circle: circle)
+        let first = Task { await viewModel.loadMembers(for: FamilyGroup(id: "old", name: "Old")) }
+        while await gate.calls == 0 { await Task.yield() }
+
+        await viewModel.loadMembers(for: FamilyGroup(id: "new", name: "New"))
+        await gate.succeed(with: [User(id: "old-member", name: "Old", email: "")])
+        await first.value
+
+        XCTAssertEqual(viewModel.members.map(\.id), ["new-member"])
+        XCTAssertFalse(viewModel.isMembersLoading)
+    }
+
+    func testCancelledRefreshStillFinishesGroupsRequest() async {
+        let gate = GroupLoadGate()
+        let circle = CircleRepositoryMock()
+        circle.fetchHandler = {
+            let groups = try await gate.wait()
+            try Task.checkCancellation()
+            return groups
+        }
+        let viewModel = makeCircleViewModel(chat: ChatRepositoryMock(), circle: circle)
+        let refresh = Task { await viewModel.loadGroups() }
+        while await gate.calls == 0 { await Task.yield() }
+
+        refresh.cancel()
+        await gate.succeed(with: [FamilyGroup(id: "group-1", name: "Family")])
+        await viewModel.loadGroups()
+        await refresh.value
+
+        XCTAssertEqual(viewModel.groups.map(\.id), ["group-1"])
+        XCTAssertNil(viewModel.loadErrorMessage)
+        XCTAssertFalse(viewModel.isLoading)
+    }
+
+    func testOverlappingGroupsLoadsShareOneRequest() async {
+        let gate = GroupLoadGate()
+        let circle = CircleRepositoryMock()
+        circle.fetchHandler = { try await gate.wait() }
+        let viewModel = makeCircleViewModel(chat: ChatRepositoryMock(), circle: circle)
+        let first = Task { await viewModel.loadGroups() }
+        while await gate.calls == 0 { await Task.yield() }
+
+        let release = Task {
+            let calls = await gate.calls
+            XCTAssertEqual(calls, 1)
+            await gate.succeed(with: [FamilyGroup(id: "group-1", name: "Family")])
+        }
+        await viewModel.loadGroups()
+        await release.value
+        await first.value
+
+        let calls = await gate.calls
+        XCTAssertEqual(calls, 1)
+        XCTAssertEqual(viewModel.groups.map(\.id), ["group-1"])
+    }
+
     func testOpenDirectChatUsesMemberIDAndBlocksSecondRequest() async {
         let chat = ChatRepositoryMock()
         let expected = conversation(id: "direct-1", date: nil, unread: 0)
@@ -146,8 +225,8 @@ final class DirectMessageFlowTests: XCTestCase {
         XCTAssertTrue(conversation.displayName.isEmpty)
     }
 
-    private func makeCircleViewModel(chat: ChatRepositoryMock) -> CircleListViewModel {
-        let circle = CircleRepositoryMock()
+    private func makeCircleViewModel(chat: ChatRepositoryMock,
+                                     circle: CircleRepositoryMock = CircleRepositoryMock()) -> CircleListViewModel {
         let live = LiveLocationRepositoryMock()
         return CircleListViewModel(
             fetchMyCircles: FetchMyCirclesUseCase(repository: circle),
@@ -188,10 +267,50 @@ final class DirectMessageFlowTests: XCTestCase {
 }
 
 private final class CircleRepositoryMock: CircleRepository {
-    func fetchMyCircles() async throws -> [FamilyGroup] { [] }
+    var fetchHandler: (() async throws -> [FamilyGroup])?
+    var membersHandler: ((String) async throws -> [User])?
+    func fetchMyCircles() async throws -> [FamilyGroup] {
+        try await fetchHandler?() ?? []
+    }
     func createCircle(name: String) async throws -> FamilyGroup { FamilyGroup(id: "group", name: name) }
     func joinCircle(inviteCode: String) async throws -> FamilyGroup { FamilyGroup(id: "group", name: "Group") }
-    func fetchMembers(circleId: String) async throws -> [User] { [] }
+    func fetchMembers(circleId: String) async throws -> [User] {
+        try await membersHandler?(circleId) ?? []
+    }
+}
+
+private actor GroupMemberGate {
+    private(set) var calls = 0
+    private var continuation: CheckedContinuation<[User], Error>?
+
+    func wait() async throws -> [User] {
+        calls += 1
+        return try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func succeed(with members: [User]) {
+        continuation?.resume(returning: members)
+        continuation = nil
+    }
+}
+
+private actor GroupLoadGate {
+    private(set) var calls = 0
+    private var continuation: CheckedContinuation<[FamilyGroup], Error>?
+
+    func wait() async throws -> [FamilyGroup] {
+        calls += 1
+        return try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func succeed(with groups: [FamilyGroup]) {
+        continuation?.resume(returning: groups)
+        continuation = nil
+    }
 }
 
 private final class LiveLocationRepositoryMock: LiveLocationRepository {

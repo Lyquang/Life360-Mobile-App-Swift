@@ -3,17 +3,27 @@ import Foundation
 struct LoginRequestDTO: Codable, Sendable {
     let email: String
     let password: String
+    let deviceName: String
 }
 
 struct RegisterRequestDTO: Codable, Sendable {
     let name: String
     let email: String
     let password: String
+    let deviceName: String
 }
 
 struct SocialLoginRequestDTO: Codable, Sendable {
     let provider: String
     let token: String
+    let deviceName: String
+}
+
+struct RefreshTokenRequestDTO: Codable, Sendable { let refreshToken: String }
+struct LogoutRequestDTO: Codable, Sendable { let refreshToken: String }
+struct ChangePasswordRequestDTO: Codable, Sendable {
+    let currentPassword: String
+    let newPassword: String
 }
 
 struct CreateGroupRequestDTO: Codable, Sendable { let name: String }

@@ -14,8 +14,9 @@ struct LoginUseCase {
             email: email.lowercased().trimmingCharacters(in: .whitespaces),
             password: password
         )
-        session.save(result)
-        realtime.connect(token: result.token)
+        do { try session.save(result) }
+        catch { session.clear(); throw error }
+        realtime.connect(token: result.tokens.accessToken)
         return result.user
     }
 }
@@ -35,8 +36,9 @@ struct RegisterUseCase {
         guard password == confirmPassword else { throw DomainError.validation("Mật khẩu xác nhận không khớp.") }
 
         let result = try await auth.register(name: trimmedName, email: normalizedEmail, password: password)
-        session.save(result)
-        realtime.connect(token: result.token)
+        do { try session.save(result) }
+        catch { session.clear(); throw error }
+        realtime.connect(token: result.tokens.accessToken)
         return result.user
     }
 
@@ -65,8 +67,9 @@ struct GoogleSignInUseCase {
         // 2. Gửi ID Token lên backend → nhận AuthSession (JWT + user)
         let result = try await auth.socialLogin(idToken: idToken)
         // 3. Lưu token an toàn vào Keychain và kết nối realtime
-        session.save(result)
-        realtime.connect(token: result.token)
+        do { try session.save(result) }
+        catch { session.clear(); throw error }
+        realtime.connect(token: result.tokens.accessToken)
         return result.user
     }
 }
@@ -94,11 +97,40 @@ struct RestoreSessionUseCase {
 
 @MainActor
 struct LogoutUseCase {
+    let auth: AuthRepository
     let session: SessionRepository
     let realtime: RealtimeSessionRepository
     let shareLocation: ShareLocationUseCase
 
-    func callAsFunction() {
+    func callAsFunction(allDevices: Bool = false) async -> Bool {
+        defer {
+            shareLocation.stop()
+            realtime.disconnect()
+            session.clear()
+        }
+        do {
+            if allDevices { try await auth.logoutAll() }
+            else if let refreshToken = session.tokens?.refreshToken {
+                try await auth.logout(refreshToken: refreshToken)
+            } else {
+                return false
+            }
+            return true
+        } catch {
+            return false
+        }
+    }
+}
+
+@MainActor
+struct ChangePasswordUseCase {
+    let auth: AuthRepository
+    let session: SessionRepository
+    let realtime: RealtimeSessionRepository
+    let shareLocation: ShareLocationUseCase
+
+    func callAsFunction(current: String, new: String) async throws {
+        try await auth.changePassword(currentPassword: current, newPassword: new)
         shareLocation.stop()
         realtime.disconnect()
         session.clear()

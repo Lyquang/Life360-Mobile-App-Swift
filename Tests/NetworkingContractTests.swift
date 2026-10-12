@@ -17,13 +17,15 @@ private final class TokenStub: AccessTokenProvider {
 
 private final class ProtocolStub: URLProtocol {
     static var handler: ((URLRequest) throws -> (Int, Data))?
+    static var responseHeaders: [String: String] = [:]
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
         do {
             guard let handler = Self.handler else { throw CheckFailure(message: "Missing handler") }
             let (status, data) = try handler(request)
-            let response = HTTPURLResponse(url: request.url!, statusCode: status, httpVersion: nil, headerFields: nil)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: status,
+                                           httpVersion: nil, headerFields: Self.responseHeaders)!
             client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
             client?.urlProtocol(self, didLoad: data)
             client?.urlProtocolDidFinishLoading(self)
@@ -32,22 +34,68 @@ private final class ProtocolStub: URLProtocol {
     override func stopLoading() {}
 }
 
-private actor RefreshStub: AccessTokenRefreshing {
+private actor RefreshStub: RefreshTokenTransport {
     private(set) var calls = 0
-    func refreshAccessToken() async throws -> String {
+    func rotate(refreshToken: String) async throws -> AuthTokens {
         calls += 1
         try await Task.sleep(nanoseconds: 50_000_000)
-        return "refreshed-token"
+        return AuthTokens(accessToken: "refreshed-token", refreshToken: "next-refresh", expiresIn: 900)
     }
 }
 
-private final class RefreshingTokenStub: AccessTokenProvider, AccessTokenRefreshing {
-    var accessToken: String? = "expired"
+private final class PairStoreStub: TokenPairStore {
+    var tokens: AuthTokens? = AuthTokens(accessToken: "expired", refreshToken: "current-refresh", expiresIn: 900)
+    var sessionGeneration = 0
+    var failWrite = false
+    var accessToken: String? { tokens?.accessToken }
     var invalidated: [String] = []
-    var refreshCalls = 0
-    func invalidate(token: String) { invalidated.append(token); if accessToken == token { accessToken = nil } }
-    func refreshAccessToken() async throws -> String {
-        refreshCalls += 1; accessToken = "fresh"; return "fresh"
+    func invalidate(token: String) { invalidated.append(token); if accessToken == token { tokens = nil } }
+    func replaceTokens(_ value: AuthTokens) throws {
+        if failWrite { throw CheckFailure(message: "Keychain write failed") }
+        tokens = value
+    }
+    func replaceTokens(_ value: AuthTokens, ifGeneration expected: Int) throws {
+        guard sessionGeneration == expected else { throw RefreshFailure.cancelled }
+        try replaceTokens(value)
+    }
+    func clear() { tokens = nil }
+}
+
+private actor ConfigurableRefreshStub: RefreshTokenTransport {
+    private(set) var calls = 0
+    let result: Result<AuthTokens, RefreshFailure>
+    init(_ result: Result<AuthTokens, RefreshFailure>) { self.result = result }
+    func rotate(refreshToken: String) async throws -> AuthTokens {
+        calls += 1
+        return try result.get()
+    }
+}
+
+private actor ExpiryCounter {
+    private(set) var count = 0
+    func record() { count += 1 }
+}
+
+private actor DeferredRefreshStub: RefreshTokenTransport {
+    private(set) var started = false
+    private var continuation: CheckedContinuation<AuthTokens, Error>?
+
+    func rotate(refreshToken: String) async throws -> AuthTokens {
+        started = true
+        return try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+
+    func failAsReused() {
+        continuation?.resume(throwing: RefreshFailure.invalidSession)
+        continuation = nil
+    }
+}
+
+private actor MediaRefreshStub: RefreshTokenTransport {
+    private(set) var calls = 0
+    func rotate(refreshToken: String) async throws -> AuthTokens {
+        calls += 1
+        return AuthTokens(accessToken: "fresh", refreshToken: "next-refresh", expiresIn: 900)
     }
 }
 
@@ -55,6 +103,7 @@ private final class RefreshingTokenStub: AccessTokenProvider, AccessTokenRefresh
 enum NetworkingContractTests {
     static func main() async throws {
         try documentedResponses()
+        try deployedCircleMembersResponse()
         try requests()
         try mediaContracts()
         try redaction()
@@ -63,7 +112,20 @@ enum NetworkingContractTests {
         try await transport()
         try await mediaTransport()
         try await singleFlightRefresh()
+        try await refreshFailurePolicies()
+        try await refreshTransportContract()
+        try await retryUnauthorizedStops()
+        try await lateRefreshCannotExpireNewSession()
         print("PASS: REST contracts, auth refresh, media ticket/PUT retry, decoding and errors")
+    }
+
+    static func deployedCircleMembersResponse() throws {
+        let json = Data(#"{"success":true,"data":{"groupName":"Ly Quang Family","inviteCode":"747684","conversationId":"conversation-1","memberCount":3,"members":[{"id":"member-1","name":"Ly","batteryLevel":35,"isOnline":true},{"id":"member-2","name":"Binh","batteryLevel":85,"isOnline":true},{"id":"member-3","name":"Quang","batteryLevel":100,"isOnline":false}]}}"#.utf8)
+        let response = try BackendJSONCoding.makeDecoder().decode(APIResponseDTO<GroupMembersDTO>.self, from: json)
+        let details = try response.unwrap(fallbackMessage: "Missing members")
+        try check(details.groupId == nil, "Deployed members response may omit groupId")
+        try check(details.members.count == 3 && details.members[0].id == "member-1", "Circle members were lost")
+        try check(details.members[2].isOnline == false, "Circle member status was lost")
     }
 
     static func mediaContracts() throws {
@@ -89,14 +151,202 @@ enum NetworkingContractTests {
     }
 
     static func singleFlightRefresh() async throws {
-        let coordinator = TokenRefreshCoordinator()
+        let store = PairStoreStub()
         let refresher = RefreshStub()
-        async let first = coordinator.refresh(using: refresher)
-        async let second = coordinator.refresh(using: refresher)
+        let coordinator = TokenRefreshCoordinator(store: store, transport: refresher)
+        async let first = coordinator.validAccessToken(afterUnauthorized: "expired")
+        async let second = coordinator.validAccessToken(afterUnauthorized: "expired")
         let values = try await [first, second]
         try check(values == ["refreshed-token", "refreshed-token"], "Refresh result")
         let calls = await refresher.calls
         try check(calls == 1, "Refresh was not single-flight")
+        try check(store.tokens?.refreshToken == "next-refresh", "Refresh pair not persisted")
+    }
+
+    static func refreshFailurePolicies() async throws {
+        let replacement = AuthTokens(accessToken: "fresh", refreshToken: "new-refresh", expiresIn: 900)
+        let staleStore = PairStoreStub()
+        staleStore.tokens = replacement
+        let staleTransport = ConfigurableRefreshStub(.success(replacement))
+        let staleCoordinator = TokenRefreshCoordinator(store: staleStore, transport: staleTransport)
+        let staleValue = try await staleCoordinator.validAccessToken(afterUnauthorized: "expired")
+        let staleCalls = await staleTransport.calls
+        try check(staleValue == "fresh" && staleCalls == 0, "Stale 401 refreshed again")
+
+        staleStore.sessionGeneration = 1
+        do {
+            _ = try await staleCoordinator.validAccessToken(afterUnauthorized: "expired", sentGeneration: 0)
+            throw CheckFailure(message: "Old account request used new account token")
+        } catch RefreshFailure.cancelled { }
+
+        let terminalStore = PairStoreStub()
+        let terminalTransport = ConfigurableRefreshStub(.failure(.invalidSession))
+        let terminal = TokenRefreshCoordinator(store: terminalStore, transport: terminalTransport,
+                                                onExpired: { _ in terminalStore.clear() })
+        do {
+            _ = try await terminal.validAccessToken(afterUnauthorized: "expired")
+            throw CheckFailure(message: "Invalid refresh accepted")
+        } catch RefreshFailure.invalidSession { }
+        try check(terminalStore.tokens == nil, "Invalid refresh did not clear session")
+
+        for failure in [RefreshFailure.network, .ambiguousNetwork, .server] {
+            let store = PairStoreStub()
+            let transport = ConfigurableRefreshStub(.failure(failure))
+            let coordinator = TokenRefreshCoordinator(store: store, transport: transport)
+            do {
+                _ = try await coordinator.validAccessToken(afterUnauthorized: "expired")
+                throw CheckFailure(message: "Recoverable refresh failure accepted")
+            } catch is RefreshFailure { }
+            try check(store.tokens?.refreshToken == "current-refresh", "Recoverable failure removed token")
+        }
+
+        let limitedStore = PairStoreStub()
+        let limitedTransport = ConfigurableRefreshStub(.failure(.rateLimited(until: Date().addingTimeInterval(60))))
+        let limited = TokenRefreshCoordinator(store: limitedStore, transport: limitedTransport)
+        for _ in 0..<2 {
+            do {
+                _ = try await limited.validAccessToken(afterUnauthorized: "expired")
+                throw CheckFailure(message: "Rate limit ignored")
+            } catch RefreshFailure.rateLimited { }
+        }
+        let limitedCalls = await limitedTransport.calls
+        try check(limitedCalls == 1 && limitedStore.tokens != nil, "Rate limit looped or signed out")
+
+        let failedStore = PairStoreStub()
+        failedStore.failWrite = true
+        let failedTransport = ConfigurableRefreshStub(.success(replacement))
+        let failed = TokenRefreshCoordinator(store: failedStore, transport: failedTransport,
+                                              onExpired: { _ in failedStore.clear() })
+        do {
+            _ = try await failed.validAccessToken(afterUnauthorized: "expired")
+            throw CheckFailure(message: "Failed Keychain write accepted")
+        } catch RefreshFailure.storage { }
+        try check(failedStore.tokens == nil, "Failed Keychain write kept old refresh token")
+    }
+
+    static func refreshTransportContract() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ProtocolStub.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); ProtocolStub.handler = nil; ProtocolStub.responseHeaders = [:] }
+        let transport = URLSessionRefreshTransport(baseURL: URL(string: "https://api.test/api/v1")!,
+                                                   session: session, logger: NoopNetworkLogger())
+        ProtocolStub.handler = { request in
+            try check(request.url?.path == "/api/v1/auth/refresh", "Refresh endpoint path")
+            try check(request.value(forHTTPHeaderField: "Authorization") == nil, "Refresh sent Bearer")
+            let payload: Data
+            if let body = request.httpBody { payload = body }
+            else if let stream = request.httpBodyStream {
+                stream.open()
+                defer { stream.close() }
+                var collected = Data()
+                var buffer = [UInt8](repeating: 0, count: 4096)
+                while stream.hasBytesAvailable {
+                    let count = stream.read(&buffer, maxLength: buffer.count)
+                    guard count > 0 else { break }
+                    collected.append(contentsOf: buffer.prefix(count))
+                }
+                payload = collected
+            } else { throw CheckFailure(message: "Refresh request body missing") }
+            let body = try JSONSerialization.jsonObject(with: payload) as! [String: Any]
+            try check(body["refreshToken"] as? String == "opaque" && body["deviceName"] == nil,
+                      "Refresh body contract")
+            return (200, Data(#"{"success":true,"message":"Token refreshed successfully.","data":{"token":"new","accessToken":"new","refreshToken":"opaque-next","expiresIn":900}}"#.utf8))
+        }
+        let value = try await transport.rotate(refreshToken: "opaque")
+        try check(value.accessToken == "new" && value.refreshToken == "opaque-next", "Refresh response decode")
+        try check(value.accessTokenExpiresAt > Date(), "Absolute token expiry missing")
+        for code in ["INVALID_REFRESH_TOKEN", "REFRESH_TOKEN_REUSED"] {
+            ProtocolStub.handler = { _ in
+                (401, Data("{\"success\":false,\"code\":\"\(code)\",\"message\":\"Sign in again.\"}".utf8))
+            }
+            do {
+                _ = try await transport.rotate(refreshToken: "opaque")
+                throw CheckFailure(message: "Terminal refresh code accepted")
+            } catch RefreshFailure.invalidSession { }
+        }
+        ProtocolStub.responseHeaders = ["Retry-After": "47"]
+        ProtocolStub.handler = { _ in (429, Data(#"{"success":false,"code":"RATE_LIMITED"}"#.utf8)) }
+        do {
+            _ = try await transport.rotate(refreshToken: "opaque")
+            throw CheckFailure(message: "429 accepted")
+        } catch RefreshFailure.rateLimited(let until) {
+            try check(until.timeIntervalSinceNow > 40, "Retry-After ignored")
+        }
+        ProtocolStub.responseHeaders = [:]
+        ProtocolStub.handler = { _ in (429, Data(#"{"success":false,"code":"RATE_LIMITED"}"#.utf8)) }
+        do {
+            _ = try await transport.rotate(refreshToken: "opaque")
+            throw CheckFailure(message: "429 without Retry-After accepted")
+        } catch RefreshFailure.rateLimited(let until) {
+            try check(until.timeIntervalSinceNow >= 59, "Default cooldown missing")
+        }
+        ProtocolStub.handler = { _ in (503, Data(#"{"success":false}"#.utf8)) }
+        do {
+            _ = try await transport.rotate(refreshToken: "opaque")
+            throw CheckFailure(message: "Refresh 503 accepted")
+        } catch RefreshFailure.server { }
+        for (code, ambiguous) in [(URLError.notConnectedToInternet, false),
+                                  (.dataNotAllowed, false), (.cannotFindHost, false),
+                                  (.dnsLookupFailed, false), (.cannotConnectToHost, false),
+                                  (.timedOut, true), (.networkConnectionLost, true)] {
+            ProtocolStub.handler = { _ in throw URLError(code) }
+            do {
+                _ = try await transport.rotate(refreshToken: "opaque")
+                throw CheckFailure(message: "Refresh network error accepted")
+            } catch RefreshFailure.ambiguousNetwork where ambiguous { }
+            catch RefreshFailure.network where !ambiguous { }
+        }
+    }
+
+    static func retryUnauthorizedStops() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ProtocolStub.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); ProtocolStub.handler = nil }
+        let store = PairStoreStub()
+        let transport = ConfigurableRefreshStub(.success(
+            AuthTokens(accessToken: "fresh", refreshToken: "next", expiresIn: 900)
+        ))
+        let expiryCounter = ExpiryCounter()
+        let coordinator = TokenRefreshCoordinator(store: store, transport: transport,
+                                                   onExpired: { _ in store.clear(); await expiryCounter.record() })
+        let client = URLSessionAPIClient(baseURL: URL(string: "https://api.test/api/v1")!, session: session,
+                                         tokenProvider: store, logger: NoopNetworkLogger(),
+                                         refreshCoordinator: coordinator)
+        var requests = 0
+        ProtocolStub.handler = { _ in
+            requests += 1
+            return (401, Data(#"{"success":false,"code":"UNAUTHORIZED"}"#.utf8))
+        }
+        do {
+            _ = try await client.send(AuthEndpoint.me, as: APIResponseDTO<UserDTO>.self)
+            throw CheckFailure(message: "Repeated 401 accepted")
+        } catch APIError.unauthorized { }
+        let refreshCalls = await transport.calls
+        let expiryEvents = await expiryCounter.count
+        try check(requests == 2 && refreshCalls == 1 && expiryEvents == 1,
+                  "Repeated 401 caused a refresh loop or multiple expiry events")
+        try check(store.tokens == nil, "Repeated 401 kept revoked session")
+    }
+
+    static func lateRefreshCannotExpireNewSession() async throws {
+        let store = PairStoreStub()
+        let transport = DeferredRefreshStub()
+        let counter = ExpiryCounter()
+        let coordinator = TokenRefreshCoordinator(store: store, transport: transport,
+                                                   onExpired: { _ in await counter.record() })
+        let oldRequest = Task { try await coordinator.validAccessToken(afterUnauthorized: "expired", sentGeneration: 0) }
+        while !(await transport.started) { await Task.yield() }
+        store.sessionGeneration = 1
+        store.tokens = AuthTokens(accessToken: "other-account", refreshToken: "other-refresh", expiresIn: 900)
+        await transport.failAsReused()
+        do {
+            _ = try await oldRequest.value
+            throw CheckFailure(message: "Old refresh response accepted after new login")
+        } catch RefreshFailure.invalidSession { }
+        let events = await counter.count
+        try check(events == 0 && store.accessToken == "other-account", "Old refresh expired new account")
     }
 
     static func mediaTransport() async throws {
@@ -104,9 +354,11 @@ enum NetworkingContractTests {
         config.protocolClasses = [ProtocolStub.self]
         let session = URLSession(configuration: config)
         defer { session.invalidateAndCancel(); ProtocolStub.handler = nil }
-        let token = RefreshingTokenStub()
+        let token = PairStoreStub()
+        let refresher = MediaRefreshStub()
+        let coordinator = TokenRefreshCoordinator(store: token, transport: refresher)
         let client = URLSessionAPIClient(baseURL: URL(string: "https://api.test/api/v1")!, session: session,
-                                         tokenProvider: token, logger: NoopNetworkLogger(), tokenRefresher: token)
+                                         tokenProvider: token, logger: NoopNetworkLogger(), refreshCoordinator: coordinator)
         let service = MediaUploadService(api: client, session: session)
         var ticketCalls = 0, putCalls = 0
         ProtocolStub.handler = { request in
@@ -129,7 +381,8 @@ enum NetworkingContractTests {
             return (putCalls == 1 ? 403 : 204, Data())
         }
         let ticket = try await service.uploadWithFreshTicket(Data([1, 2, 3, 4]), conversationId: "c", kind: .image)
-        try check(token.refreshCalls == 1 && token.accessToken == "fresh", "Ticket 401 refresh retry")
+        let refreshCalls = await refresher.calls
+        try check(refreshCalls == 1 && token.accessToken == "fresh", "Ticket 401 refresh retry")
         try check(ticketCalls == 2 && putCalls == 2, "PUT 403 did not obtain a fresh ticket")
         try check(ticket.publicURL.absoluteString == "https://cdn.test/file2.jpg", "Retry reused stale public URL")
     }
@@ -205,6 +458,12 @@ enum NetworkingContractTests {
         try check(!String(data: html, encoding: .utf8)!.contains("secret"), "Unstructured body leakage")
         let large = DiagnosticRedactor.body(Data(repeating: 65, count: 256_001))!
         try check(large.count < 100, "Oversized body retained")
+        var authRequest = URLRequest(url: URL(string: "https://api.test/api/v1/auth/refresh")!)
+        authRequest.httpBody = Data(#"{"refreshToken":"opaque-secret"}"#.utf8)
+        try check(DiagnosticRedactor.request(authRequest).httpBody == nil, "Auth request body persisted")
+        let authResponse = Data(#"{"data":{"accessToken":"secret","refreshToken":"opaque-secret"}}"#.utf8)
+        try check(DiagnosticRedactor.responseBody(authResponse, for: authRequest.url) == nil,
+                  "Auth response body persisted")
     }
 
     static func requests() throws {
@@ -215,6 +474,13 @@ enum NetworkingContractTests {
         try check(join["inviteCode"] as? String == "001234", "Leading zero invite code")
         let social = try body(AuthEndpoint.googleLogin(idToken: "google-id-token"))
         try check(social["token"] as? String == "google-id-token" && social["provider"] as? String == "google", "Social payload")
+        try check((social["deviceName"] as? String)?.count ?? 0 <= 100, "Device label too long")
+        let refresh = try body(AuthEndpoint.refresh(refreshToken: "opaque"))
+        try check(refresh.count == 1 && refresh["refreshToken"] as? String == "opaque", "Refresh body")
+        let logout = try body(AuthEndpoint.logout(refreshToken: "opaque"))
+        try check(logout["refreshToken"] as? String == "opaque", "Logout body")
+        let logoutAllBody = try AuthEndpoint.logoutAll.encodedBody()
+        try check(logoutAllBody == nil, "Logout-all body must be empty")
         let clear = try body(ChatEndpoint.update(conversationId: "c", request: .init(avatar: .clear)))
         try check(clear["avatarUrl"] is NSNull, "Explicit null avatar")
         let unchanged = try body(ChatEndpoint.update(conversationId: "c", request: .init(name: "Family")))

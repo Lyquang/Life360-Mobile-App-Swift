@@ -221,6 +221,11 @@
 "Tính năng tạm thời chưa khả dụng. Vui lòng thử lại sau." = "This feature is temporarily unavailable. Please try again later.";
 "Không thể kết nối dịch vụ. Vui lòng thử lại." = "Unable to connect to the service. Please try again.";
 "Thiếu token đăng nhập." = "The login token is missing.";
+"Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." = "Your session has expired. Please sign in again.";
+"Đăng xuất mọi thiết bị" = "Sign out on all devices";
+"Đăng xuất khỏi mọi thiết bị?" = "Sign out on all devices?";
+"Tất cả thiết bị sẽ cần đăng nhập lại." = "All devices will need to sign in again.";
+"Đã đăng xuất trên thiết bị này, nhưng chưa thể xác nhận trên máy chủ." = "Signed out on this device, but the server could not confirm sign-out.";
 "Không đọc được ảnh." = "Unable to read this image.";
 "URL tải ảnh không an toàn." = "The upload URL is not secure.";
 "Không thể tải ảnh lên. Vui lòng thử lại." = "Unable to upload the image. Please try again.";

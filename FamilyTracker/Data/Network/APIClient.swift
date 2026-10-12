@@ -2,8 +2,15 @@ import Foundation
 
 protocol AccessTokenProvider: AnyObject {
     var accessToken: String? { get }
+    var sessionGeneration: Int { get }
+    var tokenSnapshot: (token: String?, generation: Int) { get }
     /// Called on 401 with the token that was sent; must not remove a newer token saved by a later login.
     func invalidate(token: String)
+}
+
+extension AccessTokenProvider {
+    var sessionGeneration: Int { 0 }
+    var tokenSnapshot: (token: String?, generation: Int) { (accessToken, sessionGeneration) }
 }
 
 protocol APIClient {
@@ -15,27 +22,25 @@ final class URLSessionAPIClient: APIClient {
     private let session: URLSession
     private let tokenProvider: AccessTokenProvider
     private let logger: NetworkLogger
-    private let tokenRefresher: AccessTokenRefreshing?
-    private let refreshCoordinator: TokenRefreshCoordinator
+    private let refreshCoordinator: TokenRefreshCoordinator?
 
     init(baseURL: URL, session: URLSession = .shared, tokenProvider: AccessTokenProvider,
-         logger: NetworkLogger, tokenRefresher: AccessTokenRefreshing? = nil,
-         refreshCoordinator: TokenRefreshCoordinator = TokenRefreshCoordinator()) {
+         logger: NetworkLogger, refreshCoordinator: TokenRefreshCoordinator? = nil) {
         self.baseURL = baseURL
         self.session = session
         self.tokenProvider = tokenProvider
         self.logger = logger
-        self.tokenRefresher = tokenRefresher
         self.refreshCoordinator = refreshCoordinator
     }
 
     func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T {
-        try await send(endpoint, as: type, mayRefresh: true)
+        try await send(endpoint, as: type, mayRefresh: true, expectedGeneration: nil)
     }
 
     private func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
-                                    mayRefresh: Bool) async throws -> T {
-        let (request, sentToken) = try makeRequest(for: endpoint)
+                                    mayRefresh: Bool, expectedGeneration: Int?) async throws -> T {
+        let (request, sentToken, sentGeneration) = try makeRequest(for: endpoint)
+        if let expectedGeneration, sentGeneration != expectedGeneration { throw CancellationError() }
         let method = endpoint.method.rawValue
         let url = request.url?.absoluteString ?? endpoint.path
         let requestId = UUID()
@@ -69,17 +74,30 @@ final class URLSessionAPIClient: APIClient {
         do { envelope = try decoder.decode(APIErrorResponseDTO.self, from: data) }
         catch { envelope = nil } // A proxy may return HTML instead of the API envelope.
 
-        if (http.statusCode == 401 || envelope?.code == "UNAUTHORIZED"), let sentToken {
-            if mayRefresh, let tokenRefresher {
+        if http.statusCode == 401 || envelope?.code == "UNAUTHORIZED", let sentToken {
+            let isLogout = endpoint.path == "/auth/logout" || endpoint.path == "/auth/logout-all"
+            if isLogout { throw APIError.unauthorized }
+            if mayRefresh, let refreshCoordinator {
                 do {
-                    _ = try await refreshCoordinator.refresh(using: tokenRefresher)
-                    return try await send(endpoint, as: type, mayRefresh: false)
-                } catch {
-                    tokenProvider.invalidate(token: sentToken)
-                    throw APIError.unauthorized
+                    _ = try await refreshCoordinator.validAccessToken(afterUnauthorized: sentToken,
+                                                                      sentGeneration: sentGeneration)
+                    return try await send(endpoint, as: type, mayRefresh: false,
+                                          expectedGeneration: sentGeneration)
+                } catch let failure as RefreshFailure {
+                    switch failure {
+                    case .invalidSession, .storage: throw APIError.unauthorized
+                    case .rateLimited: throw APIError.http(status: 429, code: "RATE_LIMITED", message: nil, errors: [])
+                    case .network, .ambiguousNetwork: throw APIError.networkError("Không có kết nối mạng. Hãy thử lại.")
+                    case .server: throw APIError.serverError("Không thể làm mới phiên đăng nhập. Hãy thử lại.")
+                    case .cancelled: throw CancellationError()
+                    }
                 }
             }
-            tokenProvider.invalidate(token: sentToken)
+            if !mayRefresh {
+                await refreshCoordinator?.expireCurrentSession(after: sentToken,
+                                                               sentGeneration: sentGeneration)
+            }
+            else { tokenProvider.invalidate(token: sentToken) }
             throw APIError.unauthorized
         }
 
@@ -95,7 +113,7 @@ final class URLSessionAPIClient: APIClient {
         }
     }
 
-    private func makeRequest(for endpoint: Endpoint) throws -> (URLRequest, String?) {
+    private func makeRequest(for endpoint: Endpoint) throws -> (URLRequest, String?, Int) {
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent(endpoint.path), resolvingAgainstBaseURL: false
         ) else { throw APIError.invalidURL }
@@ -109,14 +127,15 @@ final class URLSessionAPIClient: APIClient {
             request.setValue(value, forHTTPHeaderField: key)
         }
 
+        let snapshot = tokenProvider.tokenSnapshot
         var token: String?
         if endpoint.requiresAuth {
-            guard let accessToken = tokenProvider.accessToken, !accessToken.isEmpty else { throw APIError.unauthorized }
+            guard let accessToken = snapshot.token, !accessToken.isEmpty else { throw APIError.unauthorized }
             token = accessToken
             request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
         }
 
         request.httpBody = try endpoint.encodedBody()
-        return (request, token)
+        return (request, token, snapshot.generation)
     }
 }

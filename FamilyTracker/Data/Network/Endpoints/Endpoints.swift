@@ -1,19 +1,50 @@
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
+
+private enum DeviceLabel {
+    static var value: String {
+        #if canImport(UIKit)
+        String("\(UIDevice.current.model) iOS \(UIDevice.current.systemVersion)".prefix(100))
+        #else
+        "Apple device"
+        #endif
+    }
+}
 
 enum AuthEndpoint {
     static func login(email: String, password: String) -> Endpoint {
         Endpoint(path: "/auth/login", method: .POST, requiresAuth: false,
-                 payload: LoginRequestDTO(email: email, password: password))
+                 payload: LoginRequestDTO(email: email, password: password, deviceName: DeviceLabel.value))
     }
 
     static func register(name: String, email: String, password: String) -> Endpoint {
         Endpoint(path: "/auth/register", method: .POST,
-                 requiresAuth: false, payload: RegisterRequestDTO(name: name, email: email, password: password))
+                 requiresAuth: false, payload: RegisterRequestDTO(name: name, email: email, password: password,
+                                                                    deviceName: DeviceLabel.value))
     }
 
-    static func googleLogin(idToken: String) -> Endpoint {
+    static func googleLogin(idToken googleIdToken: String) -> Endpoint {
         Endpoint(path: "/auth/social-login", method: .POST, requiresAuth: false,
-                 payload: SocialLoginRequestDTO(provider: "google", token: idToken))
+                 payload: SocialLoginRequestDTO(provider: "google", token: googleIdToken,
+                                                deviceName: DeviceLabel.value))
+    }
+
+    static func refresh(refreshToken: String) -> Endpoint {
+        Endpoint(path: "/auth/refresh", method: .POST, requiresAuth: false,
+                 payload: RefreshTokenRequestDTO(refreshToken: refreshToken))
+    }
+
+    static func logout(refreshToken: String) -> Endpoint {
+        Endpoint(path: "/auth/logout", method: .POST, payload: LogoutRequestDTO(refreshToken: refreshToken))
+    }
+
+    static let logoutAll = Endpoint(path: "/auth/logout-all", method: .POST)
+
+    static func changePassword(current: String, new: String) -> Endpoint {
+        Endpoint(path: "/auth/change-password", method: .POST,
+                 payload: ChangePasswordRequestDTO(currentPassword: current, newPassword: new))
     }
 
     static let me = Endpoint(path: "/auth/me")

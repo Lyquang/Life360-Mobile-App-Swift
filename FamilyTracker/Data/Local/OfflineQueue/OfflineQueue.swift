@@ -33,6 +33,12 @@ final class OfflineQueue {
         return items.count
     }
 
+    func clear() {
+        lock.lock(); defer { lock.unlock() }
+        items.removeAll()
+        persistLocked()
+    }
+
     func enqueue(event: String, payload: [String: Any], coalesceKey: String? = nil) {
         guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return }
         lock.lock()

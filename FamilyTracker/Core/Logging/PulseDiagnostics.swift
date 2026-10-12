@@ -36,7 +36,7 @@ final class PulseDiagnostics: NetworkLogger {
             return HTTPURLResponse(url: url, statusCode: response.statusCode, httpVersion: nil,
                                    headerFields: DiagnosticRedactor.headers(headers))
         }
-        let safeData = DiagnosticRedactor.body(data)
+        let safeData = DiagnosticRedactor.responseBody(data, for: request.url)
         // NSError.userInfo can embed raw URLs, headers and server payloads.
         let safeError = error.map { NSError(domain: ($0 as NSError).domain, code: ($0 as NSError).code) }
         let summary = "\(request.httpMethod ?? "GET") \(safeRequest.url?.absoluteString ?? "")"

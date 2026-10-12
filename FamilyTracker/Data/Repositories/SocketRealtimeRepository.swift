@@ -22,7 +22,7 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     var connectionState: RealtimeConnectionState { Self.map(socket.status) }
 
     func connect(token: String) { socket.connect(token: token) }
-    func disconnect() { socket.disconnect() }
+    func disconnect() { socket.disconnect(); offlineQueue.clear() }
     func observeConnectionState() -> AsyncStream<RealtimeConnectionState> { connection.stream() }
 
     // MARK: - LiveLocationRepository

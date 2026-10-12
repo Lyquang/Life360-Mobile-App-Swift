@@ -221,6 +221,11 @@
 "Tính năng tạm thời chưa khả dụng. Vui lòng thử lại sau." = "Tính năng tạm thời chưa khả dụng. Vui lòng thử lại sau.";
 "Không thể kết nối dịch vụ. Vui lòng thử lại." = "Không thể kết nối dịch vụ. Vui lòng thử lại.";
 "Thiếu token đăng nhập." = "Thiếu token đăng nhập.";
+"Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại." = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+"Đăng xuất mọi thiết bị" = "Đăng xuất mọi thiết bị";
+"Đăng xuất khỏi mọi thiết bị?" = "Đăng xuất khỏi mọi thiết bị?";
+"Tất cả thiết bị sẽ cần đăng nhập lại." = "Tất cả thiết bị sẽ cần đăng nhập lại.";
+"Đã đăng xuất trên thiết bị này, nhưng chưa thể xác nhận trên máy chủ." = "Đã đăng xuất trên thiết bị này, nhưng chưa thể xác nhận trên máy chủ.";
 "Không đọc được ảnh." = "Không đọc được ảnh.";
 "URL tải ảnh không an toàn." = "URL tải ảnh không an toàn.";
 "Không thể tải ảnh lên. Vui lòng thử lại." = "Không thể tải ảnh lên. Vui lòng thử lại.";

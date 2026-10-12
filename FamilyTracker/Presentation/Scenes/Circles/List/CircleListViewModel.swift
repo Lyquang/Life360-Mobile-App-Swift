@@ -19,6 +19,7 @@ final class CircleListViewModel: ObservableObject {
     @Published private(set) var members: [User] = []
     @Published private(set) var isLoading = false
     @Published private(set) var isMembersLoading = false
+    @Published private(set) var membersErrorMessage: String?
     /// Form errors shown inline in create/join sheets.
     @Published var errorMessage: String?
     /// Loading errors shown as an alert on the list.
@@ -34,6 +35,8 @@ final class CircleListViewModel: ObservableObject {
     private let observePresence: ObservePresenceUseCase
     private let openDirectChat: OpenDirectChatUseCase
     private var presenceTask: Task<Void, Never>?
+    private var groupLoadTask: Task<Void, Never>?
+    private var memberLoadGeneration = 0
 
     init(
         fetchMyCircles: FetchMyCirclesUseCase,
@@ -53,6 +56,7 @@ final class CircleListViewModel: ObservableObject {
 
     deinit {
         presenceTask?.cancel()
+        groupLoadTask?.cancel()
     }
 
     func startObservingPresence() {
@@ -66,14 +70,29 @@ final class CircleListViewModel: ObservableObject {
     }
 
     func loadGroups() async {
+        if let groupLoadTask {
+            await groupLoadTask.value
+            return
+        }
         isLoading = true
         loadErrorMessage = nil
-        defer { isLoading = false }
-        do {
-            groups = try await fetchMyCircles()
-        } catch {
-            loadErrorMessage = error.localizedDescription
+        let fetch = fetchMyCircles
+        let task = Task { [weak self, fetch] in
+            let result: Result<[FamilyGroup], Error>
+            do { result = .success(try await fetch()) }
+            catch { result = .failure(error) }
+            guard let self else { return }
+            switch result {
+            case .success(let groups): self.groups = groups
+            case .failure(let error) where !(error is CancellationError):
+                self.loadErrorMessage = error.localizedDescription
+            case .failure: break
+            }
+            self.isLoading = false
+            self.groupLoadTask = nil
         }
+        groupLoadTask = task
+        await task.value
     }
 
     /// Returns true on success so the sheet can dismiss itself.
@@ -110,13 +129,33 @@ final class CircleListViewModel: ObservableObject {
     }
 
     func loadMembers(for group: FamilyGroup) async {
+        memberLoadGeneration += 1
+        let requestGeneration = memberLoadGeneration
+        members = []
+        membersErrorMessage = nil
         isMembersLoading = true
-        defer { isMembersLoading = false }
         do {
-            members = try await fetchMembers(circleId: group.id)
+            let loaded = try await fetchMembers(circleId: group.id)
+            if requestGeneration == memberLoadGeneration, !Task.isCancelled {
+                members = loaded
+            }
+        } catch is CancellationError {
+            // Closing the sheet cancels its request without showing an error.
         } catch {
-            loadErrorMessage = error.localizedDescription
+            if requestGeneration == memberLoadGeneration, !Task.isCancelled {
+                membersErrorMessage = error.localizedDescription
+            }
         }
+        if requestGeneration == memberLoadGeneration {
+            isMembersLoading = false
+        }
+    }
+
+    func clearMembers() {
+        memberLoadGeneration += 1
+        members = []
+        membersErrorMessage = nil
+        isMembersLoading = false
     }
 
     func clearMessages() {
