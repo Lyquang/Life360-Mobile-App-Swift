@@ -3,7 +3,7 @@ import SwiftUI
 @MainActor
 final class ChatCoordinator: NavigationCoordinator {
     enum Route: Hashable {
-        case conversation(id: String, title: String)
+        case conversation(id: String, title: String, emptyGreetingName: String?)
     }
 
     @Published var path = NavigationPath()
@@ -24,11 +24,25 @@ final class ChatCoordinator: NavigationCoordinator {
 
     func openConversation(id: String, title: String) {
         popToRoot()
-        push(.conversation(id: id, title: title))
+        push(.conversation(id: id, title: title, emptyGreetingName: nil))
     }
 
     func show(_ conversation: Conversation) {
-        push(.conversation(id: conversation.id, title: conversation.displayName))
+        let title = conversation.displayName
+        push(.conversation(
+            id: conversation.id,
+            title: title,
+            emptyGreetingName: conversation.type == .direct ? title : nil
+        ))
+    }
+
+    func openDirectConversation(_ conversation: Conversation, fallbackTitle: String) {
+        listViewModel.upsert(conversation)
+        listViewModel.refreshInBackground()
+        let displayName = conversation.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let title = displayName.isEmpty ? fallbackTitle : displayName
+        popToRoot()
+        push(.conversation(id: conversation.id, title: title, emptyGreetingName: title))
     }
 
     func didOpen(conversationId: String) {
@@ -42,10 +56,15 @@ final class ChatCoordinator: NavigationCoordinator {
         }
     }
 
-    func makeChatViewModel(conversationId: String, title: String) -> ChatViewModel {
+    func makeChatViewModel(
+        conversationId: String,
+        title: String,
+        emptyGreetingName: String?
+    ) -> ChatViewModel {
         ChatViewModel(
             conversationId: conversationId,
             title: title,
+            emptyGreetingName: emptyGreetingName,
             currentUserId: currentUser.id,
             fetchMessages: container.fetchMessages,
             sendText: container.sendTextMessage,
@@ -72,8 +91,12 @@ struct ChatCoordinatorView: View {
             ConversationListView(viewModel: coordinator.listViewModel, onSelect: coordinator.show)
                 .navigationDestination(for: ChatCoordinator.Route.self) { route in
                     switch route {
-                    case let .conversation(id, title):
-                        ChatView(viewModel: coordinator.makeChatViewModel(conversationId: id, title: title))
+                    case let .conversation(id, title, emptyGreetingName):
+                        ChatView(viewModel: coordinator.makeChatViewModel(
+                            conversationId: id,
+                            title: title,
+                            emptyGreetingName: emptyGreetingName
+                        ))
                             .onAppear { coordinator.didOpen(conversationId: id) }
                             .onDisappear { coordinator.didClose(conversationId: id) }
                     }
