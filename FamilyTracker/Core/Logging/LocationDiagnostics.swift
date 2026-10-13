@@ -1,0 +1,235 @@
+import Foundation
+
+#if DEBUG
+import UIKit
+#endif
+
+/// In-memory, aggregate-only measurement. The Release implementation is inert.
+final class LocationDiagnostics {
+    enum DropReason: String {
+        case invalidHorizontalAccuracy
+    }
+
+    struct Snapshot {
+        let emitted: [String: Int]
+        let heartbeatAttempts: Int
+        let motionTransitions: Int
+        let managerReconfigurations: Int
+        let dropped: [String: Int]
+        let offlineQueueEnqueues: Int
+    }
+
+    #if DEBUG
+    private struct State {
+        var startedAt: Date?
+        var startBattery: Int?
+        var currentMotion: MotionActivity = .unknown
+        var segmentStartedAt: Date?
+        var segmentBattery: Int?
+        var segmentSeconds: [String: TimeInterval] = [:]
+        var segmentBatteryDrop: [String: Int] = [:]
+        var emitted: [String: Int] = [:]
+        var heartbeatAttempts = 0
+        var motionTransitions = 0
+        var managerReconfigurations = 0
+        var dropped: [String: Int] = [:]
+        var offlineQueueEnqueues = 0
+    }
+
+    private let logger: NetworkLogger
+    private let battery: BatterySnapshot
+    private let enabled: Bool
+    private let summaryInterval: TimeInterval
+    private let lock = NSLock()
+    private var state = State()
+    private var timer: DispatchSourceTimer?
+    private var backgroundObserver: NSObjectProtocol?
+
+    init(logger: NetworkLogger, battery: BatterySnapshot, enabled: Bool = true,
+         summaryInterval: TimeInterval = 15 * 60, observesBackground: Bool = true) {
+        self.logger = logger
+        self.battery = battery
+        self.enabled = enabled
+        self.summaryInterval = summaryInterval
+        if enabled && observesBackground {
+            backgroundObserver = NotificationCenter.default.addObserver(
+                forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: nil
+            ) { [weak self] _ in self?.logSummary() }
+        }
+    }
+
+    deinit {
+        timer?.cancel()
+        if let backgroundObserver { NotificationCenter.default.removeObserver(backgroundObserver) }
+    }
+
+    func startSession(batteryLevel: Int?, now: Date = Date()) {
+        guard enabled else { return }
+        lock.lock()
+        state = State()
+        state.startedAt = now
+        state.startBattery = batteryLevel
+        state.segmentStartedAt = now
+        state.segmentBattery = batteryLevel
+        lock.unlock()
+
+        timer?.cancel()
+        let nextTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        nextTimer.schedule(deadline: .now() + summaryInterval, repeating: summaryInterval)
+        nextTimer.setEventHandler { [weak self] in self?.logSummary() }
+        timer = nextTimer
+        nextTimer.resume()
+    }
+
+    func stopSession(batteryLevel: Int?, now: Date = Date()) {
+        guard enabled else { return }
+        lock.lock()
+        guard state.startedAt != nil else { lock.unlock(); return }
+        closeSegment(at: now, batteryLevel: batteryLevel)
+        lock.unlock()
+        logSummary(now: now, endBattery: batteryLevel)
+        timer?.cancel()
+        timer = nil
+        lock.lock()
+        state.startedAt = nil
+        lock.unlock()
+    }
+
+    func reset() {
+        guard enabled else { return }
+        timer?.cancel()
+        timer = nil
+        lock.lock()
+        state = State()
+        lock.unlock()
+    }
+
+    func recordMotion(_ motion: MotionActivity, now: Date = Date()) {
+        guard enabled else { return }
+        let level = battery.level
+        lock.lock()
+        defer { lock.unlock() }
+        guard state.startedAt != nil, motion != state.currentMotion else { return }
+        closeSegment(at: now, batteryLevel: level)
+        state.currentMotion = motion
+        state.motionTransitions += 1
+        state.segmentStartedAt = now
+        state.segmentBattery = level
+    }
+
+    func recordManagerReconfiguration() {
+        update { $0.managerReconfigurations += 1 }
+    }
+
+    func recordDrop(_ reason: DropReason) {
+        update { $0.dropped[reason.rawValue, default: 0] += 1 }
+    }
+
+    func recordHeartbeatAttempt() {
+        update { $0.heartbeatAttempts += 1 }
+    }
+
+    func recordEmit() {
+        update { state in
+            let motion = Self.name(state.currentMotion)
+            state.emitted[motion, default: 0] += 1
+        }
+    }
+
+    func recordOfflineEnqueue() {
+        update { $0.offlineQueueEnqueues += 1 }
+    }
+
+    func snapshot() -> Snapshot {
+        lock.lock()
+        defer { lock.unlock() }
+        return Snapshot(emitted: state.emitted, heartbeatAttempts: state.heartbeatAttempts,
+                        motionTransitions: state.motionTransitions,
+                        managerReconfigurations: state.managerReconfigurations,
+                        dropped: state.dropped, offlineQueueEnqueues: state.offlineQueueEnqueues)
+    }
+
+    func summary(now: Date = Date(), endBattery: Int? = nil) -> [String: Any]? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let startedAt = state.startedAt else { return nil }
+        var durations = state.segmentSeconds
+        if let segmentStartedAt = state.segmentStartedAt {
+            durations[Self.name(state.currentMotion), default: 0] += max(0, now.timeIntervalSince(segmentStartedAt))
+        }
+        var result: [String: Any] = [
+            "durationSeconds": max(0, now.timeIntervalSince(startedAt)),
+            "emittedByMotionAtTransport": state.emitted,
+            "heartbeatAttempts": state.heartbeatAttempts,
+            "motionTransitions": state.motionTransitions,
+            "managerReconfigurations": state.managerReconfigurations,
+            "droppedByReason": state.dropped,
+            "offlineQueueEnqueues": state.offlineQueueEnqueues,
+            "secondsByMotion": durations,
+            "batteryDropByMotionPercentagePoints": state.segmentBatteryDrop,
+            "offlineReplayUsesMotionAtEmitTime": true
+        ]
+        if let start = state.startBattery { result["startBatteryPercent"] = start }
+        if let endBattery {
+            result["endBatteryPercent"] = endBattery
+            if let start = state.startBattery, start >= endBattery {
+                result["batteryDropPercentagePoints"] = start - endBattery
+            }
+        }
+        return DiagnosticRedactor.json(result) as? [String: Any]
+    }
+
+    func logSummary(now: Date = Date(), endBattery: Int? = nil) {
+        guard enabled, let payload = summary(now: now, endBattery: endBattery) else { return }
+        logger.logSocket(event: "location_diagnostics_summary", payload: payload)
+    }
+
+    private func update(_ change: (inout State) -> Void) {
+        guard enabled else { return }
+        lock.lock()
+        if state.startedAt != nil { change(&state) }
+        lock.unlock()
+    }
+
+    /// Called with the diagnostics lock held.
+    private func closeSegment(at now: Date, batteryLevel: Int?) {
+        let name = Self.name(state.currentMotion)
+        if let segmentStartedAt = state.segmentStartedAt {
+            state.segmentSeconds[name, default: 0] += max(0, now.timeIntervalSince(segmentStartedAt))
+        }
+        if let start = state.segmentBattery, let end = batteryLevel, start >= end {
+            state.segmentBatteryDrop[name, default: 0] += start - end
+        }
+        state.segmentStartedAt = nil
+    }
+
+    private static func name(_ motion: MotionActivity) -> String {
+        switch motion {
+        case .stationary: return "stationary"
+        case .walking: return "walking"
+        case .running: return "running"
+        case .cycling: return "cycling"
+        case .automotive: return "automotive"
+        case .unknown: return "unknown"
+        }
+    }
+    #else
+    init(logger: NetworkLogger, battery: BatterySnapshot, enabled: Bool = true,
+         summaryInterval: TimeInterval = 15 * 60, observesBackground: Bool = true) {}
+    func startSession(batteryLevel: Int?, now: Date = Date()) {}
+    func stopSession(batteryLevel: Int?, now: Date = Date()) {}
+    func reset() {}
+    func recordMotion(_ motion: MotionActivity, now: Date = Date()) {}
+    func recordManagerReconfiguration() {}
+    func recordDrop(_ reason: DropReason) {}
+    func recordHeartbeatAttempt() {}
+    func recordEmit() {}
+    func recordOfflineEnqueue() {}
+    func snapshot() -> Snapshot {
+        Snapshot(emitted: [:], heartbeatAttempts: 0, motionTransitions: 0,
+                 managerReconfigurations: 0, dropped: [:], offlineQueueEnqueues: 0)
+    }
+    func summary(now: Date = Date(), endBattery: Int? = nil) -> [String: Any]? { nil }
+    func logSummary(now: Date = Date(), endBattery: Int? = nil) {}
+    #endif
+}

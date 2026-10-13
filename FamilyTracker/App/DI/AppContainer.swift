@@ -26,6 +26,7 @@ final class AppContainer {
     // MARK: Core
     let logger: NetworkLogger
     let batteryMonitor: BatteryMonitor
+    private let locationDiagnostics: LocationDiagnostics
     let pushService: PushNotificationService
     private let socketClient: SocketIOClientAdapter
     private let locationService: CLLocationService
@@ -64,10 +65,11 @@ final class AppContainer {
         logger = NoopNetworkLogger()
         #endif
         batteryMonitor = BatteryMonitor()
+        locationDiagnostics = LocationDiagnostics(logger: logger, battery: batteryMonitor.snapshot)
         pushService = PushNotificationService()
         session = KeychainSessionRepository()
         socketClient = SocketIOClientAdapter(url: environment.socketURL, logger: logger, tokenProvider: session)
-        locationService = CLLocationService(battery: batteryMonitor.snapshot)
+        locationService = CLLocationService(battery: batteryMonitor.snapshot, diagnostics: locationDiagnostics)
         let refreshTransport = URLSessionRefreshTransport(baseURL: environment.apiBaseURL, logger: logger)
         let events = sessionEvents
         let socket = socketClient
@@ -114,7 +116,8 @@ final class AppContainer {
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)
         historyRepository = HistoryRepositoryImpl(api: api)
-        realtime = SocketRealtimeRepository(socket: socketClient, offlineQueue: offlineQueue)
+        realtime = SocketRealtimeRepository(socket: socketClient, offlineQueue: offlineQueue,
+                                            diagnostics: locationDiagnostics)
         chatRepository = ChatRepositoryImpl(api: api, socket: socketClient)
         mediaRepository = MediaRepositoryImpl(
             uploader: MediaUploadService(api: api, logger: logger)
@@ -127,7 +130,8 @@ final class AppContainer {
         shareLocation = ShareLocationUseCase(
             deviceLocation: deviceLocation,
             liveLocation: realtime,
-            deviceStatus: deviceStatus
+            deviceStatus: deviceStatus,
+            diagnostics: locationDiagnostics
         )
     }
 

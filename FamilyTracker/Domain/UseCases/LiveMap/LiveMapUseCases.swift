@@ -38,6 +38,7 @@ final class ShareLocationUseCase {
     private let deviceLocation: DeviceLocationRepository
     private let liveLocation: LiveLocationRepository
     private let deviceStatus: DeviceStatusRepository
+    private let diagnostics: LocationDiagnostics?
 
     private let minDistance: Double
     private let minInterval: TimeInterval
@@ -52,12 +53,14 @@ final class ShareLocationUseCase {
         deviceLocation: DeviceLocationRepository,
         liveLocation: LiveLocationRepository,
         deviceStatus: DeviceStatusRepository,
+        diagnostics: LocationDiagnostics? = nil,
         minDistance: Double = 50,
         minInterval: TimeInterval = 30
     ) {
         self.deviceLocation = deviceLocation
         self.liveLocation = liveLocation
         self.deviceStatus = deviceStatus
+        self.diagnostics = diagnostics
         self.minDistance = minDistance
         self.minInterval = minInterval
     }
@@ -65,6 +68,7 @@ final class ShareLocationUseCase {
     func start() {
         guard !isSharing else { return }
         isSharing = true
+        diagnostics?.startSession(batteryLevel: deviceStatus.batteryLevel)
         deviceLocation.requestPermission()
         deviceLocation.startTracking()
 
@@ -81,6 +85,7 @@ final class ShareLocationUseCase {
                 try? await Task.sleep(nanoseconds: interval)
                 guard let self else { return }
                 if let fix = self.deviceLocation.lastKnownFix {
+                    self.diagnostics?.recordHeartbeatAttempt()
                     self.handle(fix)
                 }
             }
@@ -88,6 +93,7 @@ final class ShareLocationUseCase {
     }
 
     func stop() {
+        diagnostics?.stopSession(batteryLevel: deviceStatus.batteryLevel)
         streamTask?.cancel()
         heartbeatTask?.cancel()
         streamTask = nil

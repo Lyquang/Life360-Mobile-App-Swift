@@ -17,6 +17,7 @@ final class CLLocationService: NSObject, LocationService {
     private let motion: MotionActivityService
     private let policy: AdaptiveLocationPolicy
     private let battery: BatterySnapshot?
+    private let diagnostics: LocationDiagnostics?
 
     private var currentActivity: MotionActivity = .unknown
     private var appliedSettings: LocationSettings?
@@ -29,11 +30,13 @@ final class CLLocationService: NSObject, LocationService {
     init(
         motion: MotionActivityService = MotionActivityService(),
         policy: AdaptiveLocationPolicy = AdaptiveLocationPolicy(),
-        battery: BatterySnapshot? = nil
+        battery: BatterySnapshot? = nil,
+        diagnostics: LocationDiagnostics? = nil
     ) {
         self.motion = motion
         self.policy = policy
         self.battery = battery
+        self.diagnostics = diagnostics
         super.init()
         manager.delegate = self
         manager.pausesLocationUpdatesAutomatically = true
@@ -61,6 +64,7 @@ final class CLLocationService: NSObject, LocationService {
         isRunning = true
         configureBackgroundUpdates()
         motion.start { [weak self] activity in
+            self?.diagnostics?.recordMotion(activity)
             self?.currentActivity = activity
             self?.applyPolicy()
         }
@@ -98,6 +102,7 @@ final class CLLocationService: NSObject, LocationService {
             batteryLevel: battery?.level
         )
         guard force || settings != appliedSettings else { return }
+        diagnostics?.recordManagerReconfiguration()
         appliedSettings = settings
 
         manager.desiredAccuracy = settings.desiredAccuracy
@@ -128,7 +133,11 @@ extension CLLocationService: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.last, location.horizontalAccuracy >= 0 else { return }
+        guard let location = locations.last else { return }
+        guard location.horizontalAccuracy >= 0 else {
+            diagnostics?.recordDrop(.invalidHorizontalAccuracy)
+            return
+        }
         lastLocation = location
         onLocationUpdate?(location)
     }
