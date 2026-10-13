@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import CoreLocation
 import GoogleSignIn
 
 @MainActor
@@ -133,6 +134,11 @@ final class AppContainer {
             deviceStatus: deviceStatus,
             diagnostics: locationDiagnostics
         )
+        let locationSharing = shareLocation
+        locationService.onAuthorizationChange = { status in
+            guard status == .denied || status == .restricted else { return }
+            Task { @MainActor in locationSharing.stop() }
+        }
     }
 
     // MARK: - Session lifecycle
