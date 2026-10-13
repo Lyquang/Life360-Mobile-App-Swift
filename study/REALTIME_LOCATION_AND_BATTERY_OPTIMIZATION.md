@@ -97,7 +97,7 @@ lastSent = (point, now)
 liveLocation.sendLocation(point, batteryLevel: deviceStatus.batteryLevel)
 ```
 
-Vì cả hai điều kiện nhỏ hơn ngưỡng phải **đồng thời** đúng mới bỏ điểm, phép gửi thực tế là `d >= 50 m OR elapsed >= 30 s`. Điểm đầu tiên gửi ngay. Heartbeat thử `handle(lastKnownLocation)` mỗi 30 s, vì vậy máy đứng yên **không** có nhịp 5–15 phút như mục tiêu đề bài. Heartbeat gửi lại tọa độ cũ, không ép CoreLocation đo GPS mới. `lastSent` ghi nhận lần **thử gửi**, không phải ack từ server. Hiện `Task.sleep` dùng `try?`; khi `stop()` hủy task, vòng lặp vẫn có thể xử lý thêm một heartbeat trước khi thoát. Đây là cạnh cần sửa/kiểm thử riêng, không nên coi logout là bảo đảm không có thêm emit.
+Vì cả hai điều kiện nhỏ hơn ngưỡng phải **đồng thời** đúng mới bỏ điểm, phép gửi thực tế là `d >= 50 m OR elapsed >= 30 s`. Điểm đầu tiên gửi ngay. Heartbeat thử `handle(lastKnownLocation)` mỗi 30 s, vì vậy máy đứng yên **không** có nhịp 5–15 phút như mục tiêu đề bài. Heartbeat gửi lại tọa độ cũ, không ép CoreLocation đo GPS mới. `lastSent` ghi nhận lần **thử gửi**, không phải ack từ server. Từ P3, sleeper ném `CancellationError` khi `stop()` hủy task và vòng lặp kiểm tra cancellation cả trước lẫn sau sleep, nên heartbeat cũ không thể emit sau stop/logout.
 
 Ví dụ định lượng, chỉ là ước lượng khi có GPS callback đều: tại 5 km/h, 50 m mất khoảng 36 s nên nhịp 30 s có thể chi phối; tại 60 km/h, 50 m mất khoảng 3 s nên app có thể emit nhiều hơn 1 lần/30 s. `distanceFilter` là ngưỡng yêu cầu hệ điều hành, **không phải lịch hẹn chính xác**; nhiễu, chất lượng tín hiệu, pause/background làm khoảng cách thực tế khác đi.
 

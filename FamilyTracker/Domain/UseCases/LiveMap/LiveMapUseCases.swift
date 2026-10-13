@@ -35,10 +35,13 @@ struct GetCurrentLocationUseCase {
 /// send only when moved >= 50m or >= 30s since the last update, plus a heartbeat while stationary.
 @MainActor
 final class ShareLocationUseCase {
+    typealias Sleeper = @Sendable (UInt64) async throws -> Void
+
     private let deviceLocation: DeviceLocationRepository
     private let liveLocation: LiveLocationRepository
     private let deviceStatus: DeviceStatusRepository
     private let diagnostics: LocationDiagnostics?
+    private let sleeper: Sleeper
 
     private let minDistance: Double
     private let minInterval: TimeInterval
@@ -54,6 +57,7 @@ final class ShareLocationUseCase {
         liveLocation: LiveLocationRepository,
         deviceStatus: DeviceStatusRepository,
         diagnostics: LocationDiagnostics? = nil,
+        sleeper: @escaping Sleeper = { try await Task.sleep(nanoseconds: $0) },
         minDistance: Double = 50,
         minInterval: TimeInterval = 30
     ) {
@@ -61,6 +65,7 @@ final class ShareLocationUseCase {
         self.liveLocation = liveLocation
         self.deviceStatus = deviceStatus
         self.diagnostics = diagnostics
+        self.sleeper = sleeper
         self.minDistance = minDistance
         self.minInterval = minInterval
     }
@@ -81,9 +86,16 @@ final class ShareLocationUseCase {
 
         let interval = UInt64(minInterval * 1_000_000_000)
         heartbeatTask = Task { [weak self] in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: interval)
-                guard let self else { return }
+            while true {
+                guard !Task.isCancelled, let self else { return }
+                do {
+                    try await self.sleeper(interval)
+                } catch is CancellationError {
+                    return
+                } catch {
+                    return
+                }
+                guard !Task.isCancelled else { return }
                 if let fix = self.deviceLocation.lastKnownFix {
                     self.diagnostics?.recordHeartbeatAttempt()
                     self.handle(fix)

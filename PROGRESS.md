@@ -33,6 +33,11 @@ Legend:
   and motion boundaries; Pulse writes summaries every 15 minutes while active,
   on backgrounding and on stop. Release is no-op. Debug/Release Simulator builds
   and contract scripts pass; XCTest target and real-device Energy Log remain pending.
+- `[x]` Location P3 privacy fix: heartbeat cancellation now exits before reading or
+  emitting the last fix, including cancellation while sleeping and the wake/stop
+  race. Logout/session expiry retain their shared stop paths; denied/restricted
+  location permission now stops sharing. Debug/Release Simulator builds and contract
+  scripts pass; lifecycle XCTest source awaits a configured test target.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
@@ -139,6 +144,13 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-13: Replaced the heartbeat's cancellation-swallowing `try?` with an
+  injected sleeper and explicit pre/post-sleep cancellation exits. Added lifecycle
+  regression source for pending sleep, wake/stop race, failed server logout, double
+  start and stop/restart. Location authorization revocation routes to the same
+  `ShareLocationUseCase.stop()`. See `.spec/location-heartbeat-cancellation.md` and
+  `study/location/P3-heartbeat-cancellation.md`.
 
 - 2026-10-13: Implemented approved P2 without changing GPS policy, send threshold,
   socket payload, backend or UI. See `.spec/location-diagnostics.md` and
