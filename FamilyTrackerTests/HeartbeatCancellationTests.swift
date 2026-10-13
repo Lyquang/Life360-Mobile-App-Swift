@@ -153,6 +153,7 @@ private final class HeartbeatSleeperGate: @unchecked Sendable {
 private final class HeartbeatDeviceLocationMock: DeviceLocationRepository {
     var authorization: LocationAuthorization = .always
     var lastKnownFix: LocationFix?
+    var currentMotionState: MotionState = .unknown
     var lastKnownLocation: GeoPoint? { lastKnownFix?.point }
     private let fixes = AsyncStream<LocationFix> { _ in }
 
@@ -162,6 +163,7 @@ private final class HeartbeatDeviceLocationMock: DeviceLocationRepository {
     func stopTracking() {}
     func observeLocations() -> AsyncStream<GeoPoint> { AsyncStream { _ in } }
     func observeFixes() -> AsyncStream<LocationFix> { fixes }
+    func observeMotionStates() -> AsyncStream<MotionState> { AsyncStream { _ in } }
 }
 
 private final class HeartbeatLiveLocationMock: LiveLocationRepository {

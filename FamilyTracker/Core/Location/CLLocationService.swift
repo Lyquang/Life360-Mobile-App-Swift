@@ -3,7 +3,9 @@ import CoreLocation
 protocol LocationService: AnyObject {
     var authorizationStatus: CLAuthorizationStatus { get }
     var lastLocation: CLLocation? { get }
+    var currentMotionActivity: MotionActivity { get }
     var onLocationUpdate: ((CLLocation) -> Void)? { get set }
+    var onMotionChange: ((MotionActivity) -> Void)? { get set }
     var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)? { get set }
     func requestAuthorization()
     func start()
@@ -19,12 +21,13 @@ final class CLLocationService: NSObject, LocationService {
     private let battery: BatterySnapshot?
     private let diagnostics: LocationDiagnostics?
 
-    private var currentActivity: MotionActivity = .unknown
+    private(set) var currentMotionActivity: MotionActivity = .unknown
     private var appliedSettings: LocationSettings?
     private var isRunning = false
 
     private(set) var lastLocation: CLLocation?
     var onLocationUpdate: ((CLLocation) -> Void)?
+    var onMotionChange: ((MotionActivity) -> Void)?
     var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)?
 
     init(
@@ -64,9 +67,12 @@ final class CLLocationService: NSObject, LocationService {
         isRunning = true
         configureBackgroundUpdates()
         motion.start { [weak self] activity in
-            self?.diagnostics?.recordMotion(activity)
-            self?.currentActivity = activity
-            self?.applyPolicy()
+            guard let self else { return }
+            self.diagnostics?.recordMotion(activity)
+            let changed = activity != self.currentMotionActivity
+            self.currentMotionActivity = activity
+            if changed { self.onMotionChange?(activity) }
+            self.applyPolicy()
         }
         applyPolicy(force: true)
     }
@@ -97,7 +103,7 @@ final class CLLocationService: NSObject, LocationService {
     private func applyPolicy(force: Bool = false) {
         guard isRunning, isAuthorized else { return }
         let settings = policy.settings(
-            for: currentActivity,
+            for: currentMotionActivity,
             isLowPowerMode: ProcessInfo.processInfo.isLowPowerModeEnabled,
             batteryLevel: battery?.level
         )

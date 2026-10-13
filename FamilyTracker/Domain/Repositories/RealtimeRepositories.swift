@@ -23,11 +23,13 @@ protocol DeviceLocationRepository: AnyObject {
     var authorization: LocationAuthorization { get }
     var lastKnownLocation: GeoPoint? { get }
     var lastKnownFix: LocationFix? { get }
+    var currentMotionState: MotionState { get }
     func requestPermission()
     func startTracking()
     func stopTracking()
     func observeLocations() -> AsyncStream<GeoPoint>
     func observeFixes() -> AsyncStream<LocationFix>
+    func observeMotionStates() -> AsyncStream<MotionState>
 }
 
 @MainActor

@@ -5,6 +5,7 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
     private let service: LocationService
     private let broadcaster = AsyncBroadcaster<GeoPoint>()
     private let fixBroadcaster = AsyncBroadcaster<LocationFix>()
+    private let motionBroadcaster = AsyncBroadcaster<MotionState>()
 
     init(service: LocationService) {
         self.service = service
@@ -13,6 +14,9 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
             let fix = Self.fix(location)
             self.fixBroadcaster.send(fix)
             self.broadcaster.send(fix.point)
+        }
+        service.onMotionChange = { [weak self] activity in
+            self?.motionBroadcaster.send(Self.motionState(activity))
         }
     }
 
@@ -27,12 +31,14 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
 
     var lastKnownLocation: GeoPoint? { lastKnownFix?.point }
     var lastKnownFix: LocationFix? { service.lastLocation.map(Self.fix) }
+    var currentMotionState: MotionState { Self.motionState(service.currentMotionActivity) }
 
     func requestPermission() { service.requestAuthorization() }
     func startTracking() { service.start() }
     func stopTracking() { service.stop() }
     func observeLocations() -> AsyncStream<GeoPoint> { broadcaster.stream() }
     func observeFixes() -> AsyncStream<LocationFix> { fixBroadcaster.stream() }
+    func observeMotionStates() -> AsyncStream<MotionState> { motionBroadcaster.stream() }
 
     static func fix(_ location: CLLocation) -> LocationFix {
         LocationFix(
@@ -43,6 +49,17 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
             speed: location.speed,
             course: location.course
         )
+    }
+
+    private static func motionState(_ activity: MotionActivity) -> MotionState {
+        switch activity {
+        case .stationary: return .stationary
+        case .walking: return .walking
+        case .running: return .running
+        case .cycling: return .cycling
+        case .automotive: return .automotive
+        case .unknown: return .unknown
+        }
     }
 }
 

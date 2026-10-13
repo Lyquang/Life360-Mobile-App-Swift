@@ -38,6 +38,12 @@ Legend:
   race. Logout/session expiry retain their shared stop paths; denied/restricted
   location permission now stops sharing. Debug/Release Simulator builds and contract
   scripts pass; lifecycle XCTest source awaits a configured test target.
+- `[x]` Location P4A: pure `LocationSendPolicy`, centralized per-motion baseline
+  configuration and CoreMotion-to-Domain state stream are implemented. Scenario
+  XCTest source covers cap, accuracy, fallback speed, heartbeat and trailing-edge
+  decisions. Debug/Release builds and contract scripts pass; the scheme still has
+  no Test action and SwiftLint is unavailable. Runtime sharing remains on 50 m/30 s
+  until P4B is separately approved.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
@@ -144,6 +150,12 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-13: Completed approved P4A only. Added a framework-independent policy
+  returning reasoned send/hold/drop decisions and exposed `MotionState` through
+  `DeviceLocationRepository`. No pending timer, app-state integration, diagnostics
+  reason counters or send behavior migration was performed. See
+  `.spec/location-send-policy.md` and `study/location/P4-location-send-policy.md`.
 
 - 2026-10-13: Replaced the heartbeat's cancellation-swallowing `try?` with an
   injected sleeper and explicit pre/post-sleep cancellation exits. Added lifecycle
