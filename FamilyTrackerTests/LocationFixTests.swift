@@ -6,7 +6,7 @@ import XCTest
 final class LocationFixTests: XCTestCase {
     private let sendPolicy = LocationSendPolicy()
 
-    func testExistingShareThresholds() {
+    func testShareUseCaseAppliesDynamicPolicyInsteadOfLegacyOrRule() {
         let device = DeviceLocationStub()
         let live = LiveLocationStub()
         let sut = ShareLocationUseCase(deviceLocation: device, liveLocation: live, deviceStatus: DeviceStatusStub())
@@ -22,7 +22,118 @@ final class LocationFixTests: XCTestCase {
         sut.handle(fix(far, timestamp: start.addingTimeInterval(-80)), now: start.addingTimeInterval(20))
         sut.handle(fix(nearFar, timestamp: start.addingTimeInterval(-70)), now: start.addingTimeInterval(51))
 
-        XCTAssertEqual(live.sent, [origin, far, nearFar])
+        XCTAssertEqual(live.sent, [origin, far])
+    }
+
+    func testShareUseCaseCapsAutomotiveSendsAtTenSeconds() {
+        let device = DeviceLocationStub()
+        device.currentMotionState = .automotive
+        let live = LiveLocationStub()
+        let sut = ShareLocationUseCase(
+            deviceLocation: device,
+            liveLocation: live,
+            deviceStatus: DeviceStatusStub(),
+            sleeper: { _ in throw CancellationError() }
+        )
+        let start = Date(timeIntervalSince1970: 8_000)
+
+        sut.start()
+        sut.handle(policyFix(metersNorth: 0, speed: 16.67, accuracy: 5, timestamp: start), now: start)
+        for second in 1...9 {
+            let date = start.addingTimeInterval(TimeInterval(second))
+            sut.handle(policyFix(metersNorth: Double(second) * 17, speed: 16.67,
+                                 accuracy: 5, timestamp: date), now: date)
+        }
+        let capped = start.addingTimeInterval(10)
+        sut.handle(policyFix(metersNorth: 170, speed: 16.67, accuracy: 5, timestamp: capped), now: capped)
+
+        XCTAssertEqual(live.sent.count, 2)
+        sut.stop()
+    }
+
+    func testBackgroundPendingWaitsForNextCallbackThenSends() {
+        let device = DeviceLocationStub()
+        device.currentMotionState = .walking
+        let live = LiveLocationStub()
+        let sut = ShareLocationUseCase(
+            deviceLocation: device,
+            liveLocation: live,
+            deviceStatus: DeviceStatusStub(),
+            sleeper: { _ in throw CancellationError() },
+            isForeground: { false }
+        )
+        let start = Date(timeIntervalSince1970: 9_000)
+        let origin = policyFix(metersNorth: 0, speed: 1.5, accuracy: 5, timestamp: start)
+        let final = policyFix(metersNorth: 35, speed: 1.5, accuracy: 5,
+                              timestamp: start.addingTimeInterval(5))
+
+        sut.start()
+        sut.handle(origin, now: start)
+        sut.handle(final, now: start.addingTimeInterval(5))
+        XCTAssertEqual(live.sent.count, 1)
+        sut.handle(final, now: start.addingTimeInterval(20))
+
+        XCTAssertEqual(live.sent, [origin.point, final.point])
+        sut.stop()
+    }
+
+    func testForegroundPendingUsesTrailingEdgeTimer() async {
+        let device = DeviceLocationStub()
+        device.currentMotionState = .walking
+        let live = LiveLocationStub()
+        let gate = PendingSleeperGate()
+        let start = Date(timeIntervalSince1970: 10_000)
+        var currentNow = start
+        let sut = ShareLocationUseCase(
+            deviceLocation: device,
+            liveLocation: live,
+            deviceStatus: DeviceStatusStub(),
+            sleeper: { nanoseconds in
+                if nanoseconds >= 30_000_000_000 { throw CancellationError() }
+                try await gate.sleep()
+            },
+            now: { currentNow },
+            isForeground: { true }
+        )
+        let origin = policyFix(metersNorth: 0, speed: 1.5, accuracy: 5, timestamp: start)
+        let final = policyFix(metersNorth: 35, speed: 1.5, accuracy: 5,
+                              timestamp: start.addingTimeInterval(5))
+
+        sut.start()
+        sut.handle(origin, now: start)
+        sut.handle(final, now: start.addingTimeInterval(5))
+        await gate.waitUntilSleeping()
+        currentNow = start.addingTimeInterval(20)
+        gate.resume()
+        for _ in 0..<10 { await Task.yield() }
+
+        XCTAssertEqual(live.sent, [origin.point, final.point])
+        sut.stop()
+    }
+
+    func testMotionChangeSendsLatestFixImmediately() async {
+        let device = DeviceLocationStub()
+        device.currentMotionState = .stationary
+        let live = LiveLocationStub()
+        let sut = ShareLocationUseCase(
+            deviceLocation: device,
+            liveLocation: live,
+            deviceStatus: DeviceStatusStub(),
+            sleeper: { _ in throw CancellationError() }
+        )
+        let start = Date()
+        let origin = policyFix(metersNorth: 0, speed: 0, accuracy: 5, timestamp: start)
+        let next = policyFix(metersNorth: 1, speed: 1.5, accuracy: 5,
+                             timestamp: start.addingTimeInterval(1))
+
+        sut.start()
+        sut.handle(origin, now: start)
+        device.lastKnownFix = next
+        device.emitMotion(.walking)
+        for _ in 0..<10 { await Task.yield() }
+
+        XCTAssertEqual(live.sent, [origin.point, next.point])
+        sut.stop()
     }
 
     func testExistingSocketLocationPayload() {
@@ -286,7 +397,45 @@ private final class DeviceLocationStub: DeviceLocationRepository {
     func stopTracking() {}
     func observeLocations() -> AsyncStream<GeoPoint> { AsyncStream { _ in } }
     func observeFixes() -> AsyncStream<LocationFix> { AsyncStream { _ in } }
-    func observeMotionStates() -> AsyncStream<MotionState> { AsyncStream { _ in } }
+    private var motionContinuation: AsyncStream<MotionState>.Continuation?
+    func observeMotionStates() -> AsyncStream<MotionState> {
+        AsyncStream { motionContinuation = $0 }
+    }
+    func emitMotion(_ state: MotionState) {
+        currentMotionState = state
+        motionContinuation?.yield(state)
+    }
+}
+
+private final class PendingSleeperGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Error>?
+
+    func sleep() async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            lock.lock()
+            self.continuation = continuation
+            lock.unlock()
+        }
+    }
+
+    func waitUntilSleeping() async {
+        for _ in 0..<100 {
+            lock.lock()
+            let isSleeping = continuation != nil
+            lock.unlock()
+            if isSleeping { return }
+            await Task.yield()
+        }
+    }
+
+    func resume() {
+        lock.lock()
+        let continuation = continuation
+        self.continuation = nil
+        lock.unlock()
+        continuation?.resume()
+    }
 }
 
 private final class LiveLocationStub: LiveLocationRepository {

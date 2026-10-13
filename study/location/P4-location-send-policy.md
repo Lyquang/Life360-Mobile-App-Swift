@@ -1,6 +1,6 @@
 # P4 - Location send policy with a hard frequency cap
 
-Status: P4A implemented after approval; P4B not started and not approved. Runtime send behavior remains unchanged.
+Status: P4A and approved P4B implemented. Runtime sharing now uses the policy below.
 
 ## Verified current state
 
@@ -101,3 +101,13 @@ The full change touches roughly 10 files, exceeding the agreed per-prompt thresh
 - Unsigned generic iOS Simulator Debug and Release builds, networking/localization scripts, Swift parsing and `git diff --check` passed.
 - XCTest source could not execute: `xcodebuild test` exits 66 because the saved `FamilyTracker` scheme has no Test action. SwiftLint is unavailable (`swiftlint: command not found`). No `project.pbxproj` change was made.
 - P4B items (runtime integration, pending task, foreground/background handling and P2 reason counters) remain untouched.
+
+## P4B implementation and verification (2026-10-13)
+
+- `ShareLocationUseCase` now evaluates fixes, heartbeats and motion transitions through `LocationSendPolicy`. It keeps only the latest meaningful pending fix and cancels location, motion, heartbeat and pending tasks on `stop()`.
+- Foreground holds schedule one cancellation-safe trailing-edge task. Background holds do not rely on a timer and are reevaluated by the next fix or existing heartbeat callback. A generation check prevents stale cancelled tasks from sending in a later state.
+- `AppContainer` injects app activity state, keeping UIKit out of Domain. SOS remains on its independent immediate repository path. Socket payload remains `latitude`, `longitude`, and `batteryLevel` only.
+- Debug diagnostics aggregate `send.<reason>`, `hold.<reason>` and `drop.<reason>` counters without coordinates or tokens. Release remains no-op.
+- Integration test source covers automotive rate cap, foreground trailing edge, background callback reevaluation, immediate motion transition, diagnostics reasons and unchanged socket payload.
+- Debug unsigned Simulator build, networking/localization scripts, SwiftLint and `git diff --check` passed. SwiftLint reports 10 pre-existing warnings outside P4 files and no serious violations.
+- XCTest could not run because the current project exposes only the `FamilyTracker` app target; `FamilyTrackerTests` is absent from `xcodebuild -list`. Per constraint, `project.pbxproj` was not modified.

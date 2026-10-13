@@ -6,6 +6,12 @@ import UIKit
 
 /// In-memory, aggregate-only measurement. The Release implementation is inert.
 final class LocationDiagnostics {
+    enum PolicyOutcome: String {
+        case send
+        case hold
+        case drop
+    }
+
     enum DropReason: String {
         case invalidHorizontalAccuracy
     }
@@ -17,6 +23,7 @@ final class LocationDiagnostics {
         let managerReconfigurations: Int
         let dropped: [String: Int]
         let offlineQueueEnqueues: Int
+        let policyDecisions: [String: Int]
     }
 
     #if DEBUG
@@ -34,6 +41,7 @@ final class LocationDiagnostics {
         var managerReconfigurations = 0
         var dropped: [String: Int] = [:]
         var offlineQueueEnqueues = 0
+        var policyDecisions: [String: Int] = [:]
     }
 
     private let logger: NetworkLogger
@@ -140,13 +148,18 @@ final class LocationDiagnostics {
         update { $0.offlineQueueEnqueues += 1 }
     }
 
+    func recordPolicyDecision(outcome: PolicyOutcome, reason: String) {
+        update { $0.policyDecisions["\(outcome.rawValue).\(reason)", default: 0] += 1 }
+    }
+
     func snapshot() -> Snapshot {
         lock.lock()
         defer { lock.unlock() }
         return Snapshot(emitted: state.emitted, heartbeatAttempts: state.heartbeatAttempts,
                         motionTransitions: state.motionTransitions,
                         managerReconfigurations: state.managerReconfigurations,
-                        dropped: state.dropped, offlineQueueEnqueues: state.offlineQueueEnqueues)
+                        dropped: state.dropped, offlineQueueEnqueues: state.offlineQueueEnqueues,
+                        policyDecisions: state.policyDecisions)
     }
 
     func summary(now: Date = Date(), endBattery: Int? = nil) -> [String: Any]? {
@@ -165,6 +178,7 @@ final class LocationDiagnostics {
             "managerReconfigurations": state.managerReconfigurations,
             "droppedByReason": state.dropped,
             "offlineQueueEnqueues": state.offlineQueueEnqueues,
+            "sendPolicyDecisions": state.policyDecisions,
             "secondsByMotion": durations,
             "batteryDropByMotionPercentagePoints": state.segmentBatteryDrop,
             "offlineReplayUsesMotionAtEmitTime": true
@@ -225,9 +239,11 @@ final class LocationDiagnostics {
     func recordHeartbeatAttempt() {}
     func recordEmit() {}
     func recordOfflineEnqueue() {}
+    func recordPolicyDecision(outcome: PolicyOutcome, reason: String) {}
     func snapshot() -> Snapshot {
         Snapshot(emitted: [:], heartbeatAttempts: 0, motionTransitions: 0,
-                 managerReconfigurations: 0, dropped: [:], offlineQueueEnqueues: 0)
+                 managerReconfigurations: 0, dropped: [:], offlineQueueEnqueues: 0,
+                 policyDecisions: [:])
     }
     func summary(now: Date = Date(), endBattery: Int? = nil) -> [String: Any]? { nil }
     func logSummary(now: Date = Date(), endBattery: Int? = nil) {}
