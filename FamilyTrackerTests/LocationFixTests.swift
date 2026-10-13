@@ -4,6 +4,8 @@ import XCTest
 
 @MainActor
 final class LocationFixTests: XCTestCase {
+    private let sendPolicy = LocationSendPolicy()
+
     func testExistingShareThresholds() {
         let device = DeviceLocationStub()
         let live = LiveLocationStub()
@@ -96,16 +98,170 @@ final class LocationFixTests: XCTestCase {
         XCTAssertEqual(repository.lastKnownLocation, fix?.point)
     }
 
+    func testRepositoryMapsCoreMotionActivityToDomainState() async {
+        let service = LocationServiceStub()
+        let repository = DeviceLocationRepositoryImpl(service: service)
+        var states = repository.observeMotionStates().makeAsyncIterator()
+
+        service.emitMotion(.automotive)
+
+        let state = await states.next()
+        XCTAssertEqual(state, .automotive)
+        XCTAssertEqual(repository.currentMotionState, .automotive)
+    }
+
+    func testStationaryJitterDropsUntilExistingThirtySecondHeartbeat() {
+        let start = Date(timeIntervalSince1970: 1_000)
+        let origin = policyFix(metersNorth: 0, speed: 0, accuracy: 5, timestamp: start)
+        let sent = LocationSendPolicy.SentLocation(fix: origin, sentAt: start, motionState: .stationary)
+        let jitter = policyFix(metersNorth: 10, speed: 0, accuracy: 15,
+                               timestamp: start.addingTimeInterval(10))
+
+        XCTAssertEqual(
+            sendPolicy.decide(fix: jitter, lastSent: sent, pending: nil,
+                              now: start.addingTimeInterval(10), motionState: .stationary),
+            .drop(.withinAccuracyOrDistanceThreshold)
+        )
+        XCTAssertEqual(
+            sendPolicy.decide(fix: jitter, lastSent: sent, pending: nil,
+                              now: start.addingTimeInterval(30), motionState: .stationary),
+            .send(jitter, .heartbeatDue)
+        )
+    }
+
+    func testAutomotiveAtSixtyKPHNeverExceedsTenSecondCap() {
+        let start = Date(timeIntervalSince1970: 2_000)
+        var last = LocationSendPolicy.SentLocation(
+            fix: policyFix(metersNorth: 0, speed: 16.67, accuracy: 5, timestamp: start),
+            sentAt: start,
+            motionState: .automotive
+        )
+        var pending: LocationSendPolicy.PendingLocation?
+        var sendTimes: [Int] = []
+
+        for second in 1...30 {
+            let date = start.addingTimeInterval(TimeInterval(second))
+            let fix = policyFix(metersNorth: 16.8 * Double(second),
+                                speed: 16.67, accuracy: 5, timestamp: date)
+            switch sendPolicy.decide(fix: fix, lastSent: last, pending: pending,
+                                     now: date, motionState: .automotive) {
+            case .send(let sentFix, _):
+                sendTimes.append(second)
+                last = .init(fix: sentFix, sentAt: date, motionState: .automotive)
+                pending = nil
+            case .hold(let held, _):
+                pending = held
+            case .drop:
+                break
+            }
+        }
+
+        XCTAssertEqual(sendTimes, [10, 20, 30])
+    }
+
+    func testPendingFinalPointSendsAtTrailingEdge() {
+        let start = Date(timeIntervalSince1970: 3_000)
+        let origin = policyFix(metersNorth: 0, speed: 0, accuracy: 5, timestamp: start)
+        let sent = LocationSendPolicy.SentLocation(fix: origin, sentAt: start, motionState: .walking)
+        let finalPoint = policyFix(metersNorth: 35, speed: 1.5, accuracy: 5,
+                                   timestamp: start.addingTimeInterval(10))
+        guard case .hold(let pending, .minimumInterval) = sendPolicy.decide(
+            fix: finalPoint, lastSent: sent, pending: nil,
+            now: start.addingTimeInterval(10), motionState: .walking
+        ) else { return XCTFail("Expected a held final point") }
+        let noise = policyFix(metersNorth: 2, speed: 0, accuracy: 5,
+                              timestamp: start.addingTimeInterval(20))
+
+        XCTAssertEqual(
+            sendPolicy.decide(fix: noise, lastSent: sent, pending: pending,
+                              now: start.addingTimeInterval(20), motionState: .walking),
+            .send(finalPoint, .trailingEdge)
+        )
+    }
+
+    func testNegativeSpeedUsesDistanceOverFixTime() {
+        let start = Date(timeIntervalSince1970: 4_000)
+        let origin = policyFix(metersNorth: 0, speed: -1, accuracy: 5, timestamp: start)
+        let fix = policyFix(metersNorth: 35, speed: -1, accuracy: 5,
+                            timestamp: start.addingTimeInterval(30))
+        let sent = LocationSendPolicy.SentLocation(fix: origin, sentAt: start, motionState: .walking)
+
+        XCTAssertEqual(
+            sendPolicy.decide(fix: fix, lastSent: sent, pending: nil,
+                              now: start.addingTimeInterval(30), motionState: .walking),
+            .send(fix, .moved)
+        )
+    }
+
+    func testFirstFixAndMotionChangeBypassMinimumInterval() {
+        let start = Date(timeIntervalSince1970: 5_000)
+        let origin = policyFix(metersNorth: 0, speed: 0, accuracy: 5, timestamp: start)
+        XCTAssertEqual(
+            sendPolicy.decide(fix: origin, lastSent: nil, pending: nil,
+                              now: start, motionState: .stationary),
+            .send(origin, .firstFix)
+        )
+        let sent = LocationSendPolicy.SentLocation(fix: origin, sentAt: start, motionState: .stationary)
+        let next = policyFix(metersNorth: 1, speed: 1, accuracy: 5,
+                             timestamp: start.addingTimeInterval(1))
+        XCTAssertEqual(
+            sendPolicy.decide(fix: next, lastSent: sent, pending: nil,
+                              now: start.addingTimeInterval(1), motionState: .walking),
+            .send(next, .motionChanged)
+        )
+    }
+
+    func testLargeAccuracyRaisesMovementThreshold() {
+        let start = Date(timeIntervalSince1970: 6_000)
+        let origin = policyFix(metersNorth: 0, speed: 1, accuracy: 5, timestamp: start)
+        let uncertain = policyFix(metersNorth: 40, speed: 1, accuracy: 60,
+                                  timestamp: start.addingTimeInterval(20))
+        let sent = LocationSendPolicy.SentLocation(fix: origin, sentAt: start, motionState: .walking)
+
+        XCTAssertEqual(
+            sendPolicy.decide(fix: uncertain, lastSent: sent, pending: nil,
+                              now: start.addingTimeInterval(20), motionState: .walking),
+            .drop(.withinAccuracyOrDistanceThreshold)
+        )
+    }
+
+    func testSlowWalkingStillSendsAtTwentySeconds() {
+        let start = Date(timeIntervalSince1970: 7_000)
+        let origin = policyFix(metersNorth: 0, speed: 1.39, accuracy: 5, timestamp: start)
+        let walked = policyFix(metersNorth: 29, speed: 1.39, accuracy: 5,
+                               timestamp: start.addingTimeInterval(20))
+        let sent = LocationSendPolicy.SentLocation(fix: origin, sentAt: start, motionState: .walking)
+
+        XCTAssertEqual(
+            sendPolicy.decide(fix: walked, lastSent: sent, pending: nil,
+                              now: start.addingTimeInterval(20), motionState: .walking),
+            .send(walked, .moved)
+        )
+    }
+
     private func fix(_ point: GeoPoint, timestamp: Date) -> LocationFix {
         LocationFix(latitude: point.latitude, longitude: point.longitude, timestamp: timestamp,
                     horizontalAccuracy: 5, speed: -1, course: -1)
+    }
+
+    private func policyFix(
+        metersNorth: Double,
+        speed: Double,
+        accuracy: Double,
+        timestamp: Date
+    ) -> LocationFix {
+        LocationFix(latitude: 10 + metersNorth / 111_195, longitude: 106,
+                    timestamp: timestamp, horizontalAccuracy: accuracy,
+                    speed: speed, course: -1)
     }
 }
 
 private final class LocationServiceStub: LocationService {
     var authorizationStatus: CLAuthorizationStatus = .authorizedAlways
     var lastLocation: CLLocation?
+    var currentMotionActivity: MotionActivity = .unknown
     var onLocationUpdate: ((CLLocation) -> Void)?
+    var onMotionChange: ((MotionActivity) -> Void)?
     var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)?
     func requestAuthorization() {}
     func start() {}
@@ -114,17 +270,23 @@ private final class LocationServiceStub: LocationService {
         lastLocation = location
         onLocationUpdate?(location)
     }
+    func emitMotion(_ activity: MotionActivity) {
+        currentMotionActivity = activity
+        onMotionChange?(activity)
+    }
 }
 
 private final class DeviceLocationStub: DeviceLocationRepository {
     var authorization: LocationAuthorization = .always
     var lastKnownLocation: GeoPoint?
     var lastKnownFix: LocationFix?
+    var currentMotionState: MotionState = .unknown
     func requestPermission() {}
     func startTracking() {}
     func stopTracking() {}
     func observeLocations() -> AsyncStream<GeoPoint> { AsyncStream { _ in } }
     func observeFixes() -> AsyncStream<LocationFix> { AsyncStream { _ in } }
+    func observeMotionStates() -> AsyncStream<MotionState> { AsyncStream { _ in } }
 }
 
 private final class LiveLocationStub: LiveLocationRepository {
