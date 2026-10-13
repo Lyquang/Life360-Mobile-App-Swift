@@ -4,6 +4,7 @@ import Foundation
 final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRepository, SOSRepository {
     private let socket: SocketClient
     private let offlineQueue: OfflineQueue
+    private let diagnostics: LocationDiagnostics?
 
     private let connection = AsyncBroadcaster<RealtimeConnectionState>()
     private let locations = AsyncBroadcaster<MemberLocation>()
@@ -11,9 +12,10 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     private let presence = AsyncBroadcaster<MemberPresence>()
     private let sosAlerts = AsyncBroadcaster<SOSAlert>()
 
-    init(socket: SocketClient, offlineQueue: OfflineQueue) {
+    init(socket: SocketClient, offlineQueue: OfflineQueue, diagnostics: LocationDiagnostics? = nil) {
         self.socket = socket
         self.offlineQueue = offlineQueue
+        self.diagnostics = diagnostics
         registerHandlers()
     }
 
@@ -56,14 +58,17 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     private func emitOrQueue(_ event: String, _ payload: [String: Any], coalesceKey: String?) {
         if socket.status == .connected {
             socket.emit(event, payload)
+            if event == SocketEvent.updateLocation { diagnostics?.recordEmit() }
         } else {
             offlineQueue.enqueue(event: event, payload: payload, coalesceKey: coalesceKey)
+            if event == SocketEvent.updateLocation { diagnostics?.recordOfflineEnqueue() }
         }
     }
 
     private func flushOfflineQueue() {
         for item in offlineQueue.drain() {
             socket.emit(item.event, item.payload)
+            if item.event == SocketEvent.updateLocation { diagnostics?.recordEmit() }
         }
     }
 

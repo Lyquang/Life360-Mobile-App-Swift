@@ -27,6 +27,12 @@ Legend:
   Unsigned Simulator build, networking and localization scripts pass. XCTest source
   is present but cannot run until the missing test target is configured; SwiftLint
   is not installed on this machine.
+- `[x]` Location P2 instrumentation: Debug-only aggregate counters for socket emits
+  by motion state, heartbeat attempts, motion changes, manager reconfiguration,
+  invalid-accuracy drops and offline enqueue calls. Battery is sampled at session
+  and motion boundaries; Pulse writes summaries every 15 minutes while active,
+  on backgrounding and on stop. Release is no-op. Debug/Release Simulator builds
+  and contract scripts pass; XCTest target and real-device Energy Log remain pending.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
@@ -133,6 +139,12 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-13: Implemented approved P2 without changing GPS policy, send threshold,
+  socket payload, backend or UI. See `.spec/location-diagnostics.md` and
+  `study/location/P2-location-diagnostics.md` for counter definitions and the
+  device baseline worksheet. SwiftLint is not installed and the saved Xcode
+  project still lacks a runnable `FamilyTrackerTests` target.
 
 - 2026-10-13: Added `LocationFix` with the approved `course` field and a parallel
   repository fix stream, preserving the GeoPoint projection for other screens.
