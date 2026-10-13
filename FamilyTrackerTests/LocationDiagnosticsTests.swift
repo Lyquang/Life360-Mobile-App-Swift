@@ -17,6 +17,8 @@ final class LocationDiagnosticsTests: XCTestCase {
         diagnostics.recordHeartbeatAttempt()
         diagnostics.recordManagerReconfiguration()
         diagnostics.recordDrop(.invalidHorizontalAccuracy)
+        diagnostics.recordPolicyDecision(outcome: .hold, reason: "minimumInterval")
+        diagnostics.recordPolicyDecision(outcome: .send, reason: "trailingEdge")
         battery.level = 88
         diagnostics.recordMotion(.automotive, now: start.addingTimeInterval(40))
         diagnostics.recordEmit()
@@ -30,6 +32,8 @@ final class LocationDiagnosticsTests: XCTestCase {
         XCTAssertEqual(counters.managerReconfigurations, 1)
         XCTAssertEqual(counters.dropped["invalidHorizontalAccuracy"], 1)
         XCTAssertEqual(counters.offlineQueueEnqueues, 1)
+        XCTAssertEqual(counters.policyDecisions["hold.minimumInterval"], 1)
+        XCTAssertEqual(counters.policyDecisions["send.trailingEdge"], 1)
         let summary = diagnostics.summary(now: start.addingTimeInterval(50))
         XCTAssertEqual(summary?["startBatteryPercent"] as? Int, 90)
         XCTAssertEqual((summary?["batteryDropByMotionPercentagePoints"] as? [String: Int])?["walking"], 1)

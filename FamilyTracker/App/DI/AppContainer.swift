@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import CoreLocation
 import GoogleSignIn
+import UIKit
 
 @MainActor
 final class SessionExpiryEvents {
@@ -132,7 +133,8 @@ final class AppContainer {
             deviceLocation: deviceLocation,
             liveLocation: realtime,
             deviceStatus: deviceStatus,
-            diagnostics: locationDiagnostics
+            diagnostics: locationDiagnostics,
+            isForeground: { UIApplication.shared.applicationState == .active }
         )
         let locationSharing = shareLocation
         locationService.onAuthorizationChange = { status in

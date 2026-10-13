@@ -114,6 +114,11 @@ struct LocationSendPolicy {
         }
 
         if elapsed >= mode.maxHeartbeatAge { return .send(fix, .heartbeatDue) }
+        if let pending,
+           fix == pending.fix,
+           hasMoved(pending.fix, since: lastSent.fix, mode: mode) {
+            return .send(pending.fix, .trailingEdge)
+        }
         if currentMoved { return .send(fix, .moved) }
         if let pending, hasMoved(pending.fix, since: lastSent.fix, mode: mode) {
             return .send(pending.fix, .trailingEdge)

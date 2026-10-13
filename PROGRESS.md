@@ -44,6 +44,10 @@ Legend:
   decisions. Debug/Release builds and contract scripts pass; the scheme still has
   no Test action and SwiftLint is unavailable. Runtime sharing remains on 50 m/30 s
   until P4B is separately approved.
+- `[x]` Location P4B: runtime sharing now applies the adaptive policy, enforces
+  moving-state send caps, sends foreground pending fixes on the trailing edge,
+  reevaluates them on background callbacks, and records aggregate Debug decision
+  reasons. SOS and the socket payload remain unchanged.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
@@ -150,6 +154,13 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-13: Completed approved P4B. Integrated `LocationSendPolicy` into the
+  sharing use case, motion stream and heartbeat; added cancellation-safe pending
+  delivery with foreground/background semantics and Debug diagnostics by reason.
+  Debug Simulator build, networking/localization checks, SwiftLint and diff check
+  passed. XCTest remains unavailable because `xcodebuild -list` exposes no
+  `FamilyTrackerTests` target; `project.pbxproj` was not changed.
 
 - 2026-10-13: Completed approved P4A only. Added a framework-independent policy
   returning reasoned send/hold/drop decisions and exposed `MotionState` through
