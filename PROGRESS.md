@@ -48,6 +48,10 @@ Legend:
   moving-state send caps, sends foreground pending fixes on the trailing edge,
   reevaluates them on background callbacks, and records aggregate Debug decision
   reasons. SOS and the socket payload remain unchanged.
+- `[x]` Location P7A: owner-scoped JSONL location buffer with atomic protected
+  writes, backup exclusion, duplicate-fix rejection, 24-hour TTL, 500-to-400
+  thinning, pointId removal and bounded unknown-rejection attempts. The buffer
+  is not yet connected to realtime sharing; P7B through P7E are pending.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
@@ -154,6 +158,13 @@ Legend:
   ChatViewModel, AppContainer) when wiring the later phases.
 
 ## Current Agent Notes
+
+- 2026-10-14: Implemented approved P7A and updated the P7 roadmap with D1/D2,
+  long `Retry-After` handling and lifecycle/account rules. Debug/Release unsigned
+  Simulator builds, contract scripts, Swift parsing, targeted lint and diff check
+  pass. XCTest source exists but the project has no `FamilyTrackerTests` target;
+  no project-file changes were made. See `.spec/location-offline-buffer.md` and
+  `study/location/P7-offline-location-buffer.md`.
 
 - 2026-10-13: Completed approved P4B. Integrated `LocationSendPolicy` into the
   sharing use case, motion stream and heartbeat; added cancellation-safe pending
