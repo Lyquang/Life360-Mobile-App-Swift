@@ -54,8 +54,11 @@ Legend:
   is not yet connected to realtime sharing.
 - `[x]` Location P7B: authenticated batch endpoint, contract DTOs, bounded
   request repository and additive API metadata path for `Retry-After` on 429.
-  Existing API `send` behavior and shared 401 refresh are preserved. P7C onward
-  remain pending; XCTest source cannot execute until the test target is configured.
+  Existing API `send` behavior and shared 401 refresh are preserved.
+- `[x]` Location P7C: single-flight batch synchronizer with bounded retries,
+  pointId-based partial-result handling, 413 split and persisted long 429 delay.
+  It is not wired to runtime triggers yet; P7D1 onward remain pending. XCTest
+  source cannot execute until the test target is configured.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member

@@ -1,6 +1,6 @@
 # P7 - Persistent offline location buffer and batch recovery
 
-Status: P7A and P7B implemented as unused storage/transport components; P7C onward remain planned.
+Status: P7A-P7C implemented as unused storage/transport/synchronization components; P7D onward remain planned.
 
 ## Verified contract and current state
 
@@ -114,3 +114,9 @@ Involuntary session expiry needs one decision before P7E: **(1) delete immediate
 - Added `POST /locations/batch`, DTOs that encode only contract fields, a batch repository boundary and a Data implementation. It rejects empty or >100-point batches and bodies of 100 KB or more before a network call; successful partial responses retain accepted, duplicate and rejected IDs/codes.
 - Added `APIClient.sendWithMetadata` without changing the existing `send` API behavior. Both paths share Bearer attachment and 401 refresh/retry. The batch path preserves the 429 `Retry-After` header for P7C to interpret.
 - Networking contract harness verifies encoding, endpoint, accepted IDs and `Retry-After`. XCTest source additionally covers partial rejection, request limits and 401 refresh. The test target remains absent from `project.pbxproj`, so XCTest has not executed. No P7C sync or P7D runtime routing is active.
+
+## P7C result (2026-10-14)
+
+- Added a single-flight `LocationSyncCoordinator` actor. Each run processes one chronological buffer snapshot in batches constrained by 100 points and encoded body size. It removes only exact acknowledged/known-permanent IDs, counts unknown rejections once per response and leaves newly appended points for another run.
+- Added bounded transient retry with injected clock/sleeper/randomness, 413 split handling and `Retry-After` parsing. A delay above 60 seconds persists an owner-scoped not-before gate instead of sleeping; cancellation stops post-response buffer mutation.
+- Added focused XCTest source. P7C remains unwired: P7D1 tracks authenticated socket readiness, P7D2 routes fixes into the buffer, and P7E adds lifecycle/network triggers and cleanup.
