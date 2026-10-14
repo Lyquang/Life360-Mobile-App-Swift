@@ -106,6 +106,7 @@ enum NetworkingContractTests {
         try deployedCircleMembersResponse()
         try requests()
         try mediaContracts()
+        try await locationBatchContract()
         try redaction()
         try check(AppEnvironment.current.apiBaseURL.absoluteString == "https://life360-backend-6v9n.onrender.com/api/v1", "Deployed REST host")
         try check(AppEnvironment.current.socketURL.absoluteString == "https://life360-backend-6v9n.onrender.com", "Deployed Socket.IO host")
@@ -117,6 +118,65 @@ enum NetworkingContractTests {
         try await retryUnauthorizedStops()
         try await lateRefreshCannotExpireNewSession()
         print("PASS: REST contracts, auth refresh, media ticket/PUT retry, decoding and errors")
+    }
+
+    static func locationBatchContract() async throws {
+        let fix = LocationFix(latitude: 10.7, longitude: 106.7,
+                              timestamp: Date(timeIntervalSince1970: 1_000_000.123),
+                              horizontalAccuracy: 8, speed: 1, course: 0)
+        let point = BufferedLocationPoint(fix: fix, batteryLevel: 80)
+        let endpoint = LocationEndpoint.batch(LocationBatchRequestDTO(points: [LocationBatchPointDTO(point)]))
+        try check(endpoint.path == "/locations/batch" && endpoint.method == .POST && endpoint.requiresAuth,
+                  "Batch endpoint contract")
+        let body = try JSONSerialization.jsonObject(with: endpoint.encodedBody()!) as! [String: Any]
+        let values = (body["points"] as! [[String: Any]])[0]
+        try check(values["recordedAt"] as? String == ISO8601.string(from: fix.timestamp), "Fix time lost")
+        try check(values["pointId"] as? String == point.pointId.uuidString, "Point ID lost")
+        try check(values["unknownRejectionAttempts"] == nil, "Private counter sent to backend")
+
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ProtocolStub.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); ProtocolStub.handler = nil; ProtocolStub.responseHeaders = [:] }
+        let client = URLSessionAPIClient(baseURL: URL(string: "https://example.test/api/v1")!, session: session,
+                                         tokenProvider: TokenStub(), logger: NoopNetworkLogger())
+        let repository = LocationBatchRepositoryImpl(api: client)
+        ProtocolStub.handler = { request in
+            try check(request.url?.path == "/api/v1/locations/batch", "Batch URL")
+            return (200, Data("""
+                {"success":true,"data":{"accepted":["\(point.pointId.uuidString)"],"duplicates":[],"rejected":[]}}
+                """.utf8))
+        }
+        let result = try await repository.upload([point])
+        try check(result.accepted == [point.pointId], "Batch accepted IDs")
+        ProtocolStub.responseHeaders = ["Retry-After": "75"]
+        ProtocolStub.handler = { _ in (429, Data(#"{"success":false,"code":"RATE_LIMITED"}"#.utf8)) }
+        do {
+            _ = try await repository.upload([point])
+            throw CheckFailure(message: "Rate limit ignored")
+        } catch LocationBatchError.rateLimited(let retryAfter) {
+            try check(retryAfter == "75", "Retry-After lost")
+        }
+        ProtocolStub.responseHeaders = [:]
+        let refreshStore = PairStoreStub()
+        let refreshTransport = RefreshStub()
+        let refresh = TokenRefreshCoordinator(store: refreshStore, transport: refreshTransport)
+        let refreshingClient = URLSessionAPIClient(baseURL: URL(string: "https://example.test/api/v1")!,
+                                                   session: session, tokenProvider: refreshStore,
+                                                   logger: NoopNetworkLogger(), refreshCoordinator: refresh)
+        var authHeaders: [String?] = []
+        ProtocolStub.handler = { request in
+            let header = request.value(forHTTPHeaderField: "Authorization")
+            authHeaders.append(header)
+            if header == "Bearer expired" {
+                return (401, Data(#"{"success":false,"code":"UNAUTHORIZED"}"#.utf8))
+            }
+            return (200, Data(#"{"success":true,"data":{"accepted":[],"duplicates":[],"rejected":[]}}"#.utf8))
+        }
+        _ = try await LocationBatchRepositoryImpl(api: refreshingClient).upload([point])
+        try check(authHeaders == ["Bearer expired", "Bearer refreshed-token"], "Batch 401 retry token")
+        let refreshCalls = await refreshTransport.calls
+        try check(refreshCalls == 1, "Batch refresh count")
     }
 
     static func deployedCircleMembersResponse() throws {

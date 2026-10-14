@@ -51,7 +51,11 @@ Legend:
 - `[x]` Location P7A: owner-scoped JSONL location buffer with atomic protected
   writes, backup exclusion, duplicate-fix rejection, 24-hour TTL, 500-to-400
   thinning, pointId removal and bounded unknown-rejection attempts. The buffer
-  is not yet connected to realtime sharing; P7B through P7E are pending.
+  is not yet connected to realtime sharing.
+- `[x]` Location P7B: authenticated batch endpoint, contract DTOs, bounded
+  request repository and additive API metadata path for `Retry-After` on 429.
+  Existing API `send` behavior and shared 401 refresh are preserved. P7C onward
+  remain pending; XCTest source cannot execute until the test target is configured.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member

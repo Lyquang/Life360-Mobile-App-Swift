@@ -1,6 +1,6 @@
 # P7 - Persistent offline location buffer and batch recovery
 
-Status: approved P7A implemented as an unused storage component; P7B onward remain planned.
+Status: P7A and P7B implemented as unused storage/transport components; P7C onward remain planned.
 
 ## Verified contract and current state
 
@@ -108,3 +108,9 @@ Involuntary session expiry needs one decision before P7E: **(1) delete immediate
 - The buffer rejects duplicate latest timestamps and duplicate UUIDs, prunes after 24 hours, and thins 500→400 while retaining the first and newest 100 points. Removal matches point IDs only. Unknown rejection attempts remove a point on the third response.
 - XCTest source covers persistence, corruption, repeated backup exclusion, duplicate heartbeat timestamps, thinning, concurrent append/ID removal, owner isolation and TTL. The Xcode project currently has only the `FamilyTracker` app target, so XCTest could not execute without adding a target; `project.pbxproj` was left unchanged.
 - Unsigned Debug/Release Simulator builds, networking/localization contract scripts, targeted SwiftLint and Swift parsing passed. The buffer is not yet wired into live location sharing; P7D2 is the runtime integration phase.
+
+## P7B result (2026-10-14)
+
+- Added `POST /locations/batch`, DTOs that encode only contract fields, a batch repository boundary and a Data implementation. It rejects empty or >100-point batches and bodies of 100 KB or more before a network call; successful partial responses retain accepted, duplicate and rejected IDs/codes.
+- Added `APIClient.sendWithMetadata` without changing the existing `send` API behavior. Both paths share Bearer attachment and 401 refresh/retry. The batch path preserves the 429 `Retry-After` header for P7C to interpret.
+- Networking contract harness verifies encoding, endpoint, accepted IDs and `Retry-After`. XCTest source additionally covers partial rejection, request limits and 401 refresh. The test target remains absent from `project.pbxproj`, so XCTest has not executed. No P7C sync or P7D runtime routing is active.
