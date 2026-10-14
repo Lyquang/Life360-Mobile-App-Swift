@@ -92,6 +92,12 @@ enum HistoryEndpoint {
     }
 }
 
+enum LocationEndpoint {
+    static func batch(_ request: LocationBatchRequestDTO) -> Endpoint {
+        Endpoint(path: "/locations/batch", method: .POST, payload: request)
+    }
+}
+
 enum ChatEndpoint {
     static let conversations = Endpoint(path: "/conversations")
     static let unreadSummary = Endpoint(path: "/conversations/unread-summary")

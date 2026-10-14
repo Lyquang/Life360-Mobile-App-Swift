@@ -15,6 +15,12 @@ extension AccessTokenProvider {
 
 protocol APIClient {
     func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T
+    func sendWithMetadata<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> APIResult<T>
+}
+
+struct APIResult<T> {
+    let value: T
+    let statusCode: Int
 }
 
 final class URLSessionAPIClient: APIClient {
@@ -34,11 +40,18 @@ final class URLSessionAPIClient: APIClient {
     }
 
     func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T {
-        try await send(endpoint, as: type, mayRefresh: true, expectedGeneration: nil)
+        try await perform(endpoint, as: type, mayRefresh: true, expectedGeneration: nil,
+                          exposeRateLimit: false).value
     }
 
-    private func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
-                                    mayRefresh: Bool, expectedGeneration: Int?) async throws -> T {
+    func sendWithMetadata<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> APIResult<T> {
+        try await perform(endpoint, as: type, mayRefresh: true, expectedGeneration: nil,
+                          exposeRateLimit: true)
+    }
+
+    private func perform<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
+                                       mayRefresh: Bool, expectedGeneration: Int?,
+                                       exposeRateLimit: Bool) async throws -> APIResult<T> {
         let (request, sentToken, sentGeneration) = try makeRequest(for: endpoint)
         if let expectedGeneration, sentGeneration != expectedGeneration { throw CancellationError() }
         let method = endpoint.method.rawValue
@@ -81,12 +94,15 @@ final class URLSessionAPIClient: APIClient {
                 do {
                     _ = try await refreshCoordinator.validAccessToken(afterUnauthorized: sentToken,
                                                                       sentGeneration: sentGeneration)
-                    return try await send(endpoint, as: type, mayRefresh: false,
-                                          expectedGeneration: sentGeneration)
+                    return try await perform(endpoint, as: type, mayRefresh: false,
+                                             expectedGeneration: sentGeneration,
+                                             exposeRateLimit: exposeRateLimit)
                 } catch let failure as RefreshFailure {
                     switch failure {
                     case .invalidSession, .storage: throw APIError.unauthorized
-                    case .rateLimited: throw APIError.http(status: 429, code: "RATE_LIMITED", message: nil, errors: [])
+                    case .rateLimited:
+                        if exposeRateLimit { throw APIError.rateLimited(retryAfter: nil) }
+                        throw APIError.http(status: 429, code: "RATE_LIMITED", message: nil, errors: [])
                     case .network, .ambiguousNetwork: throw APIError.networkError("Không có kết nối mạng. Hãy thử lại.")
                     case .server: throw APIError.serverError("Không thể làm mới phiên đăng nhập. Hãy thử lại.")
                     case .cancelled: throw CancellationError()
@@ -102,12 +118,15 @@ final class URLSessionAPIClient: APIClient {
         }
 
         guard (200..<300).contains(http.statusCode), envelope?.success != false else {
+            if exposeRateLimit, http.statusCode == 429 {
+                throw APIError.rateLimited(retryAfter: http.value(forHTTPHeaderField: "Retry-After"))
+            }
             throw APIError.http(status: http.statusCode, code: envelope?.code,
                                 message: envelope?.message, errors: envelope?.errors ?? [])
         }
 
         do {
-            return try decoder.decode(T.self, from: data)
+            return APIResult(value: try decoder.decode(T.self, from: data), statusCode: http.statusCode)
         } catch {
             throw APIError.decodingError(error.localizedDescription)
         }

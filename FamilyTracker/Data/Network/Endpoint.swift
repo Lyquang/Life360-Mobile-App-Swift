@@ -37,6 +37,7 @@ enum APIError: LocalizedError {
     case networkError(String)
     case unknown
     case encodingError(String)
+    case rateLimited(retryAfter: String?)
     case http(status: Int, code: String?, message: String?, errors: [APIFieldErrorDTO])
 
     var errorDescription: String? { domainError.errorDescription }
@@ -50,6 +51,7 @@ enum APIError: LocalizedError {
         case .networkError(let m):     return .network(m)
         case .unknown:                 return .unknown
         case .encodingError:           return .validation("Dữ liệu gửi đi không hợp lệ.")
+        case .rateLimited:             return .server("Quá nhiều yêu cầu. Vui lòng thử lại sau.")
         case .http(let status, let code, let message, let errors):
             if code == "VALIDATION_ERROR" || status == 400 {
                 return .validation(errors.isEmpty ? (message ?? "Dữ liệu không hợp lệ.") : errors.map(\.message).joined(separator: "\n"))
