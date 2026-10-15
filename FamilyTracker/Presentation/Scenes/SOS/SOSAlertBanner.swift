@@ -33,17 +33,17 @@ struct SOSAlertBanner: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("🚨 SOS Khẩn Cấp!")
+                    Text(verbatim: L10n.tr("sos.alert.title"))
                         .font(FTFont.headline())
                         .foregroundColor(.white)
                     
-                    Text("\(alert.name): \(alert.message)")
+                    Text(verbatim: L10n.tr("sos.alert.from_member", alert.name) + ": " + alert.message)
                         .font(FTFont.subheadline())
                         .foregroundColor(.white.opacity(0.9))
                         .lineLimit(2)
                     
                     if let groupName = alert.groupName {
-                        Text("Nhóm: \(groupName)")
+                        Text(verbatim: L10n.tr("sos.alert.group", groupName))
                             .font(FTFont.caption())
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -73,7 +73,7 @@ struct SOSAlertBanner: View {
                 Button(action: { onNavigate?() }) {
                     HStack {
                         Image(systemName: "location.fill")
-                        Text("Xem vị trí trên bản đồ")
+                        Text(verbatim: L10n.tr("sos.alert.view_map"))
                             .font(FTFont.subheadline())
                     }
                     .foregroundColor(.white)

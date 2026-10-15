@@ -22,7 +22,11 @@ struct ProfileView: View {
                             Text(viewModel.user.email)
                                 .font(FTFont.subheadline())
                                 .foregroundColor(FTColors.textSecondary)
-                            Label("Đang hoạt động", systemImage: "circle.fill")
+                            Label {
+                                Text(verbatim: L10n.tr("presence.profile.active"))
+                            } icon: {
+                                Image(systemName: "circle.fill")
+                            }
                                 .font(FTFont.caption())
                                 .foregroundColor(FTColors.accent)
                         }
@@ -30,15 +34,15 @@ struct ProfileView: View {
                     .padding(.vertical, FTSpacing.sm)
                 }
 
-                Section("Cài đặt") {
+                Section(L10n.tr("profile.section.settings")) {
                     LanguagePicker()
                 }
 
-                Section("Thông tin ứng dụng") {
+                Section(L10n.tr("profile.section.app_info")) {
                     InfoRow(label: "Phiên bản", value: viewModel.appVersion)
                     InfoRow(label: "Backend", value: viewModel.backendHost)
                     HStack {
-                        Text("Socket")
+                        Text(verbatim: L10n.tr("profile.socket"))
                         Spacer()
                         AppLocalizedText(viewModel.connectionLabel)
                             .font(FTFont.footnote())
@@ -47,11 +51,15 @@ struct ProfileView: View {
                 }
 
                 #if DEBUG
-                Section("Developer") {
+                Section(L10n.tr("profile.section.developer")) {
                     NavigationLink {
                         NetworkInspectorView()
                     } label: {
-                        Label("Network Inspector", systemImage: "network")
+                        Label {
+                            Text(verbatim: L10n.tr("profile.network_inspector"))
+                        } icon: {
+                            Image(systemName: "network")
+                        }
                     }
                 }
                 #endif
@@ -60,30 +68,38 @@ struct ProfileView: View {
                     Button(role: .destructive) {
                         showLogoutConfirm = true
                     } label: {
-                        Label("Đăng xuất", systemImage: "rectangle.portrait.and.arrow.right")
+                        Label {
+                            Text(verbatim: L10n.tr("profile.logout"))
+                        } icon: {
+                            Image(systemName: "rectangle.portrait.and.arrow.right")
+                        }
                     }
                     Button(role: .destructive) {
                         showLogoutAllConfirm = true
                     } label: {
-                        Label("Đăng xuất mọi thiết bị", systemImage: "rectangle.stack.badge.minus")
+                        Label {
+                            Text(verbatim: L10n.tr("profile.logout_all"))
+                        } icon: {
+                            Image(systemName: "rectangle.stack.badge.minus")
+                        }
                     }
                 }
             }
-            .navigationTitle("Tài khoản")
+            .navigationTitle(Text(verbatim: L10n.tr("profile.title")))
         }
         .onAppear { viewModel.start() }
-        .confirmationDialog("Đăng xuất khỏi FamilyTracker?", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
-            Button("Đăng xuất", role: .destructive, action: viewModel.logout)
-            Button("Hủy", role: .cancel) {}
+        .confirmationDialog(Text(verbatim: L10n.tr("profile.logout.confirm_title")), isPresented: $showLogoutConfirm, titleVisibility: .visible) {
+            Button(L10n.tr("profile.logout"), role: .destructive, action: viewModel.logout)
+            Button(L10n.tr("common.cancel"), role: .cancel) {}
         } message: {
-            Text("Bạn sẽ cần đăng nhập lại để sử dụng ứng dụng.")
+            Text(verbatim: L10n.tr("profile.logout.confirm_message"))
         }
-        .confirmationDialog("Đăng xuất khỏi mọi thiết bị?", isPresented: $showLogoutAllConfirm,
+        .confirmationDialog(Text(verbatim: L10n.tr("profile.logout_all.confirm_title")), isPresented: $showLogoutAllConfirm,
                             titleVisibility: .visible) {
-            Button("Đăng xuất mọi thiết bị", role: .destructive, action: viewModel.logoutAll)
-            Button("Hủy", role: .cancel) {}
+            Button(L10n.tr("profile.logout_all"), role: .destructive, action: viewModel.logoutAll)
+            Button(L10n.tr("common.cancel"), role: .cancel) {}
         } message: {
-            Text("Tất cả thiết bị sẽ cần đăng nhập lại.")
+            Text(verbatim: L10n.tr("profile.logout_all.confirm_message"))
         }
     }
 }

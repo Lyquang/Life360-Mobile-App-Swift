@@ -103,7 +103,7 @@ final class CircleListViewModel: ObservableObject {
         do {
             let group = try await createCircle(name: name)
             groups.insert(group, at: 0)
-            successMessage = L10n.format("Tạo nhóm '%@' thành công! Mã mời: %@", group.name, group.inviteCode ?? "")
+            successMessage = L10n.tr("groups.success.created", group.name, group.inviteCode ?? "")
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -120,7 +120,7 @@ final class CircleListViewModel: ObservableObject {
             if !groups.contains(where: { $0.id == group.id }) {
                 groups.insert(group, at: 0)
             }
-            successMessage = L10n.format("Tham gia nhóm '%@' thành công!", group.name)
+            successMessage = L10n.tr("groups.success.joined", group.name)
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -206,13 +206,13 @@ final class CircleListViewModel: ObservableObject {
     private static func directChatMessage(for error: Error) -> String {
         switch error {
         case DomainError.forbidden:
-            return L10n.text("Người này không còn trong nhóm.")
+            return L10n.tr("members.error.no_longer_in_group")
         case DomainError.network:
-            return L10n.text("Không có kết nối mạng. Hãy thử lại.")
+            return L10n.tr("error.network_unavailable")
         case DomainError.unauthorized:
             return DomainError.unauthorized.localizedDescription
         default:
-            return L10n.text("Có lỗi xảy ra. Hãy thử lại sau.")
+            return L10n.tr("error.request_failed")
         }
     }
 

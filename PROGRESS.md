@@ -13,9 +13,18 @@ Legend:
 - `[x]` Engineering CI: unsigned Xcode 26.2 Simulator build, networking/localization
   contract tests, SwiftLint baseline, full-history Gitleaks scan and weekly Dependabot.
 
-- `[x]` Vietnamese / English interface: Login and Profile settings picker,
-  persistent device preference, localized labels/errors/durations and permission
-  purpose strings. Authenticated-screen manual verification remains.
+- `[x]` Vietnamese / English localization: app picker, persisted preference,
+  purpose strings and `L10n.tr` with safe missing-key fallback; localized Auth,
+  Circles, Chat, LiveMap, Places, Profile, Timeline, SOS, Voice/Media errors and
+  local-notification templates. Domain error cases remain localization-free;
+  presentation extensions map typed failures without exposing raw server text.
+- `[x]` Localization G1-G5: rules and glossary, 411 matching `vi`/`en` resource
+  keys, positional formatting/plural helper, selected-locale clock formatting,
+  scanner enforced in CI, unit contracts and interview notes. Static scan reports
+  zero UI literal candidates (nine narrow documented exceptions), zero missing
+  helper keys, zero parity/empty/duplicate/placeholder errors, and zero direct
+  localization API bypasses. Manual screenshot review at accessibility Dynamic
+  Type and device permission prompts remains a release QA check.
 
 - `[x]` Debug tooling: Pulse/PulseUI 5.2.3 console, Debug root button/keyboard
   shortcut, HTTP/upload/socket logging, local AI JSON export and manual remote logging.

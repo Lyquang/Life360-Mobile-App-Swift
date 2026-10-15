@@ -17,21 +17,22 @@ struct MemberPickerView: View {
 
                 if viewModel.isLoading && viewModel.groups.isEmpty {
                     Spacer()
-                    ProgressView("Đang tải nhóm...")
+                    ProgressView { Text(verbatim: L10n.tr("groups.loading")) }
                         .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
                     Spacer()
                 } else {
                     ScrollView {
                         LazyVStack(spacing: FTSpacing.md) {
-                            JourneyMemberRow(name: viewModel.currentUser.name, subtitle: "Lộ trình của tôi hôm nay", isMe: true) {
+                            JourneyMemberRow(name: viewModel.currentUser.name,
+                                             subtitle: L10n.tr("journey.member.today"), isMe: true) {
                                 onSelectMember(viewModel.currentUser.id, viewModel.currentUser.name)
                             }
 
                             if viewModel.groups.isEmpty {
                                 FTEmptyView(
                                     icon: "figure.walk.motion",
-                                    title: "Chưa có nhóm",
-                                    subtitle: "Tham gia hoặc tạo nhóm để xem lộ trình thành viên.",
+                                    title: L10n.tr("groups.empty.title"),
+                                    subtitle: L10n.tr("journey.groups.empty.subtitle"),
                                     actionTitle: nil,
                                     action: nil
                                 )
@@ -61,10 +62,10 @@ struct MemberPickerView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Lộ trình hôm nay")
+                Text(verbatim: L10n.tr("journey.today.title"))
                     .font(FTFont.title2())
                     .foregroundColor(FTColors.textPrimary)
-                Text("Chọn thành viên để xem hành trình")
+                Text(verbatim: L10n.tr("journey.member_picker.subtitle"))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
             }
@@ -74,7 +75,7 @@ struct MemberPickerView: View {
                     .font(.system(size: 24))
                     .foregroundColor(FTColors.primary)
             }
-            .accessibilityLabel("Lịch sử vị trí hôm nay")
+            .accessibilityLabel(L10n.tr("history.today.accessibility"))
         }
         .padding(.horizontal, FTSpacing.md)
         .padding(.top, FTSpacing.md)
@@ -109,7 +110,7 @@ struct JourneyMemberRow: View {
                             .font(FTFont.headline())
                             .foregroundColor(FTColors.textPrimary)
                         if isMe {
-                            Text("Tôi")
+                            Text(verbatim: L10n.tr("common.me"))
                                 .font(FTFont.caption())
                                 .foregroundColor(.white)
                                 .padding(.horizontal, 6)

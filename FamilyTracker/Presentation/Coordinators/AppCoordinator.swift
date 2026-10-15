@@ -32,7 +32,7 @@ final class AppCoordinator: ObservableObject {
         } else {
             showAuth()
             if expiredWhileLaunching {
-                authCoordinator?.loginViewModel.errorMessage = L10n.text(
+                authCoordinator?.loginViewModel.errorMessage = L10n.tr(
                     "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
                 )
                 expiredWhileLaunching = false
@@ -47,7 +47,7 @@ final class AppCoordinator: ObservableObject {
             let revoked = await self.container.logout(allDevices: allDevices)
             self.showAuth()
             if !revoked {
-                self.authCoordinator?.loginViewModel.errorMessage = L10n.text(
+                self.authCoordinator?.loginViewModel.errorMessage = L10n.tr(
                     "Đã đăng xuất trên thiết bị này, nhưng chưa thể xác nhận trên máy chủ."
                 )
             }
@@ -63,7 +63,7 @@ final class AppCoordinator: ObservableObject {
         mainCoordinator?.stop()
         container.shareLocation.stop()
         showAuth()
-        authCoordinator?.loginViewModel.errorMessage = L10n.text("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")
+        authCoordinator?.loginViewModel.errorMessage = L10n.tr("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.")
     }
 
     private func showAuth() {

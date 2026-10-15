@@ -20,7 +20,7 @@ struct GoogleSignInButton: View {
                         .frame(width: 20, height: 20)
                 }
 
-                Text(isLoading ? "Đang xác thực..." : "Tiếp tục với Google")
+                Text(verbatim: L10n.tr(isLoading ? "Đang xác thực..." : "Tiếp tục với Google"))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundColor(Color(red: 0.20, green: 0.20, blue: 0.20))
             }
@@ -86,7 +86,7 @@ struct OrDivider: View {
             Rectangle()
                 .fill(Color.white.opacity(0.15))
                 .frame(height: 1)
-            Text("hoặc")
+            Text(verbatim: L10n.tr("common.separator.or"))
                 .font(FTFont.caption())
                 .foregroundColor(.white.opacity(0.45))
                 .fixedSize()

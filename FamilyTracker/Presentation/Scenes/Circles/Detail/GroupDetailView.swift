@@ -30,7 +30,7 @@ struct GroupDetailView: View {
 
                         if let code = group.inviteCode {
                             VStack(spacing: FTSpacing.xs) {
-                                Text("Mã mời nhóm")
+                                Text(verbatim: L10n.tr("groups.invite_code.title"))
                                     .font(FTFont.caption())
                                     .foregroundColor(FTColors.textSecondary)
                                 HStack(spacing: FTSpacing.sm) {
@@ -53,7 +53,11 @@ struct GroupDetailView: View {
 
                         if let onOpenChat {
                             Button(action: onOpenChat) {
-                                Label("Nhắn tin nhóm", systemImage: "bubble.left.and.bubble.right.fill")
+                                Label {
+                                    Text(verbatim: L10n.tr("groups.action.chat"))
+                                } icon: {
+                                    Image(systemName: "bubble.left.and.bubble.right.fill")
+                                }
                                     .font(FTFont.subheadline())
                             }
                             .buttonStyle(.borderedProminent)
@@ -64,7 +68,7 @@ struct GroupDetailView: View {
                     .listRowBackground(Color.clear)
                 }
 
-                Section("Thành viên (\(viewModel.members.count))") {
+                Section(L10n.plural("members.count", count: viewModel.members.count)) {
                     if viewModel.isMembersLoading {
                         ProgressView()
                             .frame(maxWidth: .infinity)
@@ -72,7 +76,7 @@ struct GroupDetailView: View {
                         VStack(alignment: .leading, spacing: FTSpacing.sm) {
                             Text(error)
                                 .foregroundColor(FTColors.textSecondary)
-                            Button("Thử lại", action: onRetryMembers)
+                            Button(L10n.tr("common.action.retry"), action: onRetryMembers)
                         }
                     } else {
                         ForEach(viewModel.members) { member in
@@ -89,7 +93,11 @@ struct GroupDetailView: View {
                                     Button {
                                         onMessageMember(member)
                                     } label: {
-                                        Label("Nhắn tin", systemImage: "message.fill")
+                                        Label {
+                                            Text(verbatim: L10n.tr("members.action.message"))
+                                        } icon: {
+                                            Image(systemName: "message.fill")
+                                        }
                                     }
                                     .tint(FTColors.primary)
                                     .disabled(viewModel.isOpeningDirectChat)
@@ -109,20 +117,20 @@ struct GroupDetailView: View {
                     }
                 }
             }
-            .navigationTitle("Chi tiết nhóm")
+            .navigationTitle(Text(verbatim: L10n.tr("groups.detail.title")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Đóng", action: onClose)
+                    Button(L10n.tr("common.action.close"), action: onClose)
                 }
             }
         }
         .alert(item: $viewModel.directChatFailure) { failure in
             Alert(
-                title: Text("Không thể mở cuộc trò chuyện"),
+                title: Text(verbatim: L10n.tr("chat.direct.open_failed")),
                 message: Text(verbatim: failure.message),
-                primaryButton: .default(Text("Thử lại"), action: onRetryDirectChat),
-                secondaryButton: .cancel(Text("Đóng"))
+                primaryButton: .default(Text(verbatim: L10n.tr("common.action.retry")), action: onRetryDirectChat),
+                secondaryButton: .cancel(Text(verbatim: L10n.tr("common.action.close")))
             )
         }
     }

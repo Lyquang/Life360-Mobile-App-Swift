@@ -14,9 +14,9 @@ enum AudioRecorderError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .permissionDenied: return "Vui lòng cấp quyền micro trong Cài đặt để gửi tin nhắn thoại."
-        case .couldNotStart: return "Không thể bắt đầu ghi âm."
-        case .invalidRecording: return "Bản ghi âm không hợp lệ."
+        case .permissionDenied: return L10n.tr("voice.error.permission_denied")
+        case .couldNotStart: return L10n.tr("voice.error.could_not_start")
+        case .invalidRecording: return L10n.tr("voice.error.invalid_recording")
         }
     }
 }
@@ -96,7 +96,7 @@ final class AudioRecorderService: NSObject, AVAudioRecorderDelegate {
         guard duration > 0, duration <= MediaUploadPolicy.maxVoiceDuration,
               size > 0, size <= MediaUploadPolicy.maxVoiceBytes else {
             try? FileManager.default.removeItem(at: url)
-            throw MediaUploadError.invalidMedia("Bản ghi phải dưới 15 phút và 25 MB.")
+            throw MediaUploadError.invalidMedia("voice.error.limit_exceeded")
         }
         return VoiceAttachmentInput(fileURL: url, duration: duration, fileSize: size,
                                     mimeType: MediaUploadPolicy.voiceMimeType)

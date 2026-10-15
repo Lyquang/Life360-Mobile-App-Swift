@@ -65,7 +65,7 @@ struct LoginView: View {
                                 .tint(.white)
                                 .padding(.vertical, FTSpacing.xs)
 
-                            Text("Kết nối gia đình, mọi lúc mọi nơi")
+                            Text(verbatim: L10n.tr("Kết nối gia đình, mọi lúc mọi nơi"))
                                 .font(FTFont.subheadline())
                                 .foregroundColor(.white.opacity(0.6))
                         }
@@ -75,7 +75,7 @@ struct LoginView: View {
                         VStack(spacing: FTSpacing.md) {
                             // Form title
                             HStack {
-                                Text("Đăng nhập")
+                                Text(verbatim: L10n.tr("Đăng nhập"))
                                     .font(FTFont.title2())
                                     .foregroundColor(FTColors.textPrimary)
                                 Spacer()
@@ -140,13 +140,15 @@ struct LoginView: View {
                         
                         // MARK: Register Link
                         HStack(spacing: FTSpacing.xs) {
-                            Text("Chưa có tài khoản?")
+                            Text(verbatim: L10n.tr("Chưa có tài khoản?"))
                                 .font(FTFont.subheadline())
                                 .foregroundColor(.white.opacity(0.6))
                             
-                            Button("Đăng ký ngay", action: onRegister)
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundColor(FTColors.accent)
+                            Button(action: onRegister) {
+                                Text(verbatim: L10n.tr("Đăng ký ngay"))
+                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                    .foregroundColor(FTColors.accent)
+                            }
                         }
                         .padding(.top, FTSpacing.lg)
                         .padding(.bottom, FTSpacing.xxl)

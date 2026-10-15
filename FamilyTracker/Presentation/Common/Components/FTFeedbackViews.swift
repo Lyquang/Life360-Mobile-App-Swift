@@ -17,9 +17,11 @@ struct FTErrorView: View {
                 .multilineTextAlignment(.center)
 
             if let retry = onRetry {
-                Button("Thử lại", action: retry)
-                    .font(FTFont.subheadline())
-                    .foregroundColor(FTColors.primary)
+                Button(action: retry) {
+                    Text(verbatim: L10n.tr("Thử lại"))
+                        .font(FTFont.subheadline())
+                        .foregroundColor(FTColors.primary)
+                }
             }
         }
         .padding(FTSpacing.xl)
@@ -158,7 +160,9 @@ extension View {
             get: { message.wrappedValue != nil },
             set: { if !$0 { message.wrappedValue = nil } }
         )) {
-            Button("OK") { message.wrappedValue = nil }
+            Button { message.wrappedValue = nil } label: {
+                Text(verbatim: L10n.tr("OK"))
+            }
         } message: {
             AppLocalizedText(message.wrappedValue ?? "")
         }

@@ -12,3 +12,4 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   Tests/LocalizationTests.swift \
   -o "$TEST_BUILD_DIR/localization-tests"
 "$TEST_BUILD_DIR/localization-tests"
+ruby scripts/check_localization_report.rb

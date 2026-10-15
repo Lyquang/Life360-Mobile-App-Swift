@@ -38,11 +38,11 @@ struct RegisterView: View {
                             }
                             .padding(.top, 30)
                             
-                            Text("Tạo tài khoản")
+                            Text(verbatim: L10n.tr("Tạo tài khoản"))
                                 .font(FTFont.title())
                                 .foregroundColor(.white)
                             
-                            Text("Bắt đầu hành trình cùng gia đình")
+                            Text(verbatim: L10n.tr("Bắt đầu hành trình cùng gia đình"))
                                 .font(FTFont.subheadline())
                                 .foregroundColor(.white.opacity(0.6))
                         }
@@ -122,7 +122,7 @@ struct RegisterView: View {
                             }
 
                             // Terms text
-                            Text("Bằng cách đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi.")
+                            Text(verbatim: L10n.tr("Bằng cách đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi."))
                                 .font(FTFont.caption())
                                 .foregroundColor(.white.opacity(0.4))
                                 .multilineTextAlignment(.center)
@@ -134,11 +134,13 @@ struct RegisterView: View {
                         .padding(.horizontal, FTSpacing.md)
                         
                         // Back to login
-                        Button("Đã có tài khoản? Đăng nhập") {
+                        Button {
                             dismiss()
+                        } label: {
+                            Text(verbatim: L10n.tr("Đã có tài khoản? Đăng nhập"))
+                                .font(FTFont.subheadline())
+                                .foregroundColor(FTColors.accent)
                         }
-                        .font(FTFont.subheadline())
-                        .foregroundColor(FTColors.accent)
                         .padding(.top, FTSpacing.lg)
                         .padding(.bottom, FTSpacing.xxl)
                     }
@@ -186,7 +188,7 @@ struct PasswordStrengthView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FTSpacing.xs) {
             HStack {
-                Text("Độ mạnh:")
+                Text(verbatim: L10n.tr("Độ mạnh:"))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
                 AppLocalizedText(strengthText)

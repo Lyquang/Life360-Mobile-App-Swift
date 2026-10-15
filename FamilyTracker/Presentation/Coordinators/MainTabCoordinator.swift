@@ -139,14 +139,22 @@ struct MainTabView: View {
 
             DurationView(viewModel: coordinator.makeDurationViewModel())
                 .tabItem {
-                    Label("Ở đây", systemImage: coordinator.selectedTab == .duration
-                          ? "clock.badge.checkmark.fill" : "clock.badge.checkmark")
+                    Label {
+                        Text(verbatim: L10n.tr("Ở đây"))
+                    } icon: {
+                        Image(systemName: coordinator.selectedTab == .duration
+                              ? "clock.badge.checkmark.fill" : "clock.badge.checkmark")
+                    }
                 }
                 .tag(MainTabCoordinator.Tab.duration)
 
             TimelineCoordinatorView(coordinator: coordinator.timeline)
                 .tabItem {
-                    Label("Lộ trình", systemImage: coordinator.selectedTab == .journey ? "figure.walk.motion" : "figure.walk")
+                    Label {
+                        Text(verbatim: L10n.tr("Lộ trình"))
+                    } icon: {
+                        Image(systemName: coordinator.selectedTab == .journey ? "figure.walk.motion" : "figure.walk")
+                    }
                 }
                 .tag(MainTabCoordinator.Tab.journey)
 
@@ -155,7 +163,9 @@ struct MainTabView: View {
                 .tag(MainTabCoordinator.Tab.places)
 
             ProfileView(viewModel: coordinator.makeProfileViewModel())
-                .tabItem { Label("Cá nhân", systemImage: "person.fill") }
+                .tabItem {
+                    Label { Text(verbatim: L10n.tr("Cá nhân")) } icon: { Image(systemName: "person.fill") }
+                }
                 .tag(MainTabCoordinator.Tab.profile)
         }
         .tint(FTColors.primary)
@@ -164,7 +174,11 @@ struct MainTabView: View {
     }
 
     private func tabLabel(_ title: String, icon: String, tab: MainTabCoordinator.Tab) -> some View {
-        Label(LocalizedStringKey(title), systemImage: coordinator.selectedTab == tab ? "\(icon).fill" : icon)
+        Label {
+            Text(verbatim: L10n.tr(title))
+        } icon: {
+            Image(systemName: coordinator.selectedTab == tab ? "\(icon).fill" : icon)
+        }
     }
 
     private func configureTabBarAppearance() {

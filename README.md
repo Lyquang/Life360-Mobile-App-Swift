@@ -34,11 +34,31 @@ source, not a claim of production certification or guaranteed delivery.
 | **Real-time Location Tracking** | MapKit member pins, battery levels, presence and location updates via Socket.IO | Implemented; initial map population relies on realtime events |
 | **Emergency SOS** | Circle-wide SOS events, app-wide alert banner and coordinator-driven map focus | Implemented banner flow; fullscreen alarm/siren and Critical Alerts are not implemented |
 | **Smart Background & Battery Saving** | CoreLocation + CoreMotion policy adjusts accuracy, distance filter and significant-change monitoring | Implemented adaptive policy; no measured battery-saving percentage claimed |
-| **Real-time Chat & Media** | Circle/direct conversations, cursor pagination, typing, image preparation, presigned upload and REST message creation | Implemented client flows; storage needs backend S3/R2 credentials; mark-as-read API exists, per-message read-receipt UI is not implemented |
+| **Real-time Chat & Media** | Circle/direct conversations, cursor pagination, typing, JPEG images and AAC voice notes via presigned uploads | Upload, optimistic state, retry, cancellation and playback are implemented; storage credentials are required; per-message read-receipt UI is not implemented |
 | **Journey & Stay-Point Analytics** | Date-based history, stay-point/moving-segment timeline and reverse geocoding | Implemented screens and backend analytics; journey DTO compatibility remains a follow-up in [PROGRESS.md](PROGRESS.md) |
 | **Places & Notifications** | Saved places, stay-duration alerts, local chat/SOS notifications and per-account settings | Saved places are not enter/exit geofences; remote APNs delivery still needs backend integration |
 | **Vietnamese / English** | In-app language selection, persisted preference and localized UI/errors/durations | Available from Login and Profile settings |
 | **Developer Observability** | Pulse network inspector, sanitized diagnostics and JSON export for AI-assisted investigation | Debug tooling; no automatic log transmission to an LLM |
+
+## 🧰 Technology Stack
+
+| Layer | Technologies used |
+| --- | --- |
+| **iOS language and UI** | Swift 5, SwiftUI, Combine (`ObservableObject` / `@Published`), async/await, iOS 16+ |
+| **Apple frameworks** | MapKit, CoreLocation, CoreMotion, AVFoundation, PhotosUI, UserNotifications, Security / Keychain, UIKit |
+| **iOS networking and realtime** | URLSession, Codable DTOs, REST/JSON, Socket.IO rooms/events, access tokens and refresh-token rotation |
+| **iOS persistence and media** | Keychain credentials, UserDefaults preferences, protected owner-scoped JSONL location buffer, JPEG and AAC `.m4a`, presigned S3-compatible uploads |
+| **iOS packages (SwiftPM)** | Socket.IO Client Swift **16.1.1**, Pulse / PulseUI **5.2.3**, GoogleSignIn-iOS **10.0.0** (`Package.resolved`) |
+| **Backend runtime and API** | Node.js **20+**, Express **4.x**, Socket.IO **4.x**, REST endpoints and authenticated realtime events |
+| **Backend data and infrastructure** | MongoDB with Mongoose **8.x**, optional Redis with ioredis **6.x**, Cloudflare R2 or AWS S3-compatible storage |
+| **Backend security and validation** | JWT access tokens + rotating refresh tokens, bcryptjs, Zod, Helmet, express-rate-limit, Google Auth Library |
+| **Backend operations** | dotenv, Docker, Swagger UI / OpenAPI generation, Node's built-in test runner |
+| **Engineering and AI-assisted workflow** | Xcode 26.2 CI, GitHub Actions, SwiftLint, Gitleaks, XCTest source, contract-test scripts, feature specs, ast-grep, Graphtify, Memory MCP and codebase skeleton tooling |
+
+The iOS package versions are resolved in the checked-in Xcode project's
+`Package.resolved`; backend version ranges and scripts live in the separate
+[backend package.json](https://github.com/Lyquang/Life360-BackEnd/blob/main/package.json).
+AI/AST/MCP tools are development aids, not runtime app dependencies.
 
 ### Battery-aware tracking, not a fixed GPS loop
 
@@ -101,14 +121,31 @@ The backend's stay detector groups consecutive points within an **80 m radius**
 for at least **5 minutes**, then derives moving segments. These are inspectable
 algorithm parameters, not benchmark or accuracy claims.
 
+### API Surface
+
+The iOS client uses the deployed `/api/v1` REST base for request/response workflows
+and Socket.IO for live collaboration:
+
+| Module | REST surface | Realtime surface |
+| --- | --- | --- |
+| **Authentication** | Register, login, Google social login, refresh-token rotation, current user and logout | Authenticated socket session and `session:ready` |
+| **Circles / Places** | List/create/join groups, members, notification interval, saved places | Circle membership and live location/presence events |
+| **Chat** | Conversations, direct conversation, cursor-paginated messages, mark read, media upload ticket | Typing, new messages, read receipts and conversation updates |
+| **Location / History** | Batch location history at `/locations/batch`, daily history and journey data | `update_location` / `location_update`, SOS and stay alerts |
+
+The realtime `update_location` payload currently stays at `latitude`, `longitude`
+and optional `batteryLevel`. GPS timestamp/accuracy are preserved in the mobile
+buffer and included in REST batch history uploads.
+
 ### Realtime and media paths
 
 ```text
 Location -> adaptive CoreLocation policy -> domain use case -> Socket.IO
          -> authenticated user/Circle rooms -> member state -> MapKit
 
-Image -> compress + metadata -> upload ticket -> HTTP PUT to S3/R2
-      -> REST create image message -> Socket.IO delivery to conversation room
+Text -> REST create message
+Image / voice -> prepare or record -> upload ticket -> raw HTTP PUT to S3/R2
+              -> Socket.IO send-with-ack -> conversation room
 
 Notification tap -> pending route -> authenticated session -> membership check
                  -> ChatCoordinator / MapCoordinator
@@ -118,11 +155,19 @@ Socket.IO adds event framing, rooms and reconnection behavior on top of its
 transport; it is not interchangeable with a raw WebSocket client. The backend
 uses user, Circle and conversation rooms.
 
-The local [OfflineQueue](FamilyTracker/Data/Local/OfflineQueue/OfflineQueue.swift)
-persists bounded outgoing events, coalesces location updates and replays on reconnect
-(200 items, 24-hour expiry). This is **best-effort buffering**, not a full offline
-chat database or acknowledged exactly-once delivery. Coalescing prioritizes the
-latest location, not preservation of every historical point.
+There are two distinct offline paths. The generic
+[OfflineQueue](FamilyTracker/Data/Local/OfflineQueue/OfflineQueue.swift) is a bounded,
+best-effort queue for eligible realtime events (up to 200 items / 24 hours); it does
+not provide acknowledged exactly-once delivery. Location history uses the separate
+[LocationBuffer](FamilyTracker/Data/Local/LocationBuffer/LocationBuffer.swift):
+owner-scoped JSONL in protected Application Support, a 24-hour TTL, duplicate-fix
+suppression and deterministic thinning from 500 to 400 points when full. After
+authenticated `session:ready`, the app requests a fresh fix for realtime, then uploads
+older buffered points chronologically through `POST /api/v1/locations/batch`. If no
+fresh fix arrives within the active task's 10-second wait, history sync may start while
+realtime continues waiting for a fresh fix. Old points are never replayed as live socket
+updates. P7E foreground/network-path triggers are not implemented yet, so synchronization
+can wait until a later ready event or the app receives execution time.
 
 ## 📂 Directory Structure
 
@@ -139,14 +184,22 @@ not `FamilyTrackerApp/`, and the backend is not vendored here.
 │   ├── Data/                      # REST DTOs/mappers, repositories, local storage
 │   ├── Core/                      # Location, sockets, notifications, logging
 │   └── Resources/                 # Assets, Info.plist, vi/en localization
-├── Tests/                         # Networking, localization, notification tests
+├── FamilyTrackerTests/            # XCTest source; no target in the main Xcode project yet
+├── Tests/                         # Networking/localization contracts and UI-test source
 ├── scripts/                       # Test runners and codebase skeleton
 ├── .spec/                         # Feature specifications
+├── .ast-grep/                     # Swift architecture/AST rules
+├── .mcp/                          # Local Memory MCP data
+├── .github/workflows/             # iOS CI and code-quality workflows
 ├── FamilyTracker.entitlements
-├── project.yml                    # XcodeGen definition
+├── project.yml                    # XcodeGen description; not used by CI build
 ├── AI_RULES.md                     # Architectural and agent constraints
 └── PROGRESS.md                     # Status, decisions and verification gaps
 ```
+
+The checked-in `FamilyTracker.xcodeproj` is the build source of truth. Before
+regenerating it from `project.yml`, keep package dependencies in sync; the Xcode
+project also includes Google Sign-In packages.
 
 **Suggested two-repository checkout** (`FamilyTrackerApp/` is an optional local alias):
 
@@ -174,13 +227,13 @@ workspace/
 
 | Tool | Requirement |
 | --- | --- |
-| macOS + Xcode | Xcode supporting synchronized folders (16+); iOS deployment target 16.0; Debug Simulator build checked with Xcode 26.2 |
-| Swift Package Manager | Xcode resolves Socket.IO and Pulse from project dependencies |
+| macOS + Xcode | Xcode 16+; iOS deployment target 16.0; CI and current unsigned Simulator builds use Xcode 26.2 |
+| Swift Package Manager | Xcode resolves Socket.IO, Pulse and Google Sign-In from `Package.resolved` |
 | iPhone / Simulator | Simulator for UI; physical device for realistic motion, battery, background GPS and APNs testing |
 | Apple signing | Your own Team/Bundle ID; APNs-capable provisioning for push entitlements |
-| Node.js / npm | Node.js 20+ for the separate backend; inspect its `package.json` for future changes |
-| MongoDB | Local instance or Atlas connection string; replica-set deployment for transaction-dependent flows |
-| Optional | Docker for backend; XcodeGen to regenerate the project; S3/R2 for image uploads |
+| Node.js / npm | Node.js 20+ and npm for the separate backend |
+| MongoDB | Local instance or Atlas connection string; use a replica set where transaction-backed flows require it |
+| Optional services | Redis (optional cache), Google OAuth credentials, Cloudflare R2 or AWS S3-compatible storage; Docker for backend deployment |
 
 ### 1. Run the iOS client against the deployed API
 
@@ -227,22 +280,25 @@ npm ci
 cp .env.example .env
 ```
 
-Edit `.env` with your own values. Minimum example:
+Edit `.env` with your own values. The backend's `.env.example` is authoritative;
+this local-development subset shows the current variable names:
 
 ```dotenv
 NODE_ENV=development
 PORT=3000
 MONGODB_URI=mongodb://127.0.0.1:27017/location-sharing-app
 JWT_SECRET=replace-with-a-long-random-secret
-JWT_EXPIRES_IN=7d
-JWT_REFRESH_EXPIRES_IN=30d
+JWT_ACCESS_EXPIRES_IN=15m
+REFRESH_TOKEN_TTL_DAYS=30
+REDIS_ENABLED=false
 TZ=Asia/Ho_Chi_Minh
-CORS_ORIGIN=http://localhost:3000
+CORS_ORIGIN=*
 ```
 
 Generate a secret with `openssl rand -hex 32`; never commit `.env`, access tokens,
-real locations or signing keys. Native clients do not use browser CORS enforcement;
-set explicit browser origins appropriate to your deployment.
+real locations or signing keys. `CORS_ORIGIN=*` is only a local-development sample;
+set explicit browser origins for a public deployment. Native clients do not use
+browser CORS enforcement.
 
 ```bash
 npm run dev
@@ -259,26 +315,29 @@ The Docker command runs the API only, **not MongoDB**. Use an Atlas/container-re
 `MONGODB_URI`; `127.0.0.1` inside that API container is not your host MongoDB.
 The Docker image uses production mode, so supply explicit production-safe settings.
 
-Image uploads additionally need the backend's `S3_BUCKET`, `S3_REGION`,
-`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL` and optional
-`S3_ENDPOINT` for R2. With storage unset, the upload-ticket endpoint returns 503.
-Consult the backend's checked-in `.env.example` rather than embedding storage
-secrets in the mobile app.
+Google sign-in additionally needs the matching `GOOGLE_CLIENT_ID` on the backend.
+For Cloudflare R2, configure all `R2_*` variables shown in the backend `.env.example`
+(account, access key, secret, bucket and public domain); alternatively use its
+documented `S3_*` compatibility settings. Redis is optional and disabled by default.
+With media storage unset, upload-ticket requests return 503. Never put backend
+secrets in the iOS app.
 
 ### 3. Notifications and App Icon
 
 Open **Profile → Settings → Notifications** for master/chat/SOS preferences and
-the iOS permission recovery action. Preferences are currently device-local and
-account-scoped; **remote APNs delivery is not yet connected to the backend**.
+the iOS permission recovery action. The app can request APNs authorization,
+register with APNs and handle notification taps; device tokens are not yet
+registered with the backend, so **remote push is not end-to-end connected**.
+Local notifications can be scheduled by the app.
 
-Push/Time Sensitive entitlements are configured in the project, but Apple signing
-and backend registration are separate requirements. `remote-notification` does
-not make sockets run indefinitely. Critical Alerts require separate Apple approval.
+Push and background-location capabilities are declared in the project, but valid
+Apple signing and backend token registration are still required. `remote-notification`
+does not keep sockets running indefinitely. Critical Alerts require separate Apple
+approval and are not implemented.
 
-The `AppIcon` catalog is configured but has no artwork yet. Import an opaque
-1024×1024 PNG into its universal iOS slot; Xcode generates the required sizes.
-See [NOTIFICATIONS.md](NOTIFICATIONS.md) for capabilities, payload contract,
-remaining server work, icon instructions and a physical-device test checklist.
+The [AppIcon asset catalog](FamilyTracker/Resources/Assets.xcassets/AppIcon.appiconset)
+currently has its universal iOS slot but no artwork. Add an opaque 1024×1024 PNG
+there before distributing a branded build.
 
 ## 🧪 Verification
 
@@ -287,18 +346,17 @@ Run from this repository root:
 ```bash
 bash scripts/test_networking.sh
 bash scripts/test_localization.sh
-bash scripts/test_notifications.sh
 ```
 
 | Check | Scope |
 | --- | --- |
-| Networking contracts | 26 documented REST examples, DTO round trips, request contracts, authorization and transport errors |
-| Localization | Key/format parity, saved language, errors and durations; 249 translations at this revision |
-| Notification settings | Account isolation, persistence, category gating, bounded dedupe, ViewModel state and error recovery |
-| Simulator build | Compilation and integration; not proof of physical APNs or background GPS behavior |
+| Networking contract harness | 26 documented REST examples, DTO round trips, endpoint contracts, authorization and transport errors |
+| Localization contract harness | Key/format parity, saved language, errors and durations; 261 translations |
+| XCTest source | Focused tests exist under `FamilyTrackerTests/`, but there is no XCTest target in the main Xcode project, so `xcodebuild test` cannot run them yet |
+| Simulator build | Compilation/integration; not proof of physical APNs, GPS, motion or background behavior |
 
-The existing Login language UI test requires XcodeGen and a booted Simulator with
-the app installed and logged out:
+The separate Login language UI test project is generated with XcodeGen and requires
+a booted Simulator with the app installed and logged out:
 
 ```bash
 SIMULATOR_ID=<booted-simulator-udid> bash scripts/test_localization_ui.sh
@@ -315,10 +373,11 @@ flows need separate device/account testing. Backend tests run independently with
 | --- | --- |
 | Architecture and ownership rules | [AI_RULES.md](AI_RULES.md) |
 | Implementation status and known gaps | [PROGRESS.md](PROGRESS.md) |
-| REST and realtime contracts | [API_INTERGRATION.MD](API_INTERGRATION.MD) |
-| Swift patterns with source references | [FRONTEND_SWIFT_DESIGN_PATTERNS.md](FRONTEND_SWIFT_DESIGN_PATTERNS.md) |
-| Language switching | [LOCALIZATION.md](LOCALIZATION.md) |
-| Push, settings and icon setup | [NOTIFICATIONS.md](NOTIFICATIONS.md) |
+| API contracts: Google OAuth, token rotation, media upload | [api-docs](api-docs/) |
+| Location buffer and batch synchronization | [P7 location design](study/location/P7-offline-location-buffer.md) |
+| Swift patterns with source references | [Frontend Swift patterns](study/FRONTEND_SWIFT_DESIGN_PATTERNS.md) |
+| Language switching | [Localization contract](api-docs/LOCALIZATION.md) |
+| Push and notification implementation | [PushNotificationService.swift](FamilyTracker/Core/PushNotification/PushNotificationService.swift) |
 | Spec-driven work, AST/graph tooling, Memory MCP and Pulse | [TOOLING.md](TOOLING.md) |
 
 AI-assisted workflows support engineering decisions; they do not replace code
@@ -329,9 +388,12 @@ specs document scope before changes, and `PROGRESS.md` records verification limi
 
 - **Available:** native map/chat/history/places screens, adaptive location services,
   REST/Socket.IO integration, bilingual UI, local notification settings and Pulse diagnostics.
+- **Offline location:** owner-scoped, protected 24-hour buffer and chronological REST batch
+  sync after authenticated socket readiness. Foreground/network-path triggers are not implemented yet.
 - **Next integration steps:** APNs provider and device registration/preferences APIs,
   server-side notification filtering, unread badge reconciliation, robust cold-start
-  incident-location retrieval, and complete physical-device notification validation.
+  incident-location retrieval, P7E foreground/network location-sync triggers, and complete
+  physical-device notification validation.
 - **Not advertised as shipped:** fullscreen SOS siren, Critical Alerts, enter/exit
   geofence notifications, per-message read-receipt UI, `@Observable` migration,
   completed icon artwork or guaranteed offline/event delivery.

@@ -18,7 +18,7 @@ struct CircleListView: View {
 
                 if viewModel.isLoading && viewModel.groups.isEmpty {
                     Spacer()
-                    ProgressView("Đang tải nhóm...")
+                    ProgressView { Text(verbatim: L10n.tr("groups.loading")) }
                         .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
                     Spacer()
                 } else if viewModel.groups.isEmpty {
@@ -56,10 +56,10 @@ struct CircleListView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Nhóm của tôi")
+                Text(verbatim: L10n.tr("groups.title.mine"))
                     .font(FTFont.title2())
                     .foregroundColor(FTColors.textPrimary)
-                Text("\(viewModel.groups.count) nhóm")
+                Text(verbatim: L10n.plural("groups.count", count: viewModel.groups.count))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
             }

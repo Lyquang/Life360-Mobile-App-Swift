@@ -8,14 +8,18 @@ struct MemberRowView: View {
     var onMessageTap: (() -> Void)?
 
     private var canMessage: Bool { !isCurrentUser && onMessageTap != nil }
-    private var presenceKey: String { member.isOnline == true ? "Đang hoạt động" : "Offline" }
+    private var presenceKey: String { member.isOnline == true ? "members.presence.online" : "members.presence.offline" }
 
     var body: some View {
         if canMessage {
             row
                 .contextMenu {
                     Button(action: message) {
-                        Label("Nhắn tin", systemImage: "message.fill")
+                        Label {
+                            Text(verbatim: L10n.tr("members.action.message"))
+                        } icon: {
+                            Image(systemName: "message.fill")
+                        }
                     }
                     .disabled(isMessageDisabled)
                 }
@@ -43,7 +47,7 @@ struct MemberRowView: View {
                         .fixedSize(horizontal: false, vertical: true)
 
                     if isCurrentUser {
-                        Text("Bạn")
+                        Text(verbatim: L10n.tr("common.you"))
                             .font(FTFont.caption())
                             .foregroundColor(FTColors.primary)
                             .padding(.horizontal, 6)
@@ -58,7 +62,7 @@ struct MemberRowView: View {
                         Circle()
                             .fill(member.isOnline == true ? FTColors.accent : FTColors.textTertiary)
                             .frame(width: 6, height: 6)
-                        AppLocalizedText(presenceKey)
+                        Text(verbatim: L10n.tr(presenceKey))
                             .font(FTFont.caption())
                             .foregroundColor(
                                 member.isOnline == true ? FTColors.accent : FTColors.textTertiary
@@ -98,17 +102,17 @@ struct MemberRowView: View {
         .buttonStyle(.plain)
         .disabled(isMessageDisabled)
         .accessibilityLabel(
-            L10n.format(isOpeningChat ? "Đang mở cuộc trò chuyện với %@" : "Nhắn tin cho %@", member.name)
+            L10n.tr(isOpeningChat ? "members.accessibility.opening_chat" : "members.accessibility.message", member.name)
         )
-        .accessibilityHint(isOpeningChat ? "" : L10n.text("Mở cuộc trò chuyện riêng"))
+        .accessibilityHint(isOpeningChat ? "" : L10n.tr("members.accessibility.message_hint"))
     }
 
     private var accessibilitySummary: String {
         var parts = [member.name]
-        if isCurrentUser { parts.append(L10n.text("Bạn")) }
-        parts.append(L10n.text(presenceKey))
+        if isCurrentUser { parts.append(L10n.tr("common.you")) }
+        parts.append(L10n.tr(presenceKey))
         if let battery = member.batteryLevel {
-            parts.append(L10n.format("Pin %lld phần trăm", battery))
+            parts.append(L10n.tr("members.accessibility.battery_percent", battery))
         }
         return parts.joined(separator: ", ")
     }

@@ -24,7 +24,7 @@ struct GroupCard: View {
                             .foregroundColor(FTColors.textPrimary)
 
                         HStack(spacing: FTSpacing.xs) {
-                            Text("\(group.memberCount) thành viên")
+                            Text(verbatim: L10n.plural("members.count", count: group.memberCount))
                                 .font(FTFont.caption())
                                 .foregroundColor(FTColors.textSecondary)
                             Text("•")
@@ -33,7 +33,7 @@ struct GroupCard: View {
                                 Circle()
                                     .fill(FTColors.accent)
                                     .frame(width: 6, height: 6)
-                                Text("\(group.onlineMembersCount) online")
+                                Text(verbatim: L10n.plural("presence.online_count", count: group.onlineMembersCount))
                                     .font(FTFont.caption())
                                     .foregroundColor(FTColors.accent)
                             }
@@ -50,7 +50,11 @@ struct GroupCard: View {
                 if let code = group.inviteCode {
                     Divider()
                     HStack {
-                        Label("Mã mời:", systemImage: "key.fill")
+                        Label {
+                            Text(verbatim: L10n.tr("groups.invite_code"))
+                        } icon: {
+                            Image(systemName: "key.fill")
+                        }
                             .font(FTFont.caption())
                             .foregroundColor(FTColors.textSecondary)
                         Text(code)

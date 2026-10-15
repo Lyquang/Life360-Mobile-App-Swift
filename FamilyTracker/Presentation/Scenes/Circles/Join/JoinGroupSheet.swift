@@ -20,23 +20,25 @@ struct JoinGroupSheet: View {
                 .padding(.top, FTSpacing.lg)
 
                 VStack(spacing: FTSpacing.xs) {
-                    Text("Tham gia nhóm")
+                    Text(verbatim: L10n.tr("groups.join.title"))
                         .font(FTFont.title3())
-                    Text("Nhập mã mời 6 chữ số từ người quản trị nhóm")
+                    Text(verbatim: L10n.tr("groups.join.subtitle"))
                         .font(FTFont.subheadline())
                         .foregroundColor(FTColors.textSecondary)
                         .multilineTextAlignment(.center)
                 }
 
                 VStack(spacing: FTSpacing.sm) {
-                    Text("Mã mời")
+                    Text(verbatim: L10n.tr("groups.invite_code.title"))
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textSecondary)
                         .textCase(.uppercase)
                         .tracking(0.5)
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                    TextField("123456", text: $inviteCode)
+                    TextField(text: $inviteCode) {
+                        Text(verbatim: "123456")
+                    }
                         .font(.system(size: 32, weight: .bold, design: .monospaced))
                         .multilineTextAlignment(.center)
                         .keyboardType(.numberPad)
@@ -54,7 +56,7 @@ struct JoinGroupSheet: View {
                                 .stroke(inviteCode.count == 6 ? FTColors.accent : FTColors.primary.opacity(0.3), lineWidth: 2)
                         )
 
-                    Text("\(inviteCode.count)/6 ký tự")
+                    Text(verbatim: L10n.tr("groups.invite_code.length", inviteCode.count))
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .trailing)
@@ -64,7 +66,7 @@ struct JoinGroupSheet: View {
                 if let error = viewModel.errorMessage {
                     HStack(spacing: FTSpacing.xs) {
                         Image(systemName: "exclamationmark.circle.fill")
-                        Text(error)
+                        Text(verbatim: L10n.message(error))
                     }
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.danger)
@@ -82,11 +84,11 @@ struct JoinGroupSheet: View {
 
                 Spacer()
             }
-            .navigationTitle("Tham gia nhóm")
+            .navigationTitle(Text(verbatim: L10n.tr("groups.join.title")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Hủy", action: onClose)
+                    Button(L10n.tr("common.cancel"), action: onClose)
                 }
             }
         }

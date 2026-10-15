@@ -52,7 +52,7 @@ struct DurationBadgeLarge: View {
                 Image(systemName: "mappin.and.ellipse")
                     .font(.system(size: 12))
                 VStack(alignment: .leading, spacing: 1) {
-                    Text("Đang ở đây")
+                    Text(verbatim: L10n.tr("stay.status.here"))
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textSecondary)
                     LocalizedDurationText(minutes: member.durationAtLocation ?? 0)

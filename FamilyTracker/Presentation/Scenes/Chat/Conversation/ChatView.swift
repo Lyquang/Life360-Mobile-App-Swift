@@ -13,7 +13,7 @@ struct ChatView: View {
         VStack(spacing: 0) {
             messageList
             if !viewModel.typingNames.isEmpty {
-                Text("\(viewModel.typingNames.joined(separator: ", ")) đang nhập…")
+                Text(verbatim: L10n.tr("chat.typing", viewModel.typingNames.joined(separator: ", ")))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -22,7 +22,7 @@ struct ChatView: View {
             }
             inputBar
         }
-        .navigationTitle(viewModel.title.isEmpty ? Text("Tin nhắn") : Text(verbatim: viewModel.title))
+        .navigationTitle(viewModel.title.isEmpty ? Text(verbatim: L10n.tr("Tin nhắn")) : Text(verbatim: viewModel.title))
         .navigationBarTitleDisplayMode(.inline)
         .task { await viewModel.start() }
         .onDisappear { viewModel.stopTyping() }
@@ -41,7 +41,7 @@ struct ChatView: View {
     private var messageList: some View {
         Group {
             if viewModel.isLoading && viewModel.messages.isEmpty {
-                ProgressView("Đang tải tin nhắn...")
+                ProgressView { Text(verbatim: L10n.tr("chat.loading.messages")) }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else if viewModel.messages.isEmpty {
                 emptyConversation
@@ -57,12 +57,12 @@ struct ChatView: View {
                 .font(.system(size: 32))
                 .foregroundColor(FTColors.primary)
             if let name = viewModel.emptyGreetingName {
-                Text(verbatim: L10n.format("Hãy gửi lời chào đến %@", name))
+                Text(verbatim: L10n.tr("chat.empty.direct.greeting", name))
                     .font(FTFont.body())
                     .foregroundColor(FTColors.textSecondary)
                     .multilineTextAlignment(.center)
             } else {
-                Text("Chưa có tin nhắn")
+                Text(verbatim: L10n.tr("Chưa có tin nhắn"))
                     .font(FTFont.body())
                     .foregroundColor(FTColors.textSecondary)
             }
@@ -76,7 +76,9 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(spacing: FTSpacing.sm) {
                     if viewModel.hasMore {
-                        Button("Tải tin nhắn cũ hơn") { Task { await viewModel.loadOlder() } }
+                        Button { Task { await viewModel.loadOlder() } } label: {
+                            Text(verbatim: L10n.tr("Tải tin nhắn cũ hơn"))
+                        }
                             .font(FTFont.caption())
                             .padding(.top, FTSpacing.sm)
                     }
@@ -125,16 +127,18 @@ struct ChatView: View {
                     .font(.system(size: 20))
                     .foregroundColor(viewModel.isRecording ? .red : FTColors.primary)
             }
-            .accessibilityLabel(L10n.text(viewModel.isRecording ? "Dừng ghi âm" : "Ghi âm"))
+            .accessibilityLabel(L10n.tr(viewModel.isRecording ? "voice.action.stop_recording" : "voice.action.record"))
 
             if viewModel.isRecording {
-                Text(verbatim: L10n.format("Đang ghi %@", duration(viewModel.recordingDuration)))
+                Text(verbatim: L10n.tr("voice.recording.duration", duration(viewModel.recordingDuration)))
                     .font(FTFont.body())
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button(action: viewModel.cancelRecording) { Image(systemName: "xmark.circle") }
-                    .accessibilityLabel(L10n.text("Hủy ghi âm"))
+                    .accessibilityLabel(L10n.tr("voice.action.cancel_recording"))
             } else {
-                TextField("Nhắn tin…", text: $viewModel.draft, axis: .vertical)
+                TextField(text: $viewModel.draft, axis: .vertical) {
+                    Text(verbatim: L10n.tr("Nhắn tin…"))
+                }
                 .lineLimit(1...4)
                 .padding(.horizontal, FTSpacing.sm)
                 .padding(.vertical, 8)
@@ -240,7 +244,13 @@ struct MessageBubble: View {
             Button(action: onRetry) { Label(message, systemImage: "arrow.clockwise") }
                 .font(FTFont.caption()).foregroundColor(.red)
         case .uncertain:
-            Button(action: onRetry) { Label("Chưa xác nhận - kiểm tra và gửi lại", systemImage: "questionmark.circle") }
+            Button(action: onRetry) {
+                Label {
+                    Text(verbatim: L10n.tr("Chưa xác nhận - kiểm tra và gửi lại"))
+                } icon: {
+                    Image(systemName: "questionmark.circle")
+                }
+            }
                 .font(FTFont.caption()).foregroundColor(.orange)
         }
     }
