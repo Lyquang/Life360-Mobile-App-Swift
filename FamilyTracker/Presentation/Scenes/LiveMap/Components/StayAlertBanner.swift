@@ -82,7 +82,8 @@ struct StayAlertBanner: View {
             HStack {
                 Image(systemName: "clock.fill")
                     .font(.system(size: 12))
-                Text("Đã ở đây: \(L10n.duration(minutes: alert.durationMinutes, language: AppLanguage(locale: locale)))")
+                Text(verbatim: L10n.tr("stay.duration_label", L10n.duration(minutes: alert.durationMinutes, language: AppLanguage(locale: locale)),
+                                       language: AppLanguage(locale: locale)))
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
             }
@@ -96,7 +97,7 @@ struct StayAlertBanner: View {
                 Button(action: { onNavigate?() }) {
                     HStack {
                         Image(systemName: "location.fill")
-                        Text("Xem vị trí trên bản đồ")
+                        Text(verbatim: L10n.tr("stay.action.view_map", language: AppLanguage(locale: locale)))
                             .font(FTFont.subheadline())
                     }
                     .foregroundColor(.white)

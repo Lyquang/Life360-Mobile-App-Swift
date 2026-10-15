@@ -48,7 +48,7 @@ final class RegisterViewModel: ObservableObject {
             .first?.windows
             .first(where: { $0.isKeyWindow })?
             .rootViewController else {
-            errorMessage = "Không thể mở Google Sign-In."
+            errorMessage = L10n.tr("auth.error.google_unavailable")
             return
         }
 
@@ -79,14 +79,14 @@ final class RegisterViewModel: ObservableObject {
         }
         let msg = error.localizedDescription.lowercased()
         if msg.contains("network") || msg.contains("mạng") || msg.contains("internet") {
-            return "Không có kết nối mạng. Vui lòng kiểm tra lại."
+            return L10n.tr("error.network_unavailable")
         }
         if msg.contains("503") || msg.contains("service_unavailable") {
-            return "Dịch vụ Google OAuth chưa được cấu hình. Vui lòng thử lại sau."
+            return L10n.tr("auth.error.google_not_configured")
         }
         if msg.contains("401") || msg.contains("unauthorized") || msg.contains("invalid") {
-            return "Token Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại."
+            return L10n.tr("auth.error.google_token_invalid")
         }
-        return error.localizedDescription
+        return L10n.tr("auth.error.google_failed")
     }
 }

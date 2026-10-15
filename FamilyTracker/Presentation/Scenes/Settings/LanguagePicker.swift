@@ -9,7 +9,11 @@ struct LanguagePicker: View {
                 Text(verbatim: language.nativeName).tag(language)
             }
         } label: {
-            Label("Ngôn ngữ", systemImage: "globe")
+            Label {
+                Text(verbatim: L10n.tr("Ngôn ngữ"))
+            } icon: {
+                Image(systemName: "globe")
+            }
         }
         .pickerStyle(.menu)
         .accessibilityIdentifier("settings.language")

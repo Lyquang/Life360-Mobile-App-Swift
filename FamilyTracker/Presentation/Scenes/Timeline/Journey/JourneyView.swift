@@ -23,16 +23,16 @@ struct JourneyView: View {
 
                 if viewModel.isLoading {
                     Spacer()
-                    ProgressView("Đang phân tích lộ trình...")
+                    ProgressView { Text(verbatim: L10n.tr("journey.loading")) }
                         .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
                     Spacer()
                 } else if viewModel.journeyEntries.isEmpty {
                     Spacer()
                     FTEmptyView(
                         icon: "figure.walk.motion",
-                        title: "Chưa có dữ liệu",
+                        title: L10n.tr("journey.empty.title"),
                         subtitle: viewModel.errorMessage
-                            ?? L10n.format("Lộ trình của %@ trong ngày này sẽ xuất hiện ở đây khi có GPS data.", viewModel.memberName, language: AppLanguage(locale: locale)),
+                            ?? L10n.tr("journey.empty.member", viewModel.memberName, language: AppLanguage(locale: locale)),
                         actionTitle: nil,
                         action: nil
                     )
@@ -65,7 +65,8 @@ struct JourneyView: View {
                 Spacer()
 
                 VStack(spacing: 2) {
-                    Text("Lộ trình của \(viewModel.memberName)")
+                    Text(verbatim: L10n.tr("journey.title.member", viewModel.memberName,
+                                           language: AppLanguage(locale: locale)))
                         .font(FTFont.headline())
                         .foregroundColor(FTColors.textPrimary)
                     Text(viewModel.formattedDisplayDate(locale: locale))
@@ -105,7 +106,7 @@ struct JourneyView: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "chevron.left")
-                    Text("Trước")
+                    Text(verbatim: L10n.tr("journey.day.previous"))
                 }
                 .font(FTFont.caption())
                 .foregroundColor(FTColors.primary)
@@ -117,7 +118,7 @@ struct JourneyView: View {
 
             if !viewModel.isToday {
                 Button(action: viewModel.goToToday) {
-                    Text("Hôm nay")
+                    Text(verbatim: L10n.tr("journey.day.today"))
                         .font(FTFont.caption())
                         .foregroundColor(.white)
                         .padding(.horizontal, FTSpacing.md)
@@ -133,7 +134,7 @@ struct JourneyView: View {
                 withAnimation { viewModel.goToNextDay() }
             } label: {
                 HStack(spacing: 4) {
-                    Text("Sau")
+                    Text(verbatim: L10n.tr("journey.day.next"))
                     Image(systemName: "chevron.right")
                 }
                 .font(FTFont.caption())
@@ -222,7 +223,7 @@ struct JourneyView: View {
 
     private var timeline: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Hành trình trong ngày")
+            Text(verbatim: L10n.tr("journey.timeline.title"))
                 .font(FTFont.headline())
                 .foregroundColor(FTColors.textPrimary)
                 .padding(.horizontal, FTSpacing.md)

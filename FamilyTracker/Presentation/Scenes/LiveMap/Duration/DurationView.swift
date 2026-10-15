@@ -59,18 +59,18 @@ struct DurationView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Đang ở đâu")
+                Text(verbatim: L10n.tr("stay.screen.title"))
                     .font(FTFont.title2())
                     .foregroundColor(FTColors.textPrimary)
-                Text("Thời gian thành viên đứng yên")
+                Text(verbatim: L10n.tr("stay.screen.subtitle"))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
             }
             Spacer()
             HStack(spacing: FTSpacing.sm) {
-                legendDot(color: FTColors.accent, label: "< 1 giờ")
-                legendDot(color: FTColors.warning, label: "1–4 giờ")
-                legendDot(color: FTColors.danger, label: "> 4 giờ")
+                legendDot(color: FTColors.accent, label: L10n.tr("stay.legend.under_one_hour"))
+                legendDot(color: FTColors.warning, label: L10n.tr("stay.legend.one_to_four_hours"))
+                legendDot(color: FTColors.danger, label: L10n.tr("stay.legend.over_four_hours"))
             }
         }
         .padding(.horizontal, FTSpacing.md)
@@ -81,7 +81,7 @@ struct DurationView: View {
     private func legendDot(color: Color, label: String) -> some View {
         HStack(spacing: 3) {
             Circle().fill(color).frame(width: 8, height: 8)
-            AppLocalizedText(label).font(.system(size: 10)).foregroundColor(FTColors.textTertiary)
+            Text(verbatim: label).font(.system(size: 10)).foregroundColor(FTColors.textTertiary)
         }
     }
 }
@@ -103,24 +103,30 @@ struct DurationMemberCard: View {
                     HStack(spacing: 4) {
                         Image(systemName: "clock.fill")
                             .font(.system(size: 11))
-                        Text("Đã ở đây \(L10n.duration(minutes: member.durationAtLocation ?? 0, language: AppLanguage(locale: locale)))")
+                        Text(verbatim: L10n.tr("stay.duration_label", L10n.duration(minutes: member.durationAtLocation ?? 0, language: AppLanguage(locale: locale)),
+                                               language: AppLanguage(locale: locale)))
                             .font(FTFont.subheadline())
                     }
                     .foregroundColor(stayColor)
 
                     if ISO8601.date(from: member.durationSince) != nil {
-                        Text("Từ lúc \(DisplayFormat.time(iso: member.durationSince))")
+                        Text(verbatim: L10n.tr("stay.since", DisplayFormat.time(iso: member.durationSince),
+                                               language: AppLanguage(locale: locale)))
                             .font(FTFont.caption())
                             .foregroundColor(FTColors.textSecondary)
                     }
                 } else {
-                    Text("Đang di chuyển")
+                    Text(verbatim: L10n.tr("stay.moving"))
                         .font(FTFont.subheadline())
                         .foregroundColor(FTColors.textTertiary)
                 }
 
                 if let battery = member.batteryLevel {
-                    Label("\(battery)%", systemImage: member.batteryIconName)
+                    Label {
+                        Text(verbatim: L10n.tr("common.battery_percent", battery))
+                    } icon: {
+                        Image(systemName: member.batteryIconName)
+                    }
                         .font(FTFont.caption())
                         .foregroundColor(battery < 20 ? FTColors.danger : FTColors.textTertiary)
                 }

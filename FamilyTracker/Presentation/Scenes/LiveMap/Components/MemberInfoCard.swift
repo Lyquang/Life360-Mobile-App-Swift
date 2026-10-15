@@ -16,7 +16,9 @@ struct MemberInfoCard: View {
                     .font(FTFont.headline())
                     .foregroundColor(FTColors.textPrimary)
 
-                Text("Lat: \(String(format: "%.4f", member.latitude)), Lon: \(String(format: "%.4f", member.longitude))")
+                Text(verbatim: L10n.tr("common.coordinates",
+                                       String(format: "%.4f", member.latitude),
+                                       String(format: "%.4f", member.longitude)))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
 
@@ -24,7 +26,7 @@ struct MemberInfoCard: View {
                     if let battery = member.batteryLevel {
                         BatteryIndicatorView(level: battery)
                     }
-                    Text(updatedText)
+                    Text(verbatim: updatedText)
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textTertiary)
                 }
@@ -53,10 +55,11 @@ struct MemberInfoCard: View {
         }
     }
 
-    private var updatedText: LocalizedStringKey {
-        ISO8601.date(from: member.timestamp) == nil
-            ? "Vừa cập nhật"
-            : "Cập nhật lúc \(DisplayFormat.time(iso: member.timestamp))"
+    private var updatedText: String {
+        guard ISO8601.date(from: member.timestamp) != nil else {
+            return L10n.tr("map.location.just_updated")
+        }
+        return L10n.tr("members.updated_at", DisplayFormat.time(iso: member.timestamp))
     }
 
     private func circleButton(icon: String, action: @escaping () -> Void) -> some View {

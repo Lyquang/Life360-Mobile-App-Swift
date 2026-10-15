@@ -1,16 +1,8 @@
 import SwiftUI
 
 enum DisplayFormat {
-    private static let hourMinute: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        formatter.locale = Locale(identifier: "vi_VN")
-        return formatter
-    }()
-
     static func time(_ date: Date?) -> String {
-        guard let date else { return "--:--" }
-        return hourMinute.string(from: date)
+        L10n.time(date)
     }
 
     static func time(iso: String?) -> String {
@@ -62,11 +54,11 @@ extension MovingSegment {
 extension PlaceCategory {
     var displayName: String {
         switch self {
-        case .restaurant:    return "Nhà hàng"
-        case .entertainment: return "Giải trí"
-        case .cafe:          return "Cà phê"
-        case .shopping:      return "Mua sắm"
-        case .other:         return "Khác"
+        case .restaurant:    return L10n.tr("places.category.restaurant")
+        case .entertainment: return L10n.tr("places.category.entertainment")
+        case .cafe:          return L10n.tr("places.category.cafe")
+        case .shopping:      return L10n.tr("places.category.shopping")
+        case .other:         return L10n.tr("places.category.other")
         }
     }
 

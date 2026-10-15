@@ -41,7 +41,7 @@ struct MediaUploadTicket: Sendable {
     let expiresAt: Date
 }
 
-enum MediaUploadError: LocalizedError, Equatable {
+enum MediaUploadError: Error, Equatable {
     case invalidMedia(String)
     case ticketExpired
     case fileSizeMismatch(expected: Int, actual: Int)
@@ -53,18 +53,4 @@ enum MediaUploadError: LocalizedError, Equatable {
     case socketRejected(message: String)
     case acknowledgementTimeout
 
-    var errorDescription: String? {
-        switch self {
-        case .invalidMedia(let message): return message
-        case .ticketExpired: return "Phiên tải tệp đã hết hạn."
-        case .fileSizeMismatch: return "Kích thước tệp không khớp với phiên tải lên."
-        case .backend(_, _, let message): return message
-        case .uploadFailed: return "Không thể tải tệp lên. Vui lòng thử lại."
-        case .serviceUnavailable: return "Dịch vụ lưu trữ tạm thời chưa khả dụng."
-        case .forbidden: return "Bạn không còn quyền gửi tin nhắn trong cuộc trò chuyện này."
-        case .refreshUnavailable: return "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại."
-        case .socketRejected(let message): return message
-        case .acknowledgementTimeout: return "Chưa thể xác nhận tin nhắn đã được gửi."
-        }
-    }
 }

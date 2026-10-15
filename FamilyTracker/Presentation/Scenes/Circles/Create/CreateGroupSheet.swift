@@ -21,9 +21,9 @@ struct CreateGroupSheet: View {
                     .padding(.top, FTSpacing.lg)
 
                     VStack(spacing: FTSpacing.xs) {
-                        Text("Tạo nhóm mới")
+                        Text(verbatim: L10n.tr("circles.create.title"))
                             .font(FTFont.title3())
-                        Text("Thêm thành viên bằng mã mời được tạo tự động")
+                        Text(verbatim: L10n.tr("circles.create.subtitle"))
                             .font(FTFont.subheadline())
                             .foregroundColor(FTColors.textSecondary)
                             .multilineTextAlignment(.center)
@@ -33,7 +33,7 @@ struct CreateGroupSheet: View {
                         FTTextField(title: "Tên nhóm", placeholder: "VD: Gia đình Nguyễn", icon: "person.3.fill", text: $groupName)
 
                         if let error = viewModel.errorMessage {
-                            Text(error)
+                            Text(verbatim: L10n.message(error))
                                 .font(FTFont.caption())
                                 .foregroundColor(FTColors.danger)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -44,7 +44,7 @@ struct CreateGroupSheet: View {
                     HStack(spacing: FTSpacing.sm) {
                         Image(systemName: "info.circle.fill")
                             .foregroundColor(FTColors.primary)
-                        Text("Sau khi tạo, bạn sẽ nhận được mã mời 6 chữ số để chia sẻ với gia đình.")
+                        Text(verbatim: L10n.tr("circles.create.invite_hint"))
                             .font(FTFont.caption())
                             .foregroundColor(FTColors.textSecondary)
                     }
@@ -61,11 +61,11 @@ struct CreateGroupSheet: View {
                     .padding(.horizontal, FTSpacing.md)
                 }
             }
-            .navigationTitle("Tạo nhóm")
+            .navigationTitle(Text(verbatim: L10n.tr("circles.create.title")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Hủy", action: onClose)
+                    Button(action: onClose) { Text(verbatim: L10n.tr("common.cancel")) }
                 }
             }
         }

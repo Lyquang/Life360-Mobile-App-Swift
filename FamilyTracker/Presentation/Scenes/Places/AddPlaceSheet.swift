@@ -13,23 +13,35 @@ struct AddPlaceSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Thông tin địa điểm") {
+                Section {
                     FTTextField(title: "Tên địa điểm", placeholder: "VD: Phở 24 Nguyễn Huệ", icon: "mappin.fill", text: $name)
                         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         .listRowBackground(Color.clear)
+                } header: {
+                    Text(verbatim: L10n.tr("places.form.info"))
                 }
 
-                Section("Loại địa điểm") {
-                    Picker("Danh mục", selection: $category) {
+                Section {
+                    Picker(selection: $category) {
                         ForEach(PlaceCategory.allCases) { category in
-                            Label(LocalizedStringKey(category.displayName), systemImage: category.iconName).tag(category)
+                            Label {
+                                Text(verbatim: category.displayName)
+                            } icon: {
+                                Image(systemName: category.iconName)
+                            }.tag(category)
                         }
+                    } label: {
+                        Text(verbatim: L10n.tr("places.form.category"))
                     }
                     .pickerStyle(.menu)
+                } header: {
+                    Text(verbatim: L10n.tr("places.form.category"))
                 }
 
-                Section("Vị trí") {
-                    Toggle("Dùng vị trí hiện tại", isOn: $useCurrentLocation)
+                Section {
+                    Toggle(isOn: $useCurrentLocation) {
+                        Text(verbatim: L10n.tr("places.form.use_current_location"))
+                    }
                         .tint(FTColors.primary)
                         .onChange(of: useCurrentLocation) { use in
                             if use { fillCurrentLocation() }
@@ -39,28 +51,34 @@ struct AddPlaceSheet: View {
                         coordinateField("Vĩ độ:", placeholder: "10.7769", text: $latitude)
                         coordinateField("Kinh độ:", placeholder: "106.7009", text: $longitude)
                     } else if viewModel.currentLocation == nil {
-                        Text("Chưa xác định được vị trí hiện tại.")
+                        Text(verbatim: L10n.tr("places.form.current_location_unavailable"))
                             .font(FTFont.caption())
                             .foregroundColor(FTColors.warning)
                     }
+                } header: {
+                    Text(verbatim: L10n.tr("places.form.location"))
                 }
 
                 if let error = viewModel.errorMessage {
                     Section {
-                        Label(error, systemImage: "exclamationmark.circle.fill")
+                        Label {
+                            Text(verbatim: L10n.message(error))
+                        } icon: {
+                            Image(systemName: "exclamationmark.circle.fill")
+                        }
                             .foregroundColor(FTColors.danger)
                             .font(FTFont.caption())
                     }
                 }
             }
-            .navigationTitle("Thêm địa điểm")
+            .navigationTitle(Text(verbatim: L10n.tr("places.form.add_title")))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Hủy", action: onClose)
+                    Button(L10n.tr("common.cancel"), action: onClose)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Lưu", action: save)
+                    Button(L10n.tr("common.save"), action: save)
                         .disabled(viewModel.isAdding || name.isEmpty)
                         .fontWeight(.semibold)
                 }

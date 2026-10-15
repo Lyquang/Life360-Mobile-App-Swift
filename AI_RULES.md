@@ -102,6 +102,17 @@ enum AppError: Error, Equatable, Sendable {
 
 If the existing code uses `DomainError`, bridge or extend it deliberately rather than creating duplicate unrelated error enums.
 
+## Multi-language Rule (Mandatory)
+
+- Every app-owned user-visible or audible string must be localized for Vietnamese and English: SwiftUI/UIKit text, placeholders, navigation, alerts, accessibility, user-facing errors, local notifications, and date/number/unit formatting.
+- New app-owned strings must use `L10n.tr("<area>.<type>.<name>")`; add the same key to both `vi.lproj/Localizable.strings` and `en.lproj/Localizable.strings` in the same change. `L10n.tr` treats strings as verbatim; do not wrap its result in a second localization lookup.
+- Do not add display literals through `Text("...")`, `Button("...")`, `Label("...")`, `navigationTitle("...")`, `NSLocalizedString`, or `String(localized:)`. Resolve the string with `L10n.tr` first and pass the resulting `String` to SwiftUI. Existing legacy call-sites may be migrated feature-by-feature; do not add new ones.
+- Use positional format placeholders for variable content; never concatenate translated fragments. Use `L10n.plural` with `.one`/`.other` resource keys for counts and test 0/1/multiple values. Date, number, distance, speed, and percentage formatters must use the selected in-app locale, not `Locale.current` implicitly.
+- User-facing errors must map stable error codes/cases to localized keys. Never display raw server `message` text as a localization strategy; use a translated generic fallback for unknown codes. Do not put tokens, another user's email, or coordinates in user-facing errors.
+- Each feature spec/execution plan that adds UI must have a `Localization` section listing new keys with Vietnamese and English copy, plus the longest string to check for clipping. AI-generated translations are drafts until reviewed.
+- A UI task is not complete until `scripts/test_localization.sh` passes. Add new languages by adding a complete `.lproj/Localizable.strings` resource; do not require feature-specific source changes.
+- Exclusions: user-authored content (names, group/place names, chat/custom SOS text), product brand `FamilyTracker`, technical protocol/JSON keys, logs/Pulse/diagnostics, Debug-only tooling, and OS-owned dialogs. `InfoPlist.strings` purpose text follows the OS language and cannot be controlled by the in-app picker.
+
 ## File Placement Rules
 
 - `FamilyTracker/Presentation/Scenes/<Feature>`: Views and ViewModels.

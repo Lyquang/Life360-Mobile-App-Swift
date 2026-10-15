@@ -39,7 +39,7 @@ final class EmergencyCoordinator: ObservableObject {
 
     func confirmSOS() {
         isSending = true
-        sendSOS(message: L10n.text("Tôi cần giúp đỡ khẩn cấp!"))
+        sendSOS(message: L10n.tr("Tôi cần giúp đỡ khẩn cấp!"))
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 3_000_000_000)
             self?.isSending = false
@@ -84,14 +84,14 @@ struct EmergencyPresentation: ViewModifier {
             }
             .animation(.spring(), value: coordinator.incomingAlert?.id)
             .confirmationDialog(
-                "Gửi SOS Khẩn Cấp?",
+                L10n.tr("sos.confirm.title"),
                 isPresented: $coordinator.isConfirmingSOS,
                 titleVisibility: .visible
             ) {
-                Button("Gửi SOS ngay", role: .destructive) { coordinator.confirmSOS() }
-                Button("Hủy", role: .cancel) {}
+                Button(L10n.tr("sos.confirm.send_now"), role: .destructive) { coordinator.confirmSOS() }
+                Button(L10n.tr("common.cancel"), role: .cancel) {}
             } message: {
-                Text("Tất cả thành viên trong nhóm sẽ nhận được cảnh báo khẩn cấp từ bạn.")
+                Text(verbatim: L10n.tr("sos.confirm.message"))
             }
     }
 }

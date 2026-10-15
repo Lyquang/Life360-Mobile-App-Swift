@@ -26,15 +26,15 @@ struct HistoryView: View {
 
                 if viewModel.isLoading {
                     Spacer()
-                    ProgressView("Đang tải lịch sử...")
+                    ProgressView { Text(verbatim: L10n.tr("history.loading")) }
                         .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
                     Spacer()
                 } else if viewModel.historyEntries.isEmpty {
                     Spacer()
                     FTEmptyView(
                         icon: "mappin.slash",
-                        title: "Chưa có lịch sử",
-                        subtitle: viewModel.errorMessage ?? "Lịch sử vị trí hôm nay sẽ xuất hiện ở đây khi bạn di chuyển",
+                        title: L10n.tr("history.empty.title"),
+                        subtitle: viewModel.errorMessage ?? L10n.tr("history.empty.subtitle"),
                         actionTitle: nil,
                         action: nil
                     )
@@ -71,7 +71,7 @@ struct HistoryView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("Lịch sử vị trí")
+                Text(verbatim: L10n.tr("history.title"))
                     .font(FTFont.title2())
                     .foregroundColor(FTColors.textPrimary)
                 Text(viewModel.formattedDisplayDate(locale: locale))
@@ -164,7 +164,7 @@ struct HistoryView: View {
 
     private var timeline: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Hành trình trong ngày")
+            Text(verbatim: L10n.tr("journey.timeline.title"))
                 .font(FTFont.headline())
                 .foregroundColor(FTColors.textPrimary)
                 .padding(.horizontal, FTSpacing.md)
@@ -229,16 +229,21 @@ struct HistoryTimelineRow: View {
                         .font(FTFont.subheadline())
                         .foregroundColor(isSelected ? FTColors.primary : FTColors.textPrimary)
                         .fontWeight(isSelected ? .semibold : .regular)
-                    if isFirst { tag("Bắt đầu", color: FTColors.accent) }
-                    if isLast && !isFirst { tag("Mới nhất", color: FTColors.primary) }
+                    if isFirst { tag(L10n.tr("history.tag.start"), color: FTColors.accent) }
+                    if isLast && !isFirst { tag(L10n.tr("history.tag.latest"), color: FTColors.primary) }
                 }
 
-                Text("Lat: \(String(format: "%.5f", entry.latitude)), Lon: \(String(format: "%.5f", entry.longitude))")
+                Text(verbatim: L10n.tr("common.coordinates", String(format: "%.5f", entry.latitude),
+                                       String(format: "%.5f", entry.longitude)))
                     .font(.system(size: 12, weight: .regular, design: .monospaced))
                     .foregroundColor(FTColors.textSecondary)
 
                 if isSelected {
-                    Label("Xem trên bản đồ", systemImage: "map.fill")
+                    Label {
+                        Text(verbatim: L10n.tr("history.action.view_map"))
+                    } icon: {
+                        Image(systemName: "map.fill")
+                    }
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.primary)
                         .transition(.opacity)

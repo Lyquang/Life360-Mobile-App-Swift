@@ -7,7 +7,7 @@ struct ConversationListView: View {
     var body: some View {
         Group {
             if viewModel.isLoading && viewModel.conversations.isEmpty {
-                ProgressView("Đang tải hội thoại...")
+                ProgressView { Text(verbatim: L10n.tr("Đang tải hội thoại...")) }
                     .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
             } else if viewModel.conversations.isEmpty {
                 FTEmptyView(
@@ -28,7 +28,7 @@ struct ConversationListView: View {
                 .refreshable { await viewModel.load() }
             }
         }
-        .navigationTitle("Tin nhắn")
+        .navigationTitle(Text(verbatim: L10n.tr("Tin nhắn")))
         .task {
             viewModel.start()
             await viewModel.load()
@@ -86,8 +86,8 @@ private struct ConversationRow: View {
     }
 
     private var preview: String {
-        guard let message = conversation.lastMessage else { return L10n.text("Chưa có tin nhắn", language: AppLanguage(locale: locale)) }
+        guard let message = conversation.lastMessage else { return L10n.tr("Chưa có tin nhắn", language: AppLanguage(locale: locale)) }
         let sender = message.senderName.map { "\($0): " } ?? ""
-        return sender + (message.type == .image ? L10n.text("📷 Hình ảnh", language: AppLanguage(locale: locale)) : message.content)
+        return sender + (message.type == .image ? L10n.tr("📷 Hình ảnh", language: AppLanguage(locale: locale)) : message.content)
     }
 }

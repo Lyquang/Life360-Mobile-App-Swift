@@ -36,7 +36,9 @@ struct FTTextField: View {
                     .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
                 
                 // TextField
-                TextField(LocalizedStringKey(placeholder), text: $text)
+                TextField(text: $text) {
+                    Text(verbatim: L10n.tr(placeholder))
+                }
                     .font(FTFont.body())
                     .keyboardType(keyboardType)
                     .textInputAutocapitalization(autocapitalization)
@@ -80,11 +82,15 @@ struct FTSecureField: View {
                 
                 // Hiển thị SecureField hoặc TextField tùy trạng thái
                 if isVisible {
-                    TextField(LocalizedStringKey(placeholder), text: $text)
+                    TextField(text: $text) {
+                        Text(verbatim: L10n.tr(placeholder))
+                    }
                         .font(FTFont.body())
                         .autocorrectionDisabled()
                 } else {
-                    SecureField(LocalizedStringKey(placeholder), text: $text)
+                    SecureField(text: $text) {
+                        Text(verbatim: L10n.tr(placeholder))
+                    }
                         .font(FTFont.body())
                 }
                 

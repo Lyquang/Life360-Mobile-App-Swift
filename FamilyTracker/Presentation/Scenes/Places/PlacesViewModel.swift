@@ -71,7 +71,7 @@ final class PlacesViewModel: ObservableObject {
         do {
             let place = try await addPlace(circleId: groupId, name: name, category: category, location: location)
             places.insert(place, at: 0)
-            successMessage = L10n.format("Đã thêm '%@' vào danh sách yêu thích!", place.name)
+            successMessage = L10n.tr("places.success.added", place.name)
             return true
         } catch {
             errorMessage = error.localizedDescription

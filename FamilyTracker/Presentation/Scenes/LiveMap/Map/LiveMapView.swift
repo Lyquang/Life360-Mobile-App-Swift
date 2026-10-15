@@ -138,7 +138,7 @@ struct LiveMapView: View {
     private var memberList: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Thành viên trực tuyến")
+                Text(verbatim: L10n.tr("members.online.title"))
                     .font(FTFont.headline())
                 Spacer()
                 Button {
@@ -151,7 +151,7 @@ struct LiveMapView: View {
             .padding(FTSpacing.md)
 
             if viewModel.memberLocations.isEmpty {
-                Text("Không có thành viên nào đang trực tuyến")
+                Text(verbatim: L10n.tr("members.online.empty"))
                     .font(FTFont.subheadline())
                     .foregroundColor(FTColors.textSecondary)
                     .padding(FTSpacing.xl)
@@ -169,7 +169,7 @@ struct LiveMapView: View {
                                 Text(member.name)
                                     .font(FTFont.subheadline())
                                     .foregroundColor(FTColors.textPrimary)
-                                Text("Cập nhật lúc \(DisplayFormat.time(iso: member.timestamp))")
+                                Text(verbatim: L10n.tr("members.updated_at", DisplayFormat.time(iso: member.timestamp)))
                                     .font(FTFont.caption())
                                     .foregroundColor(FTColors.textSecondary)
                             }

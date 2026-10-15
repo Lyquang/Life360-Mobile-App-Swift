@@ -156,7 +156,7 @@ struct BatteryIndicatorView: View {
             Image(systemName: iconName)
                 .foregroundColor(color)
                 .font(.system(size: 12))
-            Text("\(level)%")
+                Text(verbatim: L10n.tr("common.percentage", level))
                 .font(FTFont.caption())
                 .foregroundColor(color)
         }

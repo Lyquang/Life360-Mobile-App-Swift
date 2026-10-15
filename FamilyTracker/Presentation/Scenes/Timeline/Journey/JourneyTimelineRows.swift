@@ -74,7 +74,8 @@ struct StayPointRow: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("\(stayPoint.arrivalTime) – \(stayPoint.departureTime)")
+                    Text(verbatim: L10n.tr("journey.stay.time_range", stayPoint.arrivalTime, stayPoint.departureTime,
+                                           language: AppLanguage(locale: locale)))
                         .font(FTFont.subheadline())
                         .foregroundColor(isSelected ? FTColors.primary : FTColors.textPrimary)
                         .fontWeight(isSelected ? .semibold : .regular)
@@ -164,7 +165,9 @@ struct MovingSegmentRow: View {
                 HStack(spacing: 6) {
                     Image(systemName: "figure.walk")
                         .font(.system(size: 13))
-                    Text("Di chuyển · \(L10n.duration(minutes: segment.durationMinutes, language: AppLanguage(locale: locale)))")
+                    Text(verbatim: L10n.tr("journey.segment.moving_duration",
+                                           L10n.duration(minutes: segment.durationMinutes, language: AppLanguage(locale: locale)),
+                                           language: AppLanguage(locale: locale)))
                         .font(FTFont.caption())
                 }
                 .foregroundColor(FTColors.textTertiary)

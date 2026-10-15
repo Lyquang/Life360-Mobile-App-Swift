@@ -13,7 +13,7 @@ final class MediaUploadService {
 
     func requestTicket(conversationId: String, kind: MediaKind, fileSize: Int) async throws -> MediaUploadTicket {
         guard fileSize > 0, fileSize <= MediaUploadPolicy.maxBytes(for: kind) else {
-            throw MediaUploadError.invalidMedia("Kích thước tệp không hợp lệ.")
+            throw MediaUploadError.invalidMedia("media.error.invalid_file_size")
         }
         do {
             let response = try await api.send(
@@ -47,7 +47,7 @@ final class MediaUploadService {
         }
         #if !DEBUG
         guard ticket.uploadURL.scheme?.lowercased() == "https" else {
-            throw MediaUploadError.invalidMedia("URL tải tệp không an toàn.")
+            throw MediaUploadError.invalidMedia("media.error.unsafe_upload_url")
         }
         #endif
 

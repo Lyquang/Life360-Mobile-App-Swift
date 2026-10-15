@@ -24,7 +24,7 @@ struct PlacesView: View {
 
                 if viewModel.isLoading {
                     Spacer()
-                    ProgressView("Đang tải địa điểm...")
+                    ProgressView { Text(verbatim: L10n.tr("places.loading")) }
                         .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
                     Spacer()
                 } else if filteredPlaces.isEmpty {
@@ -65,10 +65,10 @@ struct PlacesView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text("Địa điểm yêu thích")
+                Text(verbatim: L10n.tr("places.title"))
                     .font(FTFont.title2())
                     .foregroundColor(FTColors.textPrimary)
-                Text("\(viewModel.places.count) địa điểm")
+                Text(verbatim: L10n.plural("places.count", count: viewModel.places.count))
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
             }
@@ -119,7 +119,7 @@ struct PlacesView: View {
     private var categoryFilter: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: FTSpacing.sm) {
-                categoryChip(label: "Tất cả", icon: "star.fill", isSelected: selectedCategory == nil, color: FTColors.primary) {
+                categoryChip(label: L10n.tr("places.category.all"), icon: "star.fill", isSelected: selectedCategory == nil, color: FTColors.primary) {
                     selectedCategory = nil
                 }
                 ForEach(PlaceCategory.allCases) { category in
@@ -143,7 +143,7 @@ struct PlacesView: View {
             HStack(spacing: 4) {
                 Image(systemName: icon)
                     .font(.system(size: 11))
-                AppLocalizedText(label)
+                Text(verbatim: label)
                     .font(FTFont.caption())
                     .fontWeight(isSelected ? .semibold : .regular)
             }
@@ -188,7 +188,8 @@ struct PlaceCard: View {
                         .cornerRadius(FTRadius.full)
 
                     if let lat = place.latitude, let lon = place.longitude {
-                        Text("Lat: \(String(format: "%.4f", lat)), Lon: \(String(format: "%.4f", lon))")
+                        Text(verbatim: L10n.tr("common.coordinates", String(format: "%.4f", lat),
+                                               String(format: "%.4f", lon)))
                             .font(.system(size: 11, weight: .regular, design: .monospaced))
                             .foregroundColor(FTColors.textTertiary)
                     }

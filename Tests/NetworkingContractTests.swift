@@ -103,6 +103,7 @@ private actor MediaRefreshStub: RefreshTokenTransport {
 enum NetworkingContractTests {
     static func main() async throws {
         try documentedResponses()
+        try localizedAPIErrorSafety()
         try deployedCircleMembersResponse()
         try requests()
         try mediaContracts()
@@ -177,6 +178,29 @@ enum NetworkingContractTests {
         try check(authHeaders == ["Bearer expired", "Bearer refreshed-token"], "Batch 401 retry token")
         let refreshCalls = await refreshTransport.calls
         try check(refreshCalls == 1, "Batch refresh count")
+    }
+
+    static func localizedAPIErrorSafety() throws {
+        let originalLanguage = L10n.language
+        defer { L10n.language = originalLanguage }
+
+        let serverError = APIError.http(
+            status: 400,
+            code: "VALIDATION_ERROR",
+            message: "private server detail",
+            errors: [.init(field: "email", message: "private field detail")]
+        ).domainError
+
+        L10n.language = .vietnamese
+        try check(serverError.localizedDescription == L10n.tr("error.invalid_data"),
+                  "Validation errors must be localized without exposing server text")
+        let forbidden = APIError.http(status: 403, code: "FORBIDDEN", message: "private", errors: []).domainError
+        try check(forbidden.localizedDescription == L10n.tr("error.forbidden"),
+                  "403 errors must keep a localized generic message")
+
+        L10n.language = .english
+        try check(serverError.localizedDescription == L10n.tr("error.invalid_data"),
+                  "API errors must follow the selected app language")
     }
 
     static func deployedCircleMembersResponse() throws {
@@ -559,7 +583,7 @@ enum NetworkingContractTests {
         ).domainError
         try check(placeForbidden == .forbidden, "Non-chat 403 must remain typed as forbidden")
         try check(
-            placeForbidden.localizedDescription == "Bạn không có quyền truy cập dữ liệu này.",
+            placeForbidden.localizedDescription == L10n.tr("error.forbidden"),
             "Non-chat 403 changed its user-facing message"
         )
         let digest = DigestEndpoint.list(groupId: "g", from: "2026-10-01T00:00:00+07:00", to: "2026-10-02T00:00:00Z")

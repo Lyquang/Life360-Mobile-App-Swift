@@ -11,7 +11,7 @@ struct ProcessedImage {
 enum ImageProcessingError: LocalizedError {
     case invalidImage
 
-    var errorDescription: String? { "Không đọc được ảnh." }
+    var errorDescription: String? { L10n.tr("media.error.image_unreadable") }
 }
 
 /// Downscales + JPEG-compresses before upload and computes the blurhash placeholder.
@@ -29,7 +29,7 @@ struct ImageProcessor {
         }
         guard let jpeg else { throw ImageProcessingError.invalidImage }
         guard jpeg.count <= MediaUploadPolicy.maxImageBytes else {
-            throw MediaUploadError.invalidMedia("Ảnh vẫn lớn hơn 10 MB sau khi nén.")
+            throw MediaUploadError.invalidMedia("media.error.image_too_large")
         }
         let pixelWidth = Int(resized.size.width * resized.scale)
         let pixelHeight = Int(resized.size.height * resized.scale)
@@ -38,7 +38,7 @@ struct ImageProcessor {
         guard MediaUploadPolicy.validImageDimension.contains(pixelWidth),
               MediaUploadPolicy.validImageDimension.contains(pixelHeight),
               MediaUploadPolicy.validBlurHashLength.contains(blurhash.count) else {
-            throw MediaUploadError.invalidMedia("Metadata ảnh không hợp lệ.")
+            throw MediaUploadError.invalidMedia("media.error.invalid_image_metadata")
         }
 
         return ProcessedImage(data: jpeg, width: pixelWidth, height: pixelHeight, mimeType: "image/jpeg", blurhash: blurhash)
