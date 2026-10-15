@@ -3,7 +3,7 @@ import Foundation
 protocol RealtimeSessionRepository: AnyObject {
     var connectionState: RealtimeConnectionState { get }
     func connect(token: String)
-    func disconnect()
+    @MainActor func disconnect()
     func observeConnectionState() -> AsyncStream<RealtimeConnectionState>
 }
 
@@ -11,7 +11,14 @@ protocol LiveLocationRepository: AnyObject {
     func observeMemberLocations() -> AsyncStream<MemberLocation>
     func observeStayAlerts() -> AsyncStream<LocationStayAlert>
     func observePresence() -> AsyncStream<MemberPresence>
-    func sendLocation(_ point: GeoPoint, batteryLevel: Int?)
+    var isSessionReady: Bool { get }
+    func observeSessionReadiness() -> AsyncStream<Bool>
+    @MainActor func sendLocation(_ fix: LocationFix, batteryLevel: Int?)
+}
+
+extension LiveLocationRepository {
+    var isSessionReady: Bool { false }
+    func observeSessionReadiness() -> AsyncStream<Bool> { AsyncStream { $0.finish() } }
 }
 
 protocol SOSRepository: AnyObject {
@@ -27,9 +34,14 @@ protocol DeviceLocationRepository: AnyObject {
     func requestPermission()
     func startTracking()
     func stopTracking()
+    func requestFreshLocation()
     func observeLocations() -> AsyncStream<GeoPoint>
     func observeFixes() -> AsyncStream<LocationFix>
     func observeMotionStates() -> AsyncStream<MotionState>
+}
+
+extension DeviceLocationRepository {
+    func requestFreshLocation() {}
 }
 
 @MainActor

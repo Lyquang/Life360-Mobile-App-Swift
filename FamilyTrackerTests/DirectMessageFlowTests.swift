@@ -317,7 +317,7 @@ private final class LiveLocationRepositoryMock: LiveLocationRepository {
     func observeMemberLocations() -> AsyncStream<MemberLocation> { AsyncStream { $0.finish() } }
     func observeStayAlerts() -> AsyncStream<LocationStayAlert> { AsyncStream { $0.finish() } }
     func observePresence() -> AsyncStream<MemberPresence> { AsyncStream { $0.finish() } }
-    func sendLocation(_ point: GeoPoint, batteryLevel: Int?) {}
+    func sendLocation(_ fix: LocationFix, batteryLevel: Int?) {}
 }
 
 private final class ChatRepositoryMock: ChatRepository {

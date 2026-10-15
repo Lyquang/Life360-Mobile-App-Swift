@@ -59,6 +59,7 @@ final class KeychainStore: KeychainStorage {
 
 /// Stores the JWT + cached user info. Also feeds the token to APIClient.
 final class KeychainSessionRepository: SessionRepository, TokenPairStore {
+    var onSessionSaved: (@Sendable () -> Void)?
     private enum Key {
         static let token = "com.familytracker.jwt_token"
         static let pair = "com.familytracker.auth_tokens"
@@ -91,6 +92,12 @@ final class KeychainSessionRepository: SessionRepository, TokenPairStore {
         return generation
     }
 
+    var locationSessionIdentity: LocationSessionIdentity? {
+        lock.lock(); defer { lock.unlock() }
+        guard accessToken != nil, let ownerID = keychain.string(for: Key.userId), !ownerID.isEmpty else { return nil }
+        return LocationSessionIdentity(ownerID: ownerID, generation: generation)
+    }
+
     var tokenSnapshot: (token: String?, generation: Int) {
         lock.lock(); defer { lock.unlock() }
         return (accessToken, generation)
@@ -103,6 +110,7 @@ final class KeychainSessionRepository: SessionRepository, TokenPairStore {
         try keychain.set(Data(session.user.name.utf8), for: Key.userName)
         try keychain.set(Data(session.user.email.utf8), for: Key.userEmail)
         generation += 1
+        onSessionSaved?()
     }
 
     func replaceTokens(_ newTokens: AuthTokens) throws {

@@ -47,6 +47,12 @@ final class ShareLocationUseCase {
     private let configuration: LocationSendConfiguration
     private let now: NowProvider
     private let isForeground: ForegroundProvider
+    private let onSharingChanged: (Bool) -> Void
+    private let onHistorySync: () -> Void
+    private var readinessTask: Task<Void, Never>?
+    private var refreshTimeout: Task<Void, Never>?
+    private var requestedFreshAt: Date?
+    private var wasReady = false
 
     private var streamTask: Task<Void, Never>?
     private var motionTask: Task<Void, Never>?
@@ -70,7 +76,9 @@ final class ShareLocationUseCase {
         policy: LocationSendPolicy = LocationSendPolicy(),
         configuration: LocationSendConfiguration = .baseline,
         now: @escaping NowProvider = Date.init,
-        isForeground: @escaping ForegroundProvider = { true }
+        isForeground: @escaping ForegroundProvider = { true },
+        onSharingChanged: @escaping (Bool) -> Void = { _ in },
+        onHistorySync: @escaping () -> Void = {}
     ) {
         self.deviceLocation = deviceLocation
         self.liveLocation = liveLocation
@@ -81,20 +89,21 @@ final class ShareLocationUseCase {
         self.configuration = configuration
         self.now = now
         self.isForeground = isForeground
+        self.onSharingChanged = onSharingChanged
+        self.onHistorySync = onHistorySync
     }
 
     func start() {
         guard !isSharing else { return }
         isSharing = true
+        onSharingChanged(true)
         diagnostics?.startSession(batteryLevel: deviceStatus.batteryLevel)
         currentMotionState = deviceLocation.currentMotionState
-        deviceLocation.requestPermission()
-        deviceLocation.startTracking()
 
         let stream = deviceLocation.observeFixes()
         streamTask = Task { [weak self] in
             for await fix in stream {
-                guard let self else { return }
+                guard !Task.isCancelled, let self, self.isSharing else { return }
                 self.handle(fix, now: self.now())
             }
         }
@@ -102,7 +111,8 @@ final class ShareLocationUseCase {
         let motionStates = deviceLocation.observeMotionStates()
         motionTask = Task { [weak self] in
             for await state in motionStates {
-                guard let self, state != self.currentMotionState else { continue }
+                guard !Task.isCancelled, let self, self.isSharing else { return }
+                guard state != self.currentMotionState else { continue }
                 self.currentMotionState = state
                 if let fix = self.deviceLocation.lastKnownFix {
                     self.handle(fix, now: self.now())
@@ -128,9 +138,26 @@ final class ShareLocationUseCase {
                 }
             }
         }
+        let readiness = liveLocation.observeSessionReadiness()
+        readinessTask = Task { [weak self] in
+            for await ready in readiness {
+                guard !Task.isCancelled, let self, self.isSharing else { return }
+                self.updateReadiness(ready)
+            }
+        }
+        deviceLocation.requestPermission()
+        deviceLocation.startTracking()
+        updateReadiness(liveLocation.isSessionReady)
     }
 
     func stop() {
+        readinessTask?.cancel()
+        readinessTask = nil
+        refreshTimeout?.cancel()
+        refreshTimeout = nil
+        requestedFreshAt = nil
+        wasReady = false
+        onSharingChanged(false)
         diagnostics?.stopSession(batteryLevel: deviceStatus.batteryLevel)
         streamTask?.cancel()
         motionTask?.cancel()
@@ -147,6 +174,19 @@ final class ShareLocationUseCase {
     }
 
     func handle(_ fix: LocationFix, now: Date = Date()) {
+        if isSharing { updateReadiness(liveLocation.isSessionReady) }
+        if let requestedFreshAt, liveLocation.isSessionReady {
+            guard fix.timestamp >= requestedFreshAt else { return }
+            self.requestedFreshAt = nil
+            refreshTimeout?.cancel()
+            refreshTimeout = nil
+            cancelPendingTask()
+            pending = nil
+            lastSent = .init(fix: fix, sentAt: now, motionState: currentMotionState)
+            liveLocation.sendLocation(fix, batteryLevel: deviceStatus.batteryLevel)
+            onHistorySync()
+            return
+        }
         let decision = policy.decide(
             fix: fix,
             lastSent: lastSent,
@@ -161,13 +201,34 @@ final class ShareLocationUseCase {
             pending = nil
             lastSent = .init(fix: sentFix, sentAt: now, motionState: currentMotionState)
             diagnostics?.recordPolicyDecision(outcome: .send, reason: reason.rawValue)
-            liveLocation.sendLocation(sentFix.point, batteryLevel: deviceStatus.batteryLevel)
+            liveLocation.sendLocation(sentFix, batteryLevel: deviceStatus.batteryLevel)
         case .hold(let held, let reason):
             pending = held
             diagnostics?.recordPolicyDecision(outcome: .hold, reason: reason.rawValue)
             schedulePendingIfNeeded(now: now)
         case .drop(let reason):
             diagnostics?.recordPolicyDecision(outcome: .drop, reason: reason.rawValue)
+        }
+    }
+
+    private func updateReadiness(_ ready: Bool) {
+        guard ready == liveLocation.isSessionReady else { return }
+        guard ready != wasReady else { return }
+        wasReady = ready
+        refreshTimeout?.cancel()
+        refreshTimeout = nil
+        requestedFreshAt = nil
+        guard ready, isSharing else { return }
+        cancelPendingTask()
+        pending = nil
+        requestedFreshAt = now()
+        deviceLocation.requestFreshLocation()
+        refreshTimeout = Task { [weak self] in
+            guard let self else { return }
+            do { try await self.sleeper(Self.nanoseconds(10)) }
+            catch { return }
+            guard !Task.isCancelled, self.isSharing, self.liveLocation.isSessionReady else { return }
+            self.onHistorySync()
         }
     }
 

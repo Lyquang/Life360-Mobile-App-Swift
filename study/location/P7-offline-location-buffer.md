@@ -1,6 +1,6 @@
 # P7 - Persistent offline location buffer and batch recovery
 
-Status: P7A-P7C implemented as unused storage/transport/synchronization components; P7D onward remain planned.
+Status: P7A-P7D implemented, including runtime location routing and session-ready synchronization. P7E network/foreground triggers and expanded diagnostics remain planned.
 
 ## Verified contract and current state
 
@@ -41,7 +41,7 @@ Alternatives considered:
 ```text
 ShareLocationUseCase (already filtered by P4)
   -> LiveLocationRepository.sendLocation(LocationFix, battery)
-     -> socket ready: emit fresh realtime payload with recordedAt/accuracy
+     -> socket ready: emit fresh realtime payload (unchanged latitude/longitude/batteryLevel)
      -> socket unavailable/not ready: LocationBuffer.append(ownerId, BufferedPoint)
 
 LocationSyncCoordinator actor (single-flight)
@@ -89,7 +89,7 @@ Files: update `SocketRealtimeRepository.swift` and focused tests. Add a session-
 
 ### P7D2 - Preserve fixes and route offline points
 
-Files: update `RealtimeRepositories.swift`, `LiveMapUseCases.swift`, `SocketRealtimeRepository.swift`, location service/repository abstractions, `AppContainer.swift`, and focused location tests. Preserve `LocationFix` through the repository boundary; emit `recordedAt`/valid accuracy; buffer accepted P4 outputs while unavailable/not ready; remove location from generic coalescing. On ready, request a fresh fix for socket delivery and trigger historical sync without replaying old points as new. SOS/chat queue stays unchanged.
+Files: update `RealtimeRepositories.swift`, `LiveMapUseCases.swift`, `SocketRealtimeRepository.swift`, location service/repository abstractions, `AppContainer.swift`, and focused location tests. Preserve `LocationFix` through the repository boundary; keep realtime socket payload unchanged; buffer accepted P4 outputs while unavailable/not ready; remove location from generic coalescing. On ready, request a fresh fix for socket delivery and trigger historical sync without replaying old points as new. SOS/chat queue stays unchanged.
 
 ### P7E - Lifecycle, account isolation, cleanup and diagnostics
 
@@ -99,7 +99,7 @@ Each phase: unsigned Debug/Release Simulator build, networking/localization scri
 
 ## Cần tôi quyết định
 
-Involuntary session expiry needs one decision before P7E: **(1) delete immediately**, minimizing retention but losing unsent route history if reauthentication succeeds; or **(2) retain for the same owner for up to 24 hours**, preserving history but keeping sensitive location on disk longer. Recommendation: (2), with strict owner matching and TTL, while explicit logout deletes immediately. P7A can proceed independently.
+Resolved during P7D: retain points after involuntary expiry for the same owner up to 24 hours. Explicit logout and account change delete old points. TTL cleanup occurs on the next buffer access; iOS suspension may delay physical file cleanup. No open expiry decision remains.
 
 ## P7A result (2026-10-14)
 
@@ -120,3 +120,12 @@ Involuntary session expiry needs one decision before P7E: **(1) delete immediate
 - Added a single-flight `LocationSyncCoordinator` actor. Each run processes one chronological buffer snapshot in batches constrained by 100 points and encoded body size. It removes only exact acknowledged/known-permanent IDs, counts unknown rejections once per response and leaves newly appended points for another run.
 - Added bounded transient retry with injected clock/sleeper/randomness, 413 split handling and `Retry-After` parsing. A delay above 60 seconds persists an owner-scoped not-before gate instead of sleeping; cancellation stops post-response buffer mutation.
 - Added focused XCTest source. P7C remains unwired: P7D1 tracks authenticated socket readiness, P7D2 routes fixes into the buffer, and P7E adds lifecycle/network triggers and cleanup.
+
+## P7D result
+
+- D1 adds a locked authenticated readiness flag and stream. Connected transport alone is not ready; disconnect/reconnect clears the flag; duplicate ready events are deduplicated.
+- D2 preserves LocationFix through the live repository but keeps the realtime payload unchanged (`latitude`, `longitude`, `batteryLevel`). Timestamp and accuracy remain available for owner-scoped batch history. Policy-approved offline/not-ready fixes enter the disk buffer. Legacy coalesced location entries are discarded on replay; SOS keeps its existing queue behavior.
+- ShareLocation requests a fresh observation after readiness and suppresses cached callbacks at that boundary. The new fix emits first, then a serialized delivery service starts historical batch synchronization. A 10-second fallback allows history recovery while still waiting for a fresh observation.
+- Keychain exposes an atomic owner/generation snapshot. Session save activates the buffer owner; expiry and permission loss stop work and retain TTL-bound data; explicit disconnect/logout clears buffer and sync retry state. This minimum lifecycle wiring is included now because P7D activates real sensitive storage.
+- Scope remains eight production files plus tests and documentation. P7E will add debounced NWPathMonitor/foreground triggers and expanded aggregate sync diagnostics.
+- Verification: Debug and Release unsigned Simulator builds pass; networking/localization scripts pass; strict SwiftLint and `git diff --check` pass. Focused XCTest files type-check against the app module, but tests are not runnable because the Xcode project has no XCTest target. Manual two-device/background/permission checks remain outstanding.

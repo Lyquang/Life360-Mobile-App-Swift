@@ -51,14 +51,20 @@ Legend:
 - `[x]` Location P7A: owner-scoped JSONL location buffer with atomic protected
   writes, backup exclusion, duplicate-fix rejection, 24-hour TTL, 500-to-400
   thinning, pointId removal and bounded unknown-rejection attempts. The buffer
-  is not yet connected to realtime sharing.
+  is connected to realtime sharing through P7D.
 - `[x]` Location P7B: authenticated batch endpoint, contract DTOs, bounded
   request repository and additive API metadata path for `Retry-After` on 429.
   Existing API `send` behavior and shared 401 refresh are preserved.
 - `[x]` Location P7C: single-flight batch synchronizer with bounded retries,
   pointId-based partial-result handling, 413 split and persisted long 429 delay.
-  It is not wired to runtime triggers yet; P7D1 onward remain pending. XCTest
-  source cannot execute until the test target is configured.
+  It is wired to session-ready recovery through P7D.
+- `[x]` Location P7D: authenticated socket readiness, LocationFix transport,
+  owner-scoped offline routing, fresh-fix-before-batch recovery and stale legacy
+  location replay removal. Explicit logout/account change clears old data;
+  involuntary expiry retains it for the same owner within the 24-hour TTL.
+  The realtime payload remains unchanged. Debug/Release unsigned Simulator builds,
+  contract scripts, strict SwiftLint and test-source type-check pass. XCTest cannot
+  execute until the test target is configured. P7E network/foreground triggers remain pending.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
