@@ -36,6 +36,7 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
     func requestPermission() { service.requestAuthorization() }
     func startTracking() { service.start() }
     func stopTracking() { service.stop() }
+    func requestFreshLocation() { service.requestFreshLocation() }
     func observeLocations() -> AsyncStream<GeoPoint> { broadcaster.stream() }
     func observeFixes() -> AsyncStream<LocationFix> { fixBroadcaster.stream() }
     func observeMotionStates() -> AsyncStream<MotionState> { motionBroadcaster.stream() }

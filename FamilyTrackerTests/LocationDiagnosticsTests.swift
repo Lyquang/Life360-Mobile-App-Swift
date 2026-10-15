@@ -55,7 +55,7 @@ final class LocationDiagnosticsTests: XCTestCase {
         XCTAssertEqual(diagnostics.snapshot().motionTransitions, 0)
     }
 
-    func testOfflineEnqueueCoalescesButReplayCountsActualEmit() {
+    func testLegacyQueuedLocationIsNotReplayedOrCountedAsNewEmit() {
         let battery = BatterySnapshot()
         let diagnostics = LocationDiagnostics(logger: LocationLoggerStub(), battery: battery,
                                               observesBackground: false)
@@ -65,19 +65,19 @@ final class LocationDiagnosticsTests: XCTestCase {
         let queue = OfflineQueue(fileName: "location-diagnostics-tests-\(UUID()).json")
         let repository = SocketRealtimeRepository(socket: socket, offlineQueue: queue, diagnostics: diagnostics)
 
-        repository.sendLocation(GeoPoint(latitude: 10, longitude: 106), batteryLevel: nil)
-        repository.sendLocation(GeoPoint(latitude: 11, longitude: 107), batteryLevel: nil)
+        queue.enqueue(event: SocketEvent.updateLocation, payload: ["latitude": 10, "longitude": 106], coalesceKey: "location")
         #if DEBUG
-        XCTAssertEqual(diagnostics.snapshot().offlineQueueEnqueues, 2)
+        XCTAssertEqual(diagnostics.snapshot().offlineQueueEnqueues, 0)
         #endif
         XCTAssertEqual(queue.count, 1)
         socket.setStatus(.connected)
 
-        XCTAssertEqual(socket.emittedEvents, ["update_location"])
+        XCTAssertTrue(socket.emittedEvents.isEmpty)
         #if DEBUG
-        XCTAssertEqual(diagnostics.snapshot().emitted["stationary"], 1)
+        XCTAssertNil(diagnostics.snapshot().emitted["stationary"])
         #endif
         diagnostics.stopSession(batteryLevel: nil)
+        withExtendedLifetime(repository) {}
     }
 
     func testSummaryContainsNoCoordinatesOrTokenAndDisabledInstanceIsNoop() throws {

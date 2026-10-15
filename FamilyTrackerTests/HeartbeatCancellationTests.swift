@@ -105,7 +105,7 @@ final class HeartbeatCancellationTests: XCTestCase {
             deviceLocation: HeartbeatDeviceLocationMock(lastKnownFix: fix),
             liveLocation: live,
             deviceStatus: HeartbeatDeviceStatusMock(),
-            sleeper: { try await gate.sleep() }
+            sleeper: { _ in try await gate.sleep() }
         )
     }
 
@@ -171,7 +171,7 @@ private final class HeartbeatLiveLocationMock: LiveLocationRepository {
     func observeMemberLocations() -> AsyncStream<MemberLocation> { AsyncStream { _ in } }
     func observeStayAlerts() -> AsyncStream<LocationStayAlert> { AsyncStream { _ in } }
     func observePresence() -> AsyncStream<MemberPresence> { AsyncStream { _ in } }
-    func sendLocation(_ point: GeoPoint, batteryLevel: Int?) { sent.append(point) }
+    func sendLocation(_ fix: LocationFix, batteryLevel: Int?) { sent.append(fix.point) }
 }
 
 @MainActor

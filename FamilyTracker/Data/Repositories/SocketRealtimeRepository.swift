@@ -1,10 +1,16 @@
 import Foundation
 
-/// Bridges the Socket.IO transport to domain streams. Emits made while offline go to `OfflineQueue`.
+/// Location delivery is owner-scoped; the generic offline queue retains SOS events.
 final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRepository, SOSRepository {
     private let socket: SocketClient
     private let offlineQueue: OfflineQueue
     private let diagnostics: LocationDiagnostics?
+    private let readinessLock = NSLock()
+    private var sessionReady = false
+    private var readyID: UUID?
+    private let readiness = AsyncBroadcaster<Bool>()
+    var deliverLocation: (@MainActor (LocationFix, Int?) -> Void)?
+    var onExplicitDisconnect: (@MainActor () -> Void)?
 
     private let connection = AsyncBroadcaster<RealtimeConnectionState>()
     private let locations = AsyncBroadcaster<MemberLocation>()
@@ -23,8 +29,25 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
 
     var connectionState: RealtimeConnectionState { Self.map(socket.status) }
 
-    func connect(token: String) { socket.connect(token: token) }
-    func disconnect() { socket.disconnect(); offlineQueue.clear() }
+    var isSessionReady: Bool {
+        readinessLock.lock(); defer { readinessLock.unlock() }
+        return sessionReady
+    }
+
+    var readySessionID: UUID? {
+        readinessLock.lock(); defer { readinessLock.unlock() }
+        return readyID
+    }
+
+    func observeSessionReadiness() -> AsyncStream<Bool> { readiness.stream() }
+
+    func connect(token: String) { setSessionReady(false); socket.connect(token: token) }
+    @MainActor func disconnect() {
+        setSessionReady(false)
+        onExplicitDisconnect?()
+        socket.disconnect()
+        offlineQueue.clear()
+    }
     func observeConnectionState() -> AsyncStream<RealtimeConnectionState> { connection.stream() }
 
     // MARK: - LiveLocationRepository
@@ -33,10 +56,18 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     func observeStayAlerts() -> AsyncStream<LocationStayAlert> { stayAlerts.stream() }
     func observePresence() -> AsyncStream<MemberPresence> { presence.stream() }
 
-    func sendLocation(_ point: GeoPoint, batteryLevel: Int?) {
-        var payload: [String: Any] = ["latitude": point.latitude, "longitude": point.longitude]
+    @MainActor func sendLocation(_ fix: LocationFix, batteryLevel: Int?) {
+        if let deliverLocation { deliverLocation(fix, batteryLevel) }
+        else { _ = emitLocationIfReady(fix, batteryLevel: batteryLevel) }
+    }
+
+    @MainActor func emitLocationIfReady(_ fix: LocationFix, batteryLevel: Int?) -> Bool {
+        guard isSessionReady, socket.status == .connected else { return false }
+        var payload: [String: Any] = ["latitude": fix.latitude, "longitude": fix.longitude]
         if let batteryLevel { payload["batteryLevel"] = batteryLevel }
-        emitOrQueue(SocketEvent.updateLocation, payload, coalesceKey: "location")
+        socket.emit(SocketEvent.updateLocation, payload)
+        diagnostics?.recordEmit()
+        return true
     }
 
     // MARK: - SOSRepository
@@ -67,6 +98,8 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
 
     private func flushOfflineQueue() {
         for item in offlineQueue.drain() {
+            // Older app versions persisted a coalesced fix without its GPS timestamp.
+            guard item.event != SocketEvent.updateLocation else { continue }
             socket.emit(item.event, item.payload)
             if item.event == SocketEvent.updateLocation { diagnostics?.recordEmit() }
         }
@@ -75,12 +108,15 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     private func registerHandlers() {
         socket.onStatusChange { [weak self] status in
             guard let self else { return }
+            if status != .connected { self.setSessionReady(false) }
             self.connection.send(Self.map(status))
             if status == .connected { self.flushOfflineQueue() }
         }
 
         socket.on(SocketEvent.sessionReady) { [weak self] _ in
-            self?.flushOfflineQueue()
+            guard let self, self.socket.status == .connected else { return }
+            self.setSessionReady(true)
+            self.flushOfflineQueue()
         }
 
         socket.on(SocketEvent.locationUpdate) { [weak self] payload in
@@ -107,6 +143,15 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
             guard let dto = JSONPayload.decode(PresenceDTO.self, from: payload) else { return }
             self?.presence.send(MemberPresence(userId: dto.userId, isOnline: false))
         }
+    }
+
+    private func setSessionReady(_ ready: Bool) {
+        readinessLock.lock()
+        let changed = sessionReady != ready
+        sessionReady = ready
+        if changed { readyID = ready ? UUID() : nil }
+        readinessLock.unlock()
+        if changed { readiness.send(ready) }
     }
 
     private static func map(_ status: SocketConnectionStatus) -> RealtimeConnectionState {

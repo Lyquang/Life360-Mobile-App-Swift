@@ -10,12 +10,18 @@ protocol LocationService: AnyObject {
     func requestAuthorization()
     func start()
     func stop()
+    func requestFreshLocation()
+}
+
+extension LocationService {
+    func requestFreshLocation() {}
 }
 
 /// CLLocationManager + CoreMotion. GPS accuracy adapts to activity/battery; stationary users fall back
 /// to significant-change monitoring so the GPS radio can sleep.
 final class CLLocationService: NSObject, LocationService {
     private let manager = CLLocationManager()
+    private var refreshManager: CLLocationManager?
     private let motion: MotionActivityService
     private let policy: AdaptiveLocationPolicy
     private let battery: BatterySnapshot?
@@ -83,6 +89,18 @@ final class CLLocationService: NSObject, LocationService {
         motion.stop()
         manager.stopUpdatingLocation()
         manager.stopMonitoringSignificantLocationChanges()
+        refreshManager?.stopUpdatingLocation()
+    }
+
+    func requestFreshLocation() {
+        guard isRunning, isAuthorized else { return }
+        if refreshManager == nil {
+            let oneShot = CLLocationManager()
+            oneShot.delegate = self
+            refreshManager = oneShot
+        }
+        refreshManager?.desiredAccuracy = manager.desiredAccuracy
+        refreshManager?.requestLocation()
     }
 
     // MARK: - Private
@@ -131,6 +149,7 @@ final class CLLocationService: NSObject, LocationService {
 
 extension CLLocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard manager === self.manager else { return }
         onAuthorizationChange?(manager.authorizationStatus)
         if isAuthorized {
             configureBackgroundUpdates()
@@ -139,6 +158,7 @@ extension CLLocationService: CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard isRunning, isAuthorized else { return }
         guard let location = locations.last else { return }
         guard location.horizontalAccuracy >= 0 else {
             diagnostics?.recordDrop(.invalidHorizontalAccuracy)

@@ -139,12 +139,15 @@ final class LocationFixTests: XCTestCase {
     func testExistingSocketLocationPayload() {
         let socket = SocketStub()
         let repository = SocketRealtimeRepository(socket: socket, offlineQueue: OfflineQueue(fileName: "location-fix-tests-\(UUID()).json"))
-        repository.sendLocation(GeoPoint(latitude: 10, longitude: 106), batteryLevel: 42)
+        socket.receiveReady()
+        let fix = policyFix(metersNorth: 0, speed: 0, accuracy: 5, timestamp: Date())
+        repository.sendLocation(fix, batteryLevel: 42)
 
         XCTAssertEqual(socket.event, "update_location")
-        XCTAssertEqual(Set(socket.payload.keys), Set(["latitude", "longitude", "batteryLevel"]))
-        XCTAssertEqual(socket.payload["latitude"] as? Double, 10)
-        XCTAssertEqual(socket.payload["longitude"] as? Double, 106)
+        XCTAssertEqual(Set(socket.payload.keys), Set(["latitude", "longitude", "batteryLevel", "recordedAt", "accuracy"]))
+        XCTAssertEqual(socket.payload["latitude"] as? Double, fix.latitude)
+        XCTAssertEqual(socket.payload["longitude"] as? Double, fix.longitude)
+        XCTAssertEqual(socket.payload["recordedAt"] as? String, ISO8601.string(from: fix.timestamp))
         XCTAssertEqual(socket.payload["batteryLevel"] as? Int, 42)
     }
 
@@ -421,12 +424,14 @@ private final class PendingSleeperGate: @unchecked Sendable {
 
     func waitUntilSleeping() async {
         for _ in 0..<100 {
-            lock.lock()
-            let isSleeping = continuation != nil
-            lock.unlock()
             if isSleeping { return }
             await Task.yield()
         }
+    }
+
+    private var isSleeping: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return continuation != nil
     }
 
     func resume() {
@@ -443,7 +448,7 @@ private final class LiveLocationStub: LiveLocationRepository {
     func observeMemberLocations() -> AsyncStream<MemberLocation> { AsyncStream { _ in } }
     func observeStayAlerts() -> AsyncStream<LocationStayAlert> { AsyncStream { _ in } }
     func observePresence() -> AsyncStream<MemberPresence> { AsyncStream { _ in } }
-    func sendLocation(_ point: GeoPoint, batteryLevel: Int?) { sent.append(point) }
+    func sendLocation(_ fix: LocationFix, batteryLevel: Int?) { sent.append(fix.point) }
 }
 
 @MainActor
@@ -452,6 +457,8 @@ private final class DeviceStatusStub: DeviceStatusRepository {
 }
 
 private final class SocketStub: SocketClient {
+    private var readyHandler: (([String: Any]) -> Void)?
+    func receiveReady() { readyHandler?([:]) }
     var status: SocketConnectionStatus = .connected
     var event = ""
     var payload: [String: Any] = [:]
@@ -462,6 +469,8 @@ private final class SocketStub: SocketClient {
         self.payload = payload
     }
     func emitWithAck(_ event: String, _ payload: [String: Any], timeout: TimeInterval) async throws -> [String: Any] { [:] }
-    func on(_ event: String, handler: @escaping ([String: Any]) -> Void) {}
+    func on(_ event: String, handler: @escaping ([String: Any]) -> Void) {
+        if event == SocketEvent.sessionReady { readyHandler = handler }
+    }
     func onStatusChange(_ handler: @escaping (SocketConnectionStatus) -> Void) {}
 }

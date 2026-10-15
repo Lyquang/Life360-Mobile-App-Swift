@@ -7,12 +7,14 @@ import UIKit
 @MainActor
 final class SessionExpiryEvents {
     let publisher = PassthroughSubject<Void, Never>()
+    var onExpire: (() -> Void)?
     private var didExpire = false
 
     func reset() { didExpire = false }
     func expire() {
         guard !didExpire else { return }
         didExpire = true
+        onExpire?()
         publisher.send(())
     }
 }
@@ -51,6 +53,7 @@ final class AppContainer {
 
     // MARK: Long-lived use cases / services
     let shareLocation: ShareLocationUseCase
+    private let locationDelivery: LocationDeliveryService
     private(set) lazy var notificationBridge = RealtimeNotificationBridge(
         observeSOS: ObserveSOSAlertsUseCase(repository: realtime),
         observeStayAlerts: ObserveStayAlertsUseCase(repository: realtime),
@@ -129,14 +132,44 @@ final class AppContainer {
         geocoding = GeocodingRepositoryImpl(geocoder: ReverseGeocoder(), cache: GeocodeCache())
         googleSignInService = GoogleSignInService()
 
+        var locationBuffer: LocationBuffer?
+        var locationSync: LocationSyncCoordinator?
+        do {
+            let buffer = try LocationBuffer()
+            locationBuffer = buffer
+            locationSync = try LocationSyncCoordinator(buffer: buffer,
+                                                       repository: LocationBatchRepositoryImpl(api: api))
+        } catch {
+            logger.logSocket(event: "location_delivery", payload: ["category": "storage_initialization_failed"])
+        }
+        let realtimeRepository = realtime
+        locationDelivery = LocationDeliveryService(
+            buffer: locationBuffer, synchronizer: locationSync,
+            session: { sessionStore.locationSessionIdentity },
+            readySessionID: { [weak realtimeRepository] in realtimeRepository?.readySessionID },
+            emit: { [weak realtimeRepository] fix, battery in
+                realtimeRepository?.emitLocationIfReady(fix, batteryLevel: battery) ?? false
+            }, diagnostics: locationDiagnostics, logger: logger
+        )
+        let delivery = locationDelivery
+        session.onSessionSaved = { [weak delivery] in
+            Task { @MainActor in delivery?.prepareSession() }
+        }
+        delivery.prepareSession()
+        realtime.deliverLocation = { [weak delivery] fix, battery in delivery?.accept(fix, batteryLevel: battery) }
+        realtime.onExplicitDisconnect = { [weak delivery] in delivery?.endSession(clearBuffer: true) }
+
         shareLocation = ShareLocationUseCase(
             deviceLocation: deviceLocation,
             liveLocation: realtime,
             deviceStatus: deviceStatus,
             diagnostics: locationDiagnostics,
-            isForeground: { UIApplication.shared.applicationState == .active }
+            isForeground: { UIApplication.shared.applicationState == .active },
+            onSharingChanged: { [weak delivery] active in delivery?.setSharing(active) },
+            onHistorySync: { [weak delivery] in delivery?.requestHistorySync() }
         )
         let locationSharing = shareLocation
+        events.onExpire = { [weak locationSharing] in locationSharing?.stop() }
         locationService.onAuthorizationChange = { status in
             guard status == .denied || status == .restricted else { return }
             Task { @MainActor in locationSharing.stop() }
@@ -151,8 +184,10 @@ final class AppContainer {
 
     func logout(allDevices: Bool = false) async -> Bool {
         await tokenRefreshCoordinator.cancelSession()
-        return await LogoutUseCase(auth: authRepository, session: session, realtime: realtime,
-                                   shareLocation: shareLocation)(allDevices: allDevices)
+        let result = await LogoutUseCase(auth: authRepository, session: session, realtime: realtime,
+                                        shareLocation: shareLocation)(allDevices: allDevices)
+        await locationDelivery.waitForPendingWrites()
+        return result
     }
 
     /// iOS relaunched the app in the background for a location event: resume sharing without UI.
