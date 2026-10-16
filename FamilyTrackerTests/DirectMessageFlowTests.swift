@@ -329,6 +329,7 @@ private final class ChatRepositoryMock: ChatRepository {
     )
 
     func fetchConversations() async throws -> [Conversation] { [] }
+    func fetchUnreadSummary() async throws -> ChatUnreadSummary { ChatUnreadSummary(totalUnread: 0, counts: [:]) }
     func fetchMessages(conversationId: String, before: String?) async throws -> MessagePage {
         MessagePage(messages: [], hasMore: false, nextBefore: nil)
     }
@@ -344,6 +345,7 @@ private final class ChatRepositoryMock: ChatRepository {
         return try openResult.get()
     }
     func observeNewMessages() -> AsyncStream<ChatMessage> { AsyncStream { $0.finish() } }
+    func observeConversationUpdates() -> AsyncStream<String> { AsyncStream { $0.finish() } }
     func observeTyping() -> AsyncStream<TypingEvent> { AsyncStream { $0.finish() } }
     func sendTyping(conversationId: String, isTyping: Bool) {}
 }

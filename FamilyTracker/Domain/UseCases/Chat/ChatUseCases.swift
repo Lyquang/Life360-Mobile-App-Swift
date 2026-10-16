@@ -5,6 +5,11 @@ struct FetchConversationsUseCase {
     func callAsFunction() async throws -> [Conversation] { try await repository.fetchConversations() }
 }
 
+struct FetchUnreadSummaryUseCase {
+    let repository: ChatRepository
+    func callAsFunction() async throws -> ChatUnreadSummary { try await repository.fetchUnreadSummary() }
+}
+
 struct FetchMessagesUseCase {
     let repository: ChatRepository
 
@@ -80,6 +85,11 @@ struct OpenDirectChatUseCase {
 struct ObserveNewMessagesUseCase {
     let repository: ChatRepository
     func callAsFunction() -> AsyncStream<ChatMessage> { repository.observeNewMessages() }
+}
+
+struct ObserveConversationUpdatesUseCase {
+    let repository: ChatRepository
+    func callAsFunction() -> AsyncStream<String> { repository.observeConversationUpdates() }
 }
 
 struct ObserveTypingUseCase {

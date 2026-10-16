@@ -29,6 +29,11 @@ struct Conversation: Identifiable {
     }
 }
 
+struct ChatUnreadSummary: Equatable {
+    let totalUnread: Int
+    let counts: [String: Int]
+}
+
 enum ChatMessageType: String {
     case text
     case image

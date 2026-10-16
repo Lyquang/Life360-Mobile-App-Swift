@@ -2,6 +2,7 @@ import Foundation
 
 protocol ChatRepository: AnyObject {
     func fetchConversations() async throws -> [Conversation]
+    func fetchUnreadSummary() async throws -> ChatUnreadSummary
     func fetchMessages(conversationId: String, before: String?) async throws -> MessagePage
     func sendText(_ text: String, conversationId: String) async throws -> ChatMessage
     func sendImage(attachmentUrl: String, caption: String?, image: ImageAttachmentInput, conversationId: String) async throws -> ChatMessage
@@ -9,6 +10,7 @@ protocol ChatRepository: AnyObject {
     func markRead(conversationId: String, messageId: String?) async throws
     func openDirectConversation(userId: String) async throws -> Conversation
     func observeNewMessages() -> AsyncStream<ChatMessage>
+    func observeConversationUpdates() -> AsyncStream<String>
     func observeTyping() -> AsyncStream<TypingEvent>
     func sendTyping(conversationId: String, isTyping: Bool)
 }

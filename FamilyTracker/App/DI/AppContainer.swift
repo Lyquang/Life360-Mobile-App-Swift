@@ -231,6 +231,7 @@ extension AppContainer {
     var addPlace: AddPlaceUseCase { AddPlaceUseCase(repository: placeRepository) }
 
     var fetchConversations: FetchConversationsUseCase { FetchConversationsUseCase(repository: chatRepository) }
+    var fetchUnreadSummary: FetchUnreadSummaryUseCase { FetchUnreadSummaryUseCase(repository: chatRepository) }
     var openDirectChat: OpenDirectChatUseCase { OpenDirectChatUseCase(repository: chatRepository) }
     var fetchMessages: FetchMessagesUseCase { FetchMessagesUseCase(repository: chatRepository) }
     var sendTextMessage: SendTextMessageUseCase { SendTextMessageUseCase(repository: chatRepository) }
@@ -241,6 +242,9 @@ extension AppContainer {
     var sendVoiceMessage: SendVoiceMessageUseCase { SendVoiceMessageUseCase(chat: chatRepository) }
     var markConversationRead: MarkConversationReadUseCase { MarkConversationReadUseCase(repository: chatRepository) }
     var observeNewMessages: ObserveNewMessagesUseCase { ObserveNewMessagesUseCase(repository: chatRepository) }
+    var observeConversationUpdates: ObserveConversationUpdatesUseCase {
+        ObserveConversationUpdatesUseCase(repository: chatRepository)
+    }
     var observeTyping: ObserveTypingUseCase { ObserveTypingUseCase(repository: chatRepository) }
     var sendTyping: SendTypingUseCase { SendTypingUseCase(repository: chatRepository) }
 }
