@@ -4,9 +4,12 @@ import PhotosUI
 struct ChatView: View {
     @StateObject private var viewModel: ChatViewModel
     @State private var photoItem: PhotosPickerItem?
+    private let onShowGroupInfo: (() -> Void)?
 
-    init(viewModel: @autoclosure @escaping () -> ChatViewModel) {
+    init(viewModel: @autoclosure @escaping () -> ChatViewModel,
+         onShowGroupInfo: (() -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: viewModel())
+        self.onShowGroupInfo = onShowGroupInfo
     }
 
     var body: some View {
@@ -24,6 +27,30 @@ struct ChatView: View {
         }
         .navigationTitle(viewModel.title.isEmpty ? Text(verbatim: L10n.tr("Tin nhắn")) : Text(verbatim: viewModel.title))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if let onShowGroupInfo {
+                ToolbarItem(placement: .principal) {
+                    Button(action: onShowGroupInfo) {
+                        HStack(spacing: FTSpacing.xs) {
+                            Text(verbatim: viewModel.title)
+                                .font(.headline)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.down")
+                                .font(.caption)
+                        }
+                        .frame(minHeight: 44)
+                    }
+                    .accessibilityLabel(L10n.tr("chat.hub.action.group_info"))
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: onShowGroupInfo) {
+                        Image(systemName: "info.circle")
+                            .frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel(L10n.tr("chat.hub.action.group_info"))
+                }
+            }
+        }
         .task { await viewModel.start() }
         .onDisappear { viewModel.stopTyping() }
         .onChange(of: photoItem) { item in

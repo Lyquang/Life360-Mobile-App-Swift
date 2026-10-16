@@ -171,6 +171,10 @@ final class ChatHubViewModel: ObservableObject {
         refreshInBackground()
     }
 
+    func group(id: String) -> FamilyGroup? {
+        groups.first { $0.id == id }
+    }
+
     func upsert(_ incoming: Conversation) {
         if let index = conversations.firstIndex(where: { $0.id == incoming.id }) {
             var merged = incoming
