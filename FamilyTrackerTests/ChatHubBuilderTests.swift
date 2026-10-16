@@ -24,6 +24,15 @@ final class ChatHubBuilderTests: XCTestCase {
         XCTAssertNil(snapshot.items.last?.conversationId)
     }
 
+    func testGroupConversationIDIsAvailableBeforeConversationListLoads() {
+        let snapshot = ChatHubBuilder.build(
+            groups: [FamilyGroup(id: "g1", name: "Family", conversationId: "c1")],
+            conversations: [], currentUserId: "u1"
+        )
+
+        XCTAssertEqual(snapshot.items.first?.conversationId, "c1")
+    }
+
     func testOrphanConversationIsNotLostAndMismatchedLinkIsNotMerged() {
         let group = FamilyGroup(id: "g1", name: "Family", conversationId: "expected")
         let snapshot = ChatHubBuilder.build(
@@ -32,7 +41,7 @@ final class ChatHubBuilderTests: XCTestCase {
 
         XCTAssertEqual(snapshot.items.map(\.id), ["conversation:other", "group:g1"])
         XCTAssertEqual(snapshot.unmatchedGroupConversationIDs, ["other"])
-        XCTAssertNil(snapshot.items.last?.conversationId)
+        XCTAssertEqual(snapshot.items.last?.conversationId, "expected")
     }
 
     func testEmptyMappedGroupMembersFallBackToConversationMembers() {

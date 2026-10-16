@@ -131,31 +131,34 @@ final class DirectMessageFlowTests: XCTestCase {
     }
 
     func testUpsertInsertsConversationWhenMissing() {
-        let list = makeConversationListViewModel()
+        let list = makeChatHubViewModel()
         list.upsert(conversation(id: "direct-1", date: date(10), unread: 1))
 
-        XCTAssertEqual(list.conversations.map(\.id), ["direct-1"])
-        XCTAssertEqual(list.conversations.first?.unreadCount, 1)
+        XCTAssertEqual(list.snapshot.items.compactMap(\.conversationId), ["direct-1"])
+        XCTAssertEqual(list.snapshot.items.first?.unreadCount, 1)
+        list.stop()
     }
 
     func testUpsertUsesIncomingActivityWhenItIsNewer() {
-        let list = makeConversationListViewModel()
+        let list = makeChatHubViewModel()
         list.upsert(conversation(id: "direct-1", date: date(10), unread: 5))
         list.upsert(conversation(id: "direct-1", date: date(20), unread: 2))
 
-        XCTAssertEqual(list.conversations.count, 1)
-        XCTAssertEqual(list.conversations.first?.lastMessageAt, date(20))
-        XCTAssertEqual(list.conversations.first?.unreadCount, 2)
+        XCTAssertEqual(list.snapshot.items.count, 1)
+        XCTAssertEqual(list.snapshot.items.first?.lastMessageAt, date(20))
+        XCTAssertEqual(list.snapshot.items.first?.unreadCount, 2)
+        list.stop()
     }
 
     func testUpsertKeepsExistingActivityWhenItIsNewer() {
-        let list = makeConversationListViewModel()
+        let list = makeChatHubViewModel()
         list.upsert(conversation(id: "direct-1", date: date(20), unread: 7))
         list.upsert(conversation(id: "direct-1", date: date(10), unread: 1))
 
-        XCTAssertEqual(list.conversations.count, 1)
-        XCTAssertEqual(list.conversations.first?.lastMessageAt, date(20))
-        XCTAssertEqual(list.conversations.first?.unreadCount, 7)
+        XCTAssertEqual(list.snapshot.items.count, 1)
+        XCTAssertEqual(list.snapshot.items.first?.lastMessageAt, date(20))
+        XCTAssertEqual(list.snapshot.items.first?.unreadCount, 7)
+        list.stop()
     }
 
     func testPendingRouteIsConsumedExactlyOnceAfterProgrammaticDismiss() {
@@ -238,12 +241,19 @@ final class DirectMessageFlowTests: XCTestCase {
         )
     }
 
-    private func makeConversationListViewModel() -> ConversationListViewModel {
+    private func makeChatHubViewModel() -> ChatHubViewModel {
         let chat = ChatRepositoryMock()
-        return ConversationListViewModel(
+        let circle = CircleRepositoryMock()
+        let live = LiveLocationRepositoryMock()
+        return ChatHubViewModel(
             currentUserId: "me",
+            fetchGroups: FetchMyCirclesUseCase(repository: circle),
             fetchConversations: FetchConversationsUseCase(repository: chat),
-            observeNewMessages: ObserveNewMessagesUseCase(repository: chat)
+            fetchUnreadSummary: FetchUnreadSummaryUseCase(repository: chat),
+            observeNewMessages: ObserveNewMessagesUseCase(repository: chat),
+            observeConversationUpdates: ObserveConversationUpdatesUseCase(repository: chat),
+            observePresence: ObservePresenceUseCase(repository: live),
+            markConversationRead: MarkConversationReadUseCase(repository: chat)
         )
     }
 

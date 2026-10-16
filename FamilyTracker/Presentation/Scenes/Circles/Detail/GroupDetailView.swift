@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Group details + member list (presented as a sheet by CirclesCoordinator).
+/// Group details + member list, presented by ChatHubCoordinator.
 struct GroupDetailView: View {
     let group: FamilyGroup
     @ObservedObject var viewModel: CircleListViewModel

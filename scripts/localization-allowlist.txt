@@ -3,8 +3,5 @@
 ^FamilyTracker/Presentation/Coordinators/DebugCoordinator\.swift:.*|Debug-only Pulse launcher accessibility copy.
 ^FamilyTracker/Presentation/Scenes/LiveMap/Map/LiveMapView\.swift:.*Text\("FamilyTracker"\)\s*$|Product brand is intentionally not translated.
 ^FamilyTracker/Presentation/Scenes/Auth/Login/LoginView\.swift:.*Text\("FamilyTracker"\)\s*$|Product brand is intentionally not translated.
-^FamilyTracker/Presentation/Scenes/Circles/List/GroupCard\.swift:.*Text\("•"\)\s*$|Decorative separator has no linguistic content.
 ^FamilyTracker/Presentation/Scenes/Circles/Join/JoinGroupSheet\.swift:.*TextField\("123456"\s*,\s*text:\s*&\$inviteCode\)\s*$|Numeric sample placeholder is language-neutral.
-^FamilyTracker/Presentation/Scenes/Chat/ConversationList/ConversationListView\.swift:.*Text\("\\\(conversation\.unreadCount\)"\)\s*$|Unread badge contains a numeric count without language-dependent copy.
-^FamilyTracker/Presentation/Scenes/Circles/List/GroupCard\.swift:.*Text\("\+\\\(members\.count - 5\)"\)\s*$|Avatar overflow badge contains a plus sign and numeric count only.
 ^FamilyTracker/Presentation/Scenes/LiveMap/Map/LiveMapView\.swift:.*Text\("\\\(viewModel\.memberLocations\.count\)"\)\s*$|Map member badge contains a numeric count only.

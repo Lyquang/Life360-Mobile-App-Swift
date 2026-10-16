@@ -68,7 +68,8 @@ enum ChatHubBuilder {
         let onlineCount = members.map { $0.filter { $0.isOnline == true }.count }
             ?? (conversationMembers.isEmpty ? nil : conversationMembers.filter(\.isOnline).count)
         return ChatHubItem(
-            id: "group:\(group.id)", kind: .group, conversationId: conversation?.id,
+            id: "group:\(group.id)", kind: .group,
+            conversationId: conversation?.id ?? group.conversationId,
             groupId: group.id, inviteCode: group.inviteCode,
             title: group.name, lastMessage: conversation?.lastMessage,
             lastMessageAt: conversation?.lastMessageAt, createdAt: parse(group.createdAt),

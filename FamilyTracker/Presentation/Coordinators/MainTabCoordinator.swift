@@ -2,19 +2,19 @@ import SwiftUI
 import Combine
 
 /// Tab container after login. Owns feature coordinators and cross-feature routing
-/// (SOS → Map, Circle → Chat, notification deeplinks).
+/// (SOS -> Map, Circle -> Chat, notification deeplinks).
 @MainActor
 final class MainTabCoordinator: ObservableObject {
     enum Tab: Hashable {
-        case map, circles, chat, duration, journey, places, profile
+        case map, chatHub, duration, journey, places, profile
     }
 
     @Published var selectedTab: Tab = .map
+    @Published private(set) var chatUnreadBadge = 0
 
     let currentUser: User
     let map: MapCoordinator
-    let circles: CirclesCoordinator
-    let chat: ChatCoordinator
+    let chatHub: ChatHubCoordinator
     let timeline: TimelineCoordinator
     let places: PlacesCoordinator
     let emergency: EmergencyCoordinator
@@ -23,6 +23,7 @@ final class MainTabCoordinator: ObservableObject {
     private let onLogout: () -> Void
     private let onLogoutAll: () -> Void
     private var cancellables = Set<AnyCancellable>()
+    private var badgeCancellable: AnyCancellable?
 
     init(container: AppContainer, currentUser: User, onLogout: @escaping () -> Void,
          onLogoutAll: @escaping () -> Void) {
@@ -32,21 +33,21 @@ final class MainTabCoordinator: ObservableObject {
         self.onLogoutAll = onLogoutAll
 
         map = MapCoordinator(container: container, currentUser: currentUser)
-        circles = CirclesCoordinator(container: container, currentUser: currentUser)
-        chat = ChatCoordinator(container: container, currentUser: currentUser)
+        chatHub = ChatHubCoordinator(container: container, currentUser: currentUser)
         timeline = TimelineCoordinator(container: container, currentUser: currentUser)
         places = PlacesCoordinator(container: container)
         emergency = EmergencyCoordinator(observeSOS: container.observeSOSAlerts, sendSOS: container.sendSOS)
 
         map.onRequestSOS = { [weak self] in self?.emergency.requestSOS() }
         emergency.onShowLocation = { [weak self] alert in self?.showOnMap(alert.point) }
-        circles.onOpenConversation = { [weak self] id, title in self?.openConversation(id: id, title: title) }
-        circles.onOpenDirectConversation = { [weak self] conversation, fallbackTitle in
-            self?.openDirectConversation(conversation, fallbackTitle: fallbackTitle)
-        }
+        badgeCancellable = chatHub.viewModel.$totalUnread
+            .removeDuplicates()
+            .sink { [weak self] count in self?.chatUnreadBadge = count }
     }
 
     func start() {
+        chatHub.viewModel.start()
+        chatHub.viewModel.refreshInBackground()
         container.shareLocation.start()
         container.notificationBridge.start()
         emergency.start()
@@ -63,6 +64,7 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func stop() {
+        chatHub.stop()
         emergency.stop()
         container.notificationBridge.stop()
         cancellables.removeAll()
@@ -81,13 +83,13 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func openConversation(id: String, title: String) {
-        selectedTab = .chat
-        chat.openConversation(id: id, title: title)
+        selectedTab = .chatHub
+        chatHub.openConversation(id: id, title: title)
     }
 
     func openDirectConversation(_ conversation: Conversation, fallbackTitle: String) {
-        selectedTab = .chat
-        chat.openDirectConversation(conversation, fallbackTitle: fallbackTitle)
+        selectedTab = .chatHub
+        chatHub.openDirectConversation(conversation, fallbackTitle: fallbackTitle)
     }
 
     func handle(_ deeplink: NotificationDeeplink) {
@@ -96,8 +98,7 @@ final class MainTabCoordinator: ObservableObject {
             selectedTab = .map
             map.focus(onMember: userId)
         case .conversation(let id):
-            selectedTab = .chat
-            chat.openConversation(id: id, title: "")
+            openConversation(id: id, title: "")
         }
     }
 
@@ -129,13 +130,10 @@ struct MainTabView: View {
                 .tabItem { tabLabel("Bản đồ", icon: "map", tab: .map) }
                 .tag(MainTabCoordinator.Tab.map)
 
-            CirclesCoordinatorView(coordinator: coordinator.circles)
-                .tabItem { tabLabel("Nhóm", icon: "person.3", tab: .circles) }
-                .tag(MainTabCoordinator.Tab.circles)
-
-            ChatCoordinatorView(coordinator: coordinator.chat)
-                .tabItem { tabLabel("Tin nhắn", icon: "bubble.left.and.bubble.right", tab: .chat) }
-                .tag(MainTabCoordinator.Tab.chat)
+            ChatHubCoordinatorView(coordinator: coordinator.chatHub)
+                .tabItem { tabLabel("chat.hub.title", icon: "bubble.left.and.bubble.right", tab: .chatHub) }
+                .badge(coordinator.chatUnreadBadge)
+                .tag(MainTabCoordinator.Tab.chatHub)
 
             DurationView(viewModel: coordinator.makeDurationViewModel())
                 .tabItem {

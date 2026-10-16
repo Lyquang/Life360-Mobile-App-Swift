@@ -83,6 +83,15 @@ Legend:
   not show cancellation as a network-error alert. XCTest source added; app build
   passes, but the Xcode project still has no configured test target.
 - `[-]` Chat: conversation list, realtime messages, chat repositories.
+- `[x]` Unified Chat tab H4: six-tab root with one ChatHub navigation stack,
+  Circle create/join/detail sheets, direct-chat dismiss-then-push routing,
+  unread badge and conversation deeplink. Debug/Release Simulator builds,
+  networking/localization scripts and SwiftLint pass. H4 XCTest source is
+  present but cannot run until the scheme has a configured test target.
+- `[x]` Unified Chat tab H5 code cleanup: removed unreferenced Circles/Chat
+  coordinators and legacy list views; migrated direct upsert tests to ChatHub.
+  Simulator builds and static checks pass. Physical-device regression and
+  XCTest remain pending; no device run is claimed.
 - `[x]` Direct message entry: accessible member-row action, get-or-create 1-1 flow,
   ordered sheet-to-tab routing, idempotent conversation upsert and empty-chat state.
 - `[x]` Chat media: R2 image/voice upload, optimistic delivery, playback, retry,

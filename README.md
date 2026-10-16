@@ -148,7 +148,7 @@ Image / voice -> prepare or record -> upload ticket -> raw HTTP PUT to S3/R2
               -> Socket.IO send-with-ack -> conversation room
 
 Notification tap -> pending route -> authenticated session -> membership check
-                 -> ChatCoordinator / MapCoordinator
+                 -> ChatHubCoordinator / MapCoordinator
 ```
 
 Socket.IO adds event framing, rooms and reconnection behavior on top of its
