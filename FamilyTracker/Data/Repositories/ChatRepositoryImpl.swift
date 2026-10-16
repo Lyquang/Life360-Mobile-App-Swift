@@ -5,6 +5,7 @@ final class ChatRepositoryImpl: ChatRepository {
     private let api: APIClient
     private let socket: SocketClient
     private let newMessages = AsyncBroadcaster<ChatMessage>()
+    private let conversationUpdates = AsyncBroadcaster<String>()
     private let typing = AsyncBroadcaster<TypingEvent>()
 
     init(api: APIClient, socket: SocketClient) {
@@ -19,6 +20,10 @@ final class ChatRepositoryImpl: ChatRepository {
             guard let dto = JSONPayload.decode(TypingDTO.self, from: payload) else { return }
             self?.typing.send(dto.toDomain())
         }
+        socket.on(SocketEvent.chatConversationUpdated) { [weak self] payload in
+            guard let update = JSONPayload.decode(ConversationUpdateEvent.self, from: payload) else { return }
+            self?.conversationUpdates.send(update.conversationId)
+        }
     }
 
     func fetchConversations() async throws -> [Conversation] {
@@ -26,6 +31,19 @@ final class ChatRepositoryImpl: ChatRepository {
             let response = try await api.send(ChatEndpoint.conversations, as: APIResponseDTO<[ConversationDTO]>.self)
             guard response.success else { throw APIError.serverError(response.message ?? "Không thể tải hội thoại.") }
             return (response.data ?? []).map { $0.toDomain() }
+        }
+    }
+
+    func fetchUnreadSummary() async throws -> ChatUnreadSummary {
+        try await withDomainErrors {
+            let summary = try await api.send(
+                ChatEndpoint.unreadSummary, as: APIResponseDTO<UnreadSummaryDTO>.self
+            ).unwrap(fallbackMessage: "Không thể tải số tin chưa đọc.")
+            return ChatUnreadSummary(
+                totalUnread: summary.totalUnread,
+                counts: Dictionary(summary.conversations.map { ($0.conversationId, $0.unreadCount) },
+                                   uniquingKeysWith: { _, latest in latest })
+            )
         }
     }
 
@@ -91,6 +109,7 @@ final class ChatRepositoryImpl: ChatRepository {
     }
 
     func observeNewMessages() -> AsyncStream<ChatMessage> { newMessages.stream() }
+    func observeConversationUpdates() -> AsyncStream<String> { conversationUpdates.stream() }
     func observeTyping() -> AsyncStream<TypingEvent> { typing.stream() }
 
     func sendTyping(conversationId: String, isTyping: Bool) {
@@ -123,6 +142,10 @@ final class ChatRepositoryImpl: ChatRepository {
             throw MediaUploadError.acknowledgementTimeout
         }
     }
+}
+
+private struct ConversationUpdateEvent: Decodable {
+    let conversationId: String
 }
 
 final class MediaRepositoryImpl: MediaRepository {
