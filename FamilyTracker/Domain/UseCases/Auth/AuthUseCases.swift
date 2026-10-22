@@ -59,7 +59,7 @@ struct GoogleSignInUseCase {
     let auth: AuthRepository
     let session: SessionRepository
     let realtime: RealtimeSessionRepository
-
+// mainActor này đảm bảo rằng tất cả các thao tác liên quan đến UI và session đều được thực hiện trên main thread.
     @MainActor
     func callAsFunction(presentingViewController: UIViewController) async throws -> User {
         // 1. Lấy Google ID Token từ SDK

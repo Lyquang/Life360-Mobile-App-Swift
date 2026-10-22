@@ -43,6 +43,9 @@ final class AppContainer {
     let circleRepository: CircleRepository
     let placeRepository: PlaceRepository
     let historyRepository: HistoryRepository
+    let liveTrailRepository: LiveTrailRepository
+    let locationSharingRepository: LocationSharingRepository
+    private let locationSharingGate: LocationSharingGate
     let realtime: SocketRealtimeRepository
     let chatRepository: ChatRepository
     let mediaRepository: MediaRepository
@@ -121,6 +124,9 @@ final class AppContainer {
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)
         historyRepository = HistoryRepositoryImpl(api: api)
+        liveTrailRepository = LiveTrailRepositoryImpl(api: api)
+        locationSharingRepository = LocationSharingRepositoryImpl(api: api)
+        locationSharingGate = LocationSharingGate()
         realtime = SocketRealtimeRepository(socket: socketClient, offlineQueue: offlineQueue,
                                             diagnostics: locationDiagnostics)
         chatRepository = ChatRepositoryImpl(api: api, socket: socketClient)
@@ -159,12 +165,14 @@ final class AppContainer {
         realtime.deliverLocation = { [weak delivery] fix, battery in delivery?.accept(fix, batteryLevel: battery) }
         realtime.onExplicitDisconnect = { [weak delivery] in delivery?.endSession(clearBuffer: true) }
 
+        let sharingGate = locationSharingGate
         shareLocation = ShareLocationUseCase(
             deviceLocation: deviceLocation,
             liveLocation: realtime,
             deviceStatus: deviceStatus,
             diagnostics: locationDiagnostics,
             isForeground: { UIApplication.shared.applicationState == .active },
+            canShare: { [weak sharingGate] in sharingGate?.allowsSharing == true },
             onSharingChanged: { [weak delivery] active in delivery?.setSharing(active) },
             onHistorySync: { [weak delivery] in delivery?.requestHistorySync() }
         )
@@ -183,6 +191,8 @@ final class AppContainer {
     }
 
     func logout(allDevices: Bool = false) async -> Bool {
+        shareLocation.stop()
+        locationSharingGate.suspendUntilServerCheck()
         await tokenRefreshCoordinator.cancelSession()
         let result = await LogoutUseCase(auth: authRepository, session: session, realtime: realtime,
                                         shareLocation: shareLocation)(allDevices: allDevices)
@@ -196,7 +206,81 @@ final class AppContainer {
         if realtime.connectionState == .disconnected {
             realtime.connect(token: token)
         }
-        shareLocation.start()
+        Task { [weak self] in await self?.startLocationSharingIfAllowed() }
+    }
+
+    var locationSharingStatus: LocationSharingAccessState { locationSharingGate.status }
+
+    func refreshLocationSharingStatus() async -> LocationSharingAccessState {
+        await startLocationSharingIfAllowed()
+        return locationSharingGate.status
+    }
+
+    func startLocationSharingIfAllowed() async {
+        guard let identity = session.locationSessionIdentity else { return }
+        shareLocation.stop()
+        locationSharingGate.activate(ownerID: identity.ownerID)
+        if locationSharingGate.hasPendingPause {
+            locationDelivery.endSession(clearBuffer: true)
+        }
+        let revision = locationSharingGate.revision
+        do {
+            let state = try await locationSharingRepository.fetch()
+            guard !Task.isCancelled, session.locationSessionIdentity == identity,
+                  locationSharingGate.revision == revision else { return }
+            locationSharingGate.confirm(state)
+            locationSharingGate.expirePendingPause()
+            if locationSharingGate.hasPendingPause {
+                let paused = try await locationSharingRepository.update(
+                    .pause(until: locationSharingGate.pendingPauseUntil))
+                guard !Task.isCancelled, session.locationSessionIdentity == identity,
+                      locationSharingGate.revision == revision else { return }
+                locationSharingGate.confirm(paused)
+            }
+            if locationSharingGate.allowsSharing {
+                shareLocation.start()
+            } else {
+                locationDelivery.endSession(clearBuffer: true)
+            }
+        } catch {
+            // Unknown remote state remains closed; a later foreground/network retry may reopen it.
+            locationSharingGate.markCheckFailed()
+        }
+    }
+
+    func pauseLocationSharing(until: Date? = nil) async throws {
+        guard let identity = session.locationSessionIdentity else { throw DomainError.unauthorized }
+        shareLocation.stop()
+        locationDelivery.endSession(clearBuffer: true)
+        locationSharingGate.activate(ownerID: identity.ownerID)
+        try locationSharingGate.beginPause(until: until)
+        let revision = locationSharingGate.revision
+        await locationDelivery.waitForPendingWrites()
+        let state = try await locationSharingRepository.update(.pause(until: until))
+        guard session.locationSessionIdentity == identity,
+              locationSharingGate.revision == revision else { return }
+        guard !state.enabled else { throw DomainError.server("Pause was not confirmed by the server.") }
+        locationSharingGate.confirm(state)
+        guard !locationSharingGate.hasPendingPause else {
+            throw DomainError.server("Pause duration was not confirmed by the server.")
+        }
+    }
+
+    func resumeLocationSharing() async throws {
+        guard let identity = session.locationSessionIdentity else { throw DomainError.unauthorized }
+        locationSharingGate.suspendUntilServerCheck()
+        let revision = locationSharingGate.revision
+        let state: LocationSharingState
+        do { state = try await locationSharingRepository.update(.resume) }
+        catch {
+            locationSharingGate.markCheckFailed()
+            throw error
+        }
+        guard session.locationSessionIdentity == identity,
+              locationSharingGate.revision == revision else { return }
+        guard state.enabled else { throw DomainError.server("Resume was not confirmed by the server.") }
+        locationSharingGate.confirmResume(state)
+        if locationSharingGate.allowsSharing { shareLocation.start() }
     }
 }
 
@@ -225,6 +309,7 @@ extension AppContainer {
 
     var fetchLocationHistory: FetchLocationHistoryUseCase { FetchLocationHistoryUseCase(repository: historyRepository) }
     var fetchDayJourney: FetchDayJourneyUseCase { FetchDayJourneyUseCase(repository: historyRepository) }
+    var fetchLiveTrail: FetchLiveTrailUseCase { FetchLiveTrailUseCase(repository: liveTrailRepository) }
     var reverseGeocode: ReverseGeocodeUseCase { ReverseGeocodeUseCase(repository: geocoding) }
 
     var fetchPlaces: FetchPlacesUseCase { FetchPlacesUseCase(repository: placeRepository) }

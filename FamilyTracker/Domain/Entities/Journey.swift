@@ -1,7 +1,7 @@
 import Foundation
 
 /// A place where the user stayed for at least 5 minutes.
-struct StayPoint: Identifiable {
+struct StayPoint: Identifiable, Sendable {
     var id: String { arrivedAt }
 
     let latitude: Double
@@ -18,7 +18,7 @@ struct StayPoint: Identifiable {
 }
 
 /// Movement between two stay points.
-struct MovingSegment: Identifiable {
+struct MovingSegment: Identifiable, Sendable {
     var id: String { startTime }
 
     let fromLatitude: Double
@@ -35,7 +35,7 @@ struct MovingSegment: Identifiable {
     var endDate: Date? { ISO8601.date(from: endTime) }
 }
 
-enum JourneyEntry: Identifiable {
+enum JourneyEntry: Identifiable, Sendable {
     case stay(StayPoint)
     case moving(MovingSegment)
 
@@ -54,7 +54,7 @@ enum JourneyEntry: Identifiable {
     }
 }
 
-struct DayJourneySummary {
+struct DayJourneySummary: Sendable {
     let totalPoints: Int
     let stayPointCount: Int
     let totalStayMinutes: Int
@@ -65,7 +65,7 @@ struct DayJourneySummary {
     let lastSeenAt: String?
 }
 
-struct DayJourney {
+struct DayJourney: Sendable {
     let date: String?
     let summary: DayJourneySummary?
     let entries: [JourneyEntry]

@@ -6,6 +6,8 @@ enum SocketEvent {
     static let sosAlert        = "sos_alert"
     static let chatTyping      = "chat:typing"
     static let chatSendMessage = "chat:send_message"
+    static let journeyWatch = "journey:watch"
+    static let journeyUnwatch = "journey:unwatch"
 
     // Server → Client
     static let sessionReady        = "session:ready"
@@ -18,5 +20,8 @@ enum SocketEvent {
     static let chatNewMessage      = "chat:new_message"
     static let chatReadReceipt     = "chat:read_receipt"
     static let chatConversationUpdated = "chat:conversation_updated"
+    static let journeyTrailDelta = "journey:trail_delta"
+    static let journeyTrailReset = "journey:trail_reset"
+    static let journeyTrailClosed = "journey:trail_closed"
     static let error               = "error"
 }

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Framework-agnostic coordinate. Presentation maps it to CLLocationCoordinate2D.
-struct GeoPoint: Equatable, Hashable {
+struct GeoPoint: Equatable, Hashable, Sendable {
     let latitude: Double
     let longitude: Double
 

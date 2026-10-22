@@ -22,7 +22,9 @@ final class MapCoordinator: NavigationCoordinator {
             observeMemberLocations: container.observeMemberLocations,
             observeConnection: container.observeConnectionState,
             observeDeviceLocation: container.observeDeviceLocation,
-            getCurrentLocation: container.getCurrentLocation
+            getCurrentLocation: container.getCurrentLocation,
+            fetchLiveTrail: container.fetchLiveTrail,
+            realtime: container.realtime
         )
     }
 
@@ -47,7 +49,9 @@ final class MapCoordinator: NavigationCoordinator {
 
     func makeJourneyViewModel(userId: String, name: String) -> JourneyViewModel {
         JourneyViewModel(userId: userId, memberName: name,
-                         fetchDayJourney: container.fetchDayJourney, reverseGeocode: container.reverseGeocode)
+                         fetchDayJourney: container.fetchDayJourney,
+                         fetchLiveTrail: container.fetchLiveTrail,
+                         reverseGeocode: container.reverseGeocode)
     }
 }
 

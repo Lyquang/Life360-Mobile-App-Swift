@@ -13,6 +13,10 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Domain/Entities/MediaUpload.swift \
   FamilyTracker/Domain/Entities/AuthTokens.swift \
   FamilyTracker/Domain/Entities/GeoPoint.swift \
+  FamilyTracker/Domain/Entities/LiveTrail.swift \
+  FamilyTracker/Domain/Entities/LiveTrailAssembler.swift \
+  FamilyTracker/Domain/Entities/LiveTrailGeometry.swift \
+  FamilyTracker/Domain/Entities/LocationSharing.swift \
   FamilyTracker/Domain/Entities/LocationFix.swift \
   FamilyTracker/Domain/Entities/BufferedLocationPoint.swift \
   FamilyTracker/Domain/Repositories/LocationBatchRepository.swift \

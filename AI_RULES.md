@@ -73,6 +73,22 @@ Current expected services:
 - `FamilyTracker/Core/Location/CLLocationService.swift`
 - `FamilyTracker/Core/Device/BatteryMonitor.swift`
 
+## Historical Journey Map Rules
+
+- The deployment target is iOS 16. Draw historical polylines in the dedicated
+  `RouteMapView` (`MKMapView` via `UIViewRepresentable`); do not replace LiveMap
+  or use iOS 17-only SwiftUI `MapPolyline` in this feature.
+- Use only recorded GPS points for a traveled route. Never infer a traveled
+  polyline from segment start/end coordinates when the path is absent.
+- Keep route simplification and geometry in Domain without MapKit/CoreLocation;
+  prepare large models off the main actor and publish UI state on `@MainActor`.
+- Keep moving segments separate across stays or data gaps. Marker, timeline,
+  error, and empty states must remain usable with VoiceOver and vi/en localization.
+- Treat location history as sensitive: never log coordinates, member names, or
+  addresses. Do not claim speed/accuracy filtering without per-point metadata.
+- Routing *to* a member with `MKDirections` is a separate approved task, not a
+  fallback when recorded history lacks path points.
+
 ## Concurrency And Memory Safety
 
 - Use `[weak self]` in escaping closures and long-lived async tasks that capture reference types.

@@ -38,6 +38,39 @@ struct ProfileView: View {
                     LanguagePicker()
                 }
 
+                Section(L10n.tr("privacy.sharing.section")) {
+                    Toggle(isOn: Binding(
+                        get: { viewModel.locationSharingStatus == .sharing },
+                        set: { viewModel.setLocationSharingEnabled($0) }
+                    )) {
+                        Text(verbatim: L10n.tr("privacy.sharing.toggle"))
+                    }
+                    .disabled(viewModel.isChangingLocationSharing
+                              || viewModel.locationSharingStatus == .checking
+                              || viewModel.locationSharingStatus == .unavailable)
+
+                    HStack(alignment: .top, spacing: FTSpacing.sm) {
+                        if viewModel.isChangingLocationSharing
+                            || viewModel.locationSharingStatus == .checking {
+                            ProgressView()
+                        }
+                        Text(verbatim: L10n.tr(viewModel.locationSharingStatusKey))
+                            .font(FTFont.footnote())
+                            .foregroundColor(FTColors.textSecondary)
+                    }
+
+                    if viewModel.locationSharingStatus == .unavailable {
+                        Button(L10n.tr("privacy.sharing.action.retry")) {
+                            viewModel.refreshPrivacy()
+                        }
+                    }
+                    if let error = viewModel.locationSharingError {
+                        Text(verbatim: error)
+                            .font(FTFont.footnote())
+                            .foregroundColor(FTColors.danger)
+                    }
+                }
+
                 Section(L10n.tr("profile.section.app_info")) {
                     InfoRow(label: "Phiên bản", value: viewModel.appVersion)
                     InfoRow(label: "Backend", value: viewModel.backendHost)

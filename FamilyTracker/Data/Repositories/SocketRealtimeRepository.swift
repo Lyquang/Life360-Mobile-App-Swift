@@ -17,6 +17,8 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     private let stayAlerts = AsyncBroadcaster<LocationStayAlert>()
     private let presence = AsyncBroadcaster<MemberPresence>()
     private let sosAlerts = AsyncBroadcaster<SOSAlert>()
+    private let trailEvents = AsyncBroadcaster<LiveTrailEvent>()
+    private let outgoingFixes = AsyncBroadcaster<LocationFix>()
 
     init(socket: SocketClient, offlineQueue: OfflineQueue, diagnostics: LocationDiagnostics? = nil) {
         self.socket = socket
@@ -40,6 +42,24 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     }
 
     func observeSessionReadiness() -> AsyncStream<Bool> { readiness.stream() }
+    func observeTrailEvents() -> AsyncStream<LiveTrailEvent> { trailEvents.stream() }
+    func observeOutgoingFixes() -> AsyncStream<LocationFix> { outgoingFixes.stream() }
+
+    func watchTrail(userId: String, date: String) async throws -> Int {
+        guard isSessionReady else { throw SocketClientError.disconnected }
+        let ack = try await socket.emitWithAck(SocketEvent.journeyWatch,
+                                                ["userId": userId, "date": date], timeout: 10)
+        guard ack["ok"] as? Bool == true else {
+            if ack["status"] as? Int == 403 { throw DomainError.forbidden }
+            throw DomainError.server("Live trail watch failed")
+        }
+        return ack["revision"] as? Int ?? 0
+    }
+
+    func unwatchTrail(userId: String, date: String) {
+        guard isSessionReady else { return }
+        socket.emit(SocketEvent.journeyUnwatch, ["userId": userId, "date": date])
+    }
 
     func connect(token: String) { setSessionReady(false); socket.connect(token: token) }
     @MainActor func disconnect() {
@@ -57,15 +77,15 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
     func observePresence() -> AsyncStream<MemberPresence> { presence.stream() }
 
     @MainActor func sendLocation(_ fix: LocationFix, batteryLevel: Int?) {
+        outgoingFixes.send(fix)
         if let deliverLocation { deliverLocation(fix, batteryLevel) }
         else { _ = emitLocationIfReady(fix, batteryLevel: batteryLevel) }
     }
 
     @MainActor func emitLocationIfReady(_ fix: LocationFix, batteryLevel: Int?) -> Bool {
         guard isSessionReady, socket.status == .connected else { return false }
-        var payload: [String: Any] = ["latitude": fix.latitude, "longitude": fix.longitude]
-        if let batteryLevel { payload["batteryLevel"] = batteryLevel }
-        socket.emit(SocketEvent.updateLocation, payload)
+        socket.emit(SocketEvent.updateLocation,
+                    LocationSocketPayload.make(fix: fix, batteryLevel: batteryLevel))
         diagnostics?.recordEmit()
         return true
     }
@@ -142,6 +162,20 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
         socket.on(SocketEvent.memberOffline) { [weak self] payload in
             guard let dto = JSONPayload.decode(PresenceDTO.self, from: payload) else { return }
             self?.presence.send(MemberPresence(userId: dto.userId, isOnline: false))
+        }
+
+        socket.on(SocketEvent.journeyTrailDelta) { [weak self] payload in
+            guard let dto = JSONPayload.decode(LiveTrailDeltaDTO.self, from: payload) else { return }
+            self?.trailEvents.send(.delta(dto.toDomain()))
+        }
+        socket.on(SocketEvent.journeyTrailReset) { [weak self] payload in
+            guard let dto = JSONPayload.decode(LiveTrailSignalDTO.self, from: payload),
+                  let revision = dto.revision else { return }
+            self?.trailEvents.send(.reset(userId: dto.userId, revision: revision))
+        }
+        socket.on(SocketEvent.journeyTrailClosed) { [weak self] payload in
+            guard let dto = JSONPayload.decode(LiveTrailSignalDTO.self, from: payload) else { return }
+            self?.trailEvents.send(.closed(userId: dto.userId))
         }
     }
 

@@ -47,6 +47,7 @@ final class ShareLocationUseCase {
     private let configuration: LocationSendConfiguration
     private let now: NowProvider
     private let isForeground: ForegroundProvider
+    private let canShare: @MainActor () -> Bool
     private let onSharingChanged: (Bool) -> Void
     private let onHistorySync: () -> Void
     private var readinessTask: Task<Void, Never>?
@@ -77,6 +78,7 @@ final class ShareLocationUseCase {
         configuration: LocationSendConfiguration = .baseline,
         now: @escaping NowProvider = Date.init,
         isForeground: @escaping ForegroundProvider = { true },
+        canShare: @escaping @MainActor () -> Bool = { true },
         onSharingChanged: @escaping (Bool) -> Void = { _ in },
         onHistorySync: @escaping () -> Void = {}
     ) {
@@ -89,12 +91,13 @@ final class ShareLocationUseCase {
         self.configuration = configuration
         self.now = now
         self.isForeground = isForeground
+        self.canShare = canShare
         self.onSharingChanged = onSharingChanged
         self.onHistorySync = onHistorySync
     }
 
     func start() {
-        guard !isSharing else { return }
+        guard !isSharing, canShare() else { return }
         isSharing = true
         onSharingChanged(true)
         diagnostics?.startSession(batteryLevel: deviceStatus.batteryLevel)
@@ -174,6 +177,7 @@ final class ShareLocationUseCase {
     }
 
     func handle(_ fix: LocationFix, now: Date = Date()) {
+        guard canShare() else { return }
         if isSharing { updateReadiness(liveLocation.isSessionReady) }
         if let requestedFreshAt, liveLocation.isSessionReady {
             guard fix.timestamp >= requestedFreshAt else { return }
