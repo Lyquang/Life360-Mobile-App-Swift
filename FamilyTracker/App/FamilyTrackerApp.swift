@@ -5,6 +5,7 @@ import SwiftUI
 
 @main
 struct FamilyTrackerApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var appCoordinator = AppCoordinator(container: CompositionRoot.container)
     @StateObject private var languageSettings = CompositionRoot.container.languageSettings
@@ -17,6 +18,10 @@ struct FamilyTrackerApp: App {
                 #endif
                 .environmentObject(languageSettings)
                 .environment(\.locale, languageSettings.language.locale)
+                .onChange(of: scenePhase) { phase in
+                    guard phase == .active, appCoordinator.state == .authenticated else { return }
+                    Task { await CompositionRoot.container.startLocationSharingIfAllowed() }
+                }
         }
     }
 }

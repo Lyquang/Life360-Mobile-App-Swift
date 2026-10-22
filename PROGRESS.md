@@ -74,6 +74,18 @@ Legend:
   The realtime payload remains unchanged. Debug/Release unsigned Simulator builds,
   contract scripts, strict SwiftLint and test-source type-check pass. XCTest cannot
   execute until the test target is configured. P7E network/foreground triggers remain pending.
+- `[-]` Realtime trail privacy gate: account-wide GET/PATCH contract, owner-scoped
+  pending pause, startup fail-closed check, stop-and-clear before pause PATCH,
+  Profile toggle with vi/en states, reconnect/foreground retry, and separate
+  SOS path are wired. Physical-device verification and runnable XCTest remain pending.
+- `[-]` Realtime trail: typed paged REST snapshot/catch-up and revision restart;
+  Socket watch/delta/reset/closed, one selected Circle member at a time, own
+  local-first GPS fixes, iOS 16 MapKit raw-dashed versus real-matched-solid
+  renderer, and Journey replay from the same snapshot are wired. Debug/Release
+  Simulator builds and networking/localization harness pass. Pulse now redacts
+  encoded geometry. Real road matching remains blocked on a Backend provider
+  (the repo only accepts noop/fake); actual rollout, two-device/energy/VoiceOver
+  checks and runnable XCTest target are still pending. No commit was made.
 - `[-]` Circles: create/join/list/detail family groups.
 - `[x]` Circle members response compatibility: deployed 200 payload may omit
   `groupId`; detail sheet now shows retryable load errors and ignores stale member
@@ -92,6 +104,31 @@ Legend:
   coordinators and legacy list views; migrated direct upsert tests to ChatHub.
   Simulator builds and static checks pass. Physical-device regression and
   XCTest remain pending; no device run is claimed.
+- `[x]` Journey route-on-map D1: pure route segments/stays/bounds and iterative
+  Douglas-Peucker simplification with antimeridian handling. Debug/Release
+  Simulator builds, networking/localization scripts, SwiftLint and test-source
+  parsing pass. XCTest cannot run until the scheme has a test target.
+- `[x]` Journey route-on-map D2: isolated iOS 16 `MKMapView` bridge with
+  cased polylines, directional/start/end/stay markers, camera fitting and
+  tap selection; not yet connected to Journey. Debug/Release Simulator builds,
+  networking/localization scripts and SwiftLint pass. Test source added, but
+  XCTest remains unavailable because the scheme has no Test action. D3
+  contract/UI integration and device measurements remain pending.
+- `[-]` Journey route-on-map D3a: DTO/mapper prepared for documented
+  `points/startTime/endTime` and legacy `path` shapes, with XCTest source.
+  Debug/Release Simulator builds, networking/localization scripts and SwiftLint
+  pass. Deployed response fixture and runnable XCTest target remain pending;
+  deployed contract is not yet verified.
+- `[x]` Journey route-on-map D3b code: Journey now presents an iOS 16
+  `MKMapView` route with a draggable, VoiceOver-readable timeline; map/list
+  selection, recentering, day switching, error/empty states and vi/en keys are
+  wired. Debug/Release Simulator builds, networking/localization scripts and
+  SwiftLint pass. No commit was made, per owner request.
+- `[-]` Journey route-on-map D4: device FPS/memory/VoiceOver checks, deployed
+  JSON verification and runnable XCTest remain pending. Measurement checklist
+  and interview notes are in `study/route-on-map-interview-notes.md`.
+- `[x]` Journey route-on-map D6 documentation: architecture/limitations in
+  `AI_RULES.md`, progress and interview notes are synchronized. No commit made.
 - `[x]` Direct message entry: accessible member-row action, get-or-create 1-1 flow,
   ordered sheet-to-tab routing, idempotent conversation upsert and empty-chat state.
 - `[x]` Chat media: R2 image/voice upload, optimistic delivery, playback, retry,

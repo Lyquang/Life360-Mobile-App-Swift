@@ -33,7 +33,8 @@ enum DiagnosticRedactor {
                 let key = entry.key.lowercased().filter { $0.isLetter || $0.isNumber }
                 let sensitive = ["password", "token", "secret", "authorization", "cookie", "signature", "apikey"].contains { key.contains($0) }
                 let personal = ["email", "name", "sendername", "content", "message", "latitude", "longitude",
-                                "coordinates", "avatar", "avatarurl", "uploadurl", "fileurl", "attachmenturl", "url"]
+                                "coordinates", "geometry", "polyline", "points", "avatar", "avatarurl",
+                                "uploadurl", "fileurl", "attachmenturl", "url"]
                 result[entry.key] = sensitive || personal.contains(key) ? "[REDACTED]" : json(entry.value)
             }
         }

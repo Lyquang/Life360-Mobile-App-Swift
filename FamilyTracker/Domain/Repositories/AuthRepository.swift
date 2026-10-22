@@ -1,5 +1,6 @@
 import Foundation
-
+// protocol có nghĩa là gì?
+// protocol là một giao diện mà các class hoặc struct phải tuân theo, định nghĩa các phương thức và thuộc tính mà chúng phải triển khai.
 protocol AuthRepository {
     func login(email: String, password: String) async throws -> AuthSession
     func register(name: String, email: String, password: String) async throws -> AuthSession

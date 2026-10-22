@@ -69,6 +69,23 @@ final class HeartbeatCancellationTests: XCTestCase {
         gate.resumeNext(throwing: CancellationError())
     }
 
+    func testPrivacyGatePreventsTrackingEvenWhenStartIsCalledDirectly() async {
+        let gate = HeartbeatSleeperGate()
+        let live = HeartbeatLiveLocationMock()
+        var allowed = false
+        let sut = makeUseCase(gate: gate, live: live, canShare: { allowed })
+
+        sut.start()
+        XCTAssertFalse(sut.isSharing)
+        XCTAssertEqual(gate.callCount, 0)
+
+        allowed = true
+        sut.start()
+        XCTAssertTrue(sut.isSharing)
+        sut.stop()
+        await drainTasks()
+    }
+
     func testStopThenStartCreatesFreshHeartbeatWithoutOldTaskEmit() async {
         let gate = HeartbeatSleeperGate()
         let live = HeartbeatLiveLocationMock()
@@ -91,7 +108,8 @@ final class HeartbeatCancellationTests: XCTestCase {
 
     private func makeUseCase(
         gate: HeartbeatSleeperGate,
-        live: HeartbeatLiveLocationMock
+        live: HeartbeatLiveLocationMock,
+        canShare: @escaping @MainActor () -> Bool = { true }
     ) -> ShareLocationUseCase {
         let fix = LocationFix(
             latitude: 10,
@@ -105,7 +123,8 @@ final class HeartbeatCancellationTests: XCTestCase {
             deviceLocation: HeartbeatDeviceLocationMock(lastKnownFix: fix),
             liveLocation: live,
             deviceStatus: HeartbeatDeviceStatusMock(),
-            sleeper: { _ in try await gate.sleep() }
+            sleeper: { _ in try await gate.sleep() },
+            canShare: canShare
         )
     }
 

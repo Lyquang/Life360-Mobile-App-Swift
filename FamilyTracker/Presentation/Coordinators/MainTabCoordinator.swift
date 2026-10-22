@@ -24,6 +24,8 @@ final class MainTabCoordinator: ObservableObject {
     private let onLogoutAll: () -> Void
     private var cancellables = Set<AnyCancellable>()
     private var badgeCancellable: AnyCancellable?
+    private var sharingStartupTask: Task<Void, Never>?
+    private var privacyRetryTask: Task<Void, Never>?
 
     init(container: AppContainer, currentUser: User, onLogout: @escaping () -> Void,
          onLogoutAll: @escaping () -> Void) {
@@ -48,7 +50,18 @@ final class MainTabCoordinator: ObservableObject {
     func start() {
         chatHub.viewModel.start()
         chatHub.viewModel.refreshInBackground()
-        container.shareLocation.start()
+        sharingStartupTask = Task { [weak self] in
+            await self?.container.startLocationSharingIfAllowed()
+        }
+        let connectionChanges = container.observeConnectionState()
+        privacyRetryTask = Task { [weak self] in
+            for await state in connectionChanges {
+                guard !Task.isCancelled, let self else { return }
+                if state == .connected, self.container.locationSharingStatus == .pendingPause {
+                    await self.container.startLocationSharingIfAllowed()
+                }
+            }
+        }
         container.notificationBridge.start()
         emergency.start()
 
@@ -64,6 +77,11 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func stop() {
+        sharingStartupTask?.cancel()
+        sharingStartupTask = nil
+        privacyRetryTask?.cancel()
+        privacyRetryTask = nil
+        container.shareLocation.stop()
         chatHub.stop()
         emergency.stop()
         container.notificationBridge.stop()
@@ -116,7 +134,21 @@ final class MainTabCoordinator: ObservableObject {
             backendHost: host,
             observeConnection: container.observeConnectionState,
             onLogout: { [weak self] in self?.logout() },
-            onLogoutAll: { [weak self] in self?.logoutAll() }
+            onLogoutAll: { [weak self] in self?.logoutAll() },
+            currentLocationSharingStatus: { [weak container] in
+                container?.locationSharingStatus ?? .unavailable
+            },
+            refreshLocationSharing: { [weak container] in
+                await container?.refreshLocationSharingStatus() ?? .unavailable
+            },
+            pauseLocationSharing: { [weak container] in
+                guard let container else { throw DomainError.unauthorized }
+                try await container.pauseLocationSharing()
+            },
+            resumeLocationSharing: { [weak container] in
+                guard let container else { throw DomainError.unauthorized }
+                try await container.resumeLocationSharing()
+            }
         )
     }
 }

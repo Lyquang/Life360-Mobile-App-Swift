@@ -70,46 +70,82 @@ extension HistoryResponseDTO {
 
 extension DayJourneyResponseDTO {
     func toDomain() -> DayJourney {
-        DayJourney(date: date, summary: summary?.toDomain(), entries: (journey ?? []).compactMap { $0.toDomain() })
+        let entries = (journey ?? []).compactMap { $0.toDomain() }
+        return DayJourney(date: date, summary: summary?.toDomain(entries: entries), entries: entries)
     }
 }
 
 extension DayJourneySummaryDTO {
-    func toDomain() -> DayJourneySummary {
-        DayJourneySummary(
+    func toDomain(entries: [JourneyEntry]) -> DayJourneySummary {
+        let stayMinutes = entries.reduce(0) { total, entry in
+            if case .stay(let stay) = entry { return total + stay.durationMinutes }
+            return total
+        }
+        let movingMinutes = entries.reduce(0) { total, entry in
+            if case .moving(let moving) = entry { return total + moving.durationMinutes }
+            return total
+        }
+        let firstTime: String? = entries.first.map { entry in
+            switch entry {
+            case .stay(let stay): return stay.arrivedAt
+            case .moving(let moving): return moving.startTime
+            }
+        }
+        let lastTime: String? = entries.last.map { entry in
+            switch entry {
+            case .stay(let stay): return stay.leftAt
+            case .moving(let moving): return moving.endTime
+            }
+        }
+        return DayJourneySummary(
             totalPoints: totalPoints ?? 0,
             stayPointCount: stayPointCount ?? 0,
-            totalStayMinutes: totalStayMinutes ?? 0,
+            totalStayMinutes: totalStayMinutes ?? stayMinutes,
             totalStayFormatted: totalStayFormatted ?? "--",
-            totalMovingMinutes: totalMovingMinutes ?? 0,
+            totalMovingMinutes: totalMovingMinutes ?? movingMinutes,
             totalMovingFormatted: totalMovingFormatted ?? "--",
-            firstSeenAt: firstSeenAt,
-            lastSeenAt: lastSeenAt
+            firstSeenAt: firstSeenAt ?? firstTime,
+            lastSeenAt: lastSeenAt ?? lastTime
         )
     }
 }
 
 extension JourneyItemDTO {
     func toDomain() -> JourneyEntry? {
-        let minutes = durationMinutes ?? 0
-        let formatted = durationFormatted ?? "\(minutes) phút"
+        let start = startTime ?? arrivedAt
+        let end = endTime ?? leftAt
+        let measuredMinutes: Int? = {
+            guard let start, let end,
+                  let startDate = ISO8601.date(from: start),
+                  let endDate = ISO8601.date(from: end) else { return nil }
+            return max(0, Int(endDate.timeIntervalSince(startDate) / 60))
+        }()
+        let minutes = durationMinutes ?? measuredMinutes ?? 0
+        let formatted = durationFormatted ?? String(minutes)
 
         switch type {
         case "stay":
-            guard let latitude, let longitude, let arrivedAt, let leftAt else { return nil }
+            guard let latitude, let longitude, let start, let end else { return nil }
             return .stay(StayPoint(
-                latitude: latitude, longitude: longitude, arrivedAt: arrivedAt, leftAt: leftAt,
-                durationMinutes: minutes, durationFormatted: formatted, pointCount: pointCount ?? 0
+                latitude: latitude, longitude: longitude, arrivedAt: start, leftAt: end,
+                durationMinutes: minutes, durationFormatted: formatted,
+                pointCount: pointCount ?? points?.count ?? 0
             ))
         case "moving":
-            guard let fromLatitude, let fromLongitude, let toLatitude, let toLongitude,
-                  let startTime, let endTime else { return nil }
+            guard let start, let end else { return nil }
+            let route = !(path ?? []).isEmpty
+                ? (path ?? []).map { GeoPoint(latitude: $0.latitude, longitude: $0.longitude) }
+                : (points ?? []).map { GeoPoint(latitude: $0.latitude, longitude: $0.longitude) }
+            guard let fromLatitude = fromLatitude ?? route.first?.latitude,
+                  let fromLongitude = fromLongitude ?? route.first?.longitude,
+                  let toLatitude = toLatitude ?? route.last?.latitude,
+                  let toLongitude = toLongitude ?? route.last?.longitude else { return nil }
             return .moving(MovingSegment(
                 fromLatitude: fromLatitude, fromLongitude: fromLongitude,
                 toLatitude: toLatitude, toLongitude: toLongitude,
-                startTime: startTime, endTime: endTime,
+                startTime: start, endTime: end,
                 durationMinutes: minutes, durationFormatted: formatted,
-                path: (path ?? []).map { GeoPoint(latitude: $0.latitude, longitude: $0.longitude) }
+                path: route
             ))
         default:
             return nil

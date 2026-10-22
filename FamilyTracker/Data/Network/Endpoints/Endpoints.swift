@@ -88,7 +88,9 @@ enum HistoryEndpoint {
     }
 
     static func journey(userId: String, date: String?) -> Endpoint {
-        Endpoint(path: "/history/\(userId)/journey", query: date.map { [URLQueryItem(name: "date", value: $0)] } ?? [])
+        var query = [URLQueryItem(name: "detail", value: "geometry")]
+        if let date { query.append(URLQueryItem(name: "date", value: date)) }
+        return Endpoint(path: "/history/\(userId)/journey", query: query)
     }
 }
 

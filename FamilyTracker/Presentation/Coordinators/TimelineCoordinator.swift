@@ -34,7 +34,9 @@ final class TimelineCoordinator: NavigationCoordinator {
 
     func makeJourneyViewModel(userId: String, name: String) -> JourneyViewModel {
         JourneyViewModel(userId: userId, memberName: name,
-                         fetchDayJourney: container.fetchDayJourney, reverseGeocode: container.reverseGeocode)
+                         fetchDayJourney: container.fetchDayJourney,
+                         fetchLiveTrail: container.fetchLiveTrail,
+                         reverseGeocode: container.reverseGeocode)
     }
 
     func makeHistoryViewModel() -> HistoryViewModel {

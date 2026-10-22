@@ -109,6 +109,8 @@ enum NetworkingContractTests {
         try mediaContracts()
         try await locationBatchContract()
         try redaction()
+        try liveTrailAssemblyAndGeometry()
+        try socketLocationContract()
         try check(AppEnvironment.current.apiBaseURL.absoluteString == "https://life360-backend-6v9n.onrender.com/api/v1", "Deployed REST host")
         try check(AppEnvironment.current.socketURL.absoluteString == "https://life360-backend-6v9n.onrender.com", "Deployed Socket.IO host")
         try await transport()
@@ -548,6 +550,64 @@ enum NetworkingContractTests {
         let authResponse = Data(#"{"data":{"accessToken":"secret","refreshToken":"opaque-secret"}}"#.utf8)
         try check(DiagnosticRedactor.responseBody(authResponse, for: authRequest.url) == nil,
                   "Auth response body persisted")
+        let trail = Data(#"{"matched":[{"geometry":{"encoding":"polyline6","data":"secret-route"}}],"points":[{"latitude":10.7,"longitude":106.7}],"revision":4}"#.utf8)
+        let safeTrail = String(data: DiagnosticRedactor.body(trail)!, encoding: .utf8)!
+        try check(!safeTrail.contains("secret-route") && !safeTrail.contains("10.7") &&
+                  safeTrail.contains("revision"), "Trail geometry leaked into diagnostics")
+    }
+
+    static func liveTrailAssemblyAndGeometry() throws {
+        func point(_ seq: Int) -> LiveTrailPoint {
+            LiveTrailPoint(seq: seq, coordinate: GeoPoint(latitude: 10 + Double(seq) * 0.001,
+                                                           longitude: 106 + Double(seq) * 0.001),
+                           recordedAt: Date(timeIntervalSince1970: Double(seq)),
+                           accuracy: 8, motionState: "walking", pointId: nil)
+        }
+        let snapshot = LiveTrailSnapshot(trailId: "trail", userId: "user", date: "2026-10-18",
+                                         timeZone: "Asia/Ho_Chi_Minh", revision: 1, lastSeq: 4,
+                                         points: (1...4).map(point),
+                                         gaps: [LiveTrailGap(fromSeq: 2, toSeq: 3,
+                                                             seconds: 500, meters: 600)],
+                                         matches: [], hasMore: false, nextAfterSeq: nil)
+        var assembled = try LiveTrailAssembler(firstPage: snapshot)
+        let raw = TrailDrawing.build(from: assembled)
+        try check(raw.lines.count == 2 && raw.lines.allSatisfy { $0.style == .gps },
+                  "Gap must split GPS line")
+        let match = LiveTrailMatch(segmentId: "segment", fromSeq: 1, toSeq: 2, status: .final,
+                                   geometry: LiveTrailGeometry(encoding: "polyline6",
+                                                               data: "_p~iF~ps|U_ulLnnqC"),
+                                   provider: "road-provider", providerVersion: "v1", confidence: 0.9,
+                                   sourceRevision: "r1", generatedAt: Date())
+        try assembled.apply(LiveTrailDelta(userId: "user", trailId: "trail", revision: 1,
+                                           afterSeq: 4, toSeq: 2, points: [], matchedUpdates: [match]))
+        try check(assembled.cursor == 4, "Match-only delta changed insertion cursor")
+        let matched = TrailDrawing.build(from: assembled)
+        try check(matched.lines.filter { $0.style == .matched }.count == 1,
+                  "Valid real provider did not render matched geometry")
+        try check(matched.lines.filter { $0.style == .gps }.count == 1,
+                  "Unmatched GPS run was lost")
+        do {
+            try assembled.apply(LiveTrailDelta(userId: "user", trailId: "trail", revision: 1,
+                                               afterSeq: 3, toSeq: 5, points: [point(5)],
+                                               matchedUpdates: []))
+            throw CheckFailure(message: "Cursor mismatch accepted")
+        } catch LiveTrailAssemblyError.unexpectedCursor { }
+    }
+
+    static func socketLocationContract() throws {
+        let fix = LocationFix(latitude: 10.77, longitude: 106.66,
+                              timestamp: Date(timeIntervalSince1970: 1_729_000_000),
+                              horizontalAccuracy: 8.5, speed: -1, course: -1)
+        let payload = LocationSocketPayload.make(fix: fix, batteryLevel: 80)
+        try check(payload["recordedAt"] as? String == ISO8601.string(from: fix.timestamp),
+                  "Socket lost GPS measurement time")
+        try check(payload["accuracy"] as? Double == 8.5 && payload["batteryLevel"] as? Int == 80,
+                  "Socket lost GPS accuracy or battery")
+        let invalid = LocationFix(latitude: 10.77, longitude: 106.66,
+                                  timestamp: fix.timestamp, horizontalAccuracy: -1,
+                                  speed: -1, course: -1)
+        try check(LocationSocketPayload.make(fix: invalid, batteryLevel: nil)["accuracy"] == nil,
+                  "Negative accuracy must be omitted")
     }
 
     static func requests() throws {

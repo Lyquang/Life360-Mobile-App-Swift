@@ -13,23 +13,22 @@ struct LiveMapView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Map(
-                coordinateRegion: $viewModel.mapRegion,
+            LiveTrailMapView(
+                region: viewModel.mapRegion,
+                trackingUser: viewModel.isTrackingUser,
                 showsUserLocation: true,
-                userTrackingMode: .constant(viewModel.isTrackingUser ? .follow : .none),
-                annotationItems: viewModel.memberLocations
-            ) { member in
-                MapAnnotation(coordinate: member.coordinate) {
-                    Button {
-                        withAnimation(.spring()) {
-                            selectedMember = member
-                            viewModel.centerOnMember(member)
-                        }
-                    } label: {
-                        MapMemberPin(memberLocation: member, isCurrentUser: member.id == viewModel.currentUserId)
+                currentUserId: viewModel.currentUserId,
+                members: viewModel.memberLocations,
+                drawing: viewModel.trailDrawing,
+                bottomInset: 0,
+                onSelectMember: { member in
+                    withAnimation(.spring()) {
+                        selectedMember = member
+                        viewModel.centerOnMember(member)
                     }
-                }
-            }
+                },
+                onUserMoved: viewModel.userMovedMap
+            )
             .ignoresSafeArea()
 
             LinearGradient(colors: [Color.black.opacity(0.5), Color.clear], startPoint: .top, endPoint: .bottom)
@@ -37,6 +36,31 @@ struct LiveMapView: View {
                 .ignoresSafeArea()
 
             header
+
+            if viewModel.trailUnavailable {
+                Button(action: viewModel.refreshTrail) {
+                    Label(L10n.tr("trail.unavailable"), systemImage: "arrow.clockwise")
+                        .font(FTFont.caption())
+                        .foregroundColor(FTColors.textPrimary)
+                        .padding(FTSpacing.sm)
+                        .frame(minHeight: 44)
+                        .background(FTColors.background)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .padding(.top, 115)
+                .padding(.horizontal, FTSpacing.md)
+            }
+            if viewModel.trailDrawing.lines.contains(where: { $0.style == .gps }) {
+                Text(verbatim: L10n.tr("trail.raw.label"))
+                    .font(FTFont.caption())
+                    .foregroundColor(FTColors.textPrimary)
+                    .padding(FTSpacing.sm)
+                    .background(FTColors.background)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, viewModel.trailUnavailable ? 172 : 115)
+                    .padding(.leading, FTSpacing.md)
+                    .allowsHitTesting(false)
+            }
 
             controls
 
@@ -60,6 +84,10 @@ struct LiveMapView: View {
         }
         .toolbar(.hidden, for: .navigationBar)
         .onAppear { viewModel.start() }
+        .onDisappear { viewModel.stop() }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            viewModel.refreshOnForeground()
+        }
     }
 
     // MARK: - Header

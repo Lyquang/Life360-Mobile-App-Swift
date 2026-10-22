@@ -1,260 +1,330 @@
-// MARK: - JourneyView.swift
-// Day journey timeline (Feature 2): summary, map with stay points, stay/moving timeline, day navigation.
-
 import SwiftUI
-import MapKit
 
 struct JourneyView: View {
     @Environment(\.locale) private var locale
-    @StateObject private var viewModel: JourneyViewModel
-    @State private var showMap = true
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @StateObject private var viewModel: JourneyViewModel
+    @State private var panelExpanded = false
 
     init(viewModel: @autoclosure @escaping () -> JourneyViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel())
     }
 
     var body: some View {
-        ZStack {
-            FTColors.background.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                header
-
-                if viewModel.isLoading {
-                    Spacer()
-                    ProgressView { Text(verbatim: L10n.tr("journey.loading")) }
-                        .progressViewStyle(CircularProgressViewStyle(tint: FTColors.primary))
-                    Spacer()
-                } else if viewModel.journeyEntries.isEmpty {
-                    Spacer()
-                    FTEmptyView(
-                        icon: "figure.walk.motion",
-                        title: L10n.tr("journey.empty.title"),
-                        subtitle: viewModel.errorMessage
-                            ?? L10n.tr("journey.empty.member", viewModel.memberName, language: AppLanguage(locale: locale)),
-                        actionTitle: nil,
-                        action: nil
+        VStack(spacing: 0) {
+            header
+            GeometryReader { geometry in
+                let panelHeight = panelHeight(for: geometry.size.height)
+                ZStack(alignment: .bottom) {
+                    LiveTrailMapView(
+                        region: viewModel.trailRegion,
+                        trackingUser: false,
+                        showsUserLocation: false,
+                        currentUserId: viewModel.userId,
+                        members: [],
+                        drawing: viewModel.trailDrawing,
+                        bottomInset: viewModel.journeyEntries.isEmpty ? 0 : panelHeight,
+                        onSelectMember: { _ in }, onUserMoved: {}
                     )
-                    Spacer()
-                } else {
-                    ScrollView {
-                        VStack(spacing: 0) {
-                            summaryCard
-                            if showMap {
-                                journeyMap.transition(.opacity.combined(with: .scale))
-                            }
-                            timeline
-                        }
+                    .accessibilityLabel(L10n.tr("journey.map.accessibility"))
+
+                    if viewModel.usesLiveTrail,
+                       viewModel.trailDrawing.lines.contains(where: { $0.style == .gps }) {
+                        Text(verbatim: L10n.tr("trail.raw.label"))
+                            .font(FTFont.caption())
+                            .foregroundColor(FTColors.textPrimary)
+                            .padding(FTSpacing.sm)
+                            .background(FTColors.background)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                            .padding(.top, FTSpacing.md)
+                            .padding(.leading, FTSpacing.md)
+                            .padding(.trailing, 72)
+                            .allowsHitTesting(false)
                     }
-                    .refreshable { await viewModel.load() }
+
+                    if let state = viewModel.loadError {
+                        statusView(
+                            icon: "exclamationmark.triangle",
+                            message: state == .forbidden
+                                ? L10n.tr("journey.map.error.forbidden")
+                                : L10n.tr("journey.map.error.load"),
+                            action: state == .forbidden ? dismiss.callAsFunction : retry
+                        )
+                    } else if viewModel.isLoading {
+                        ProgressView {
+                            Text(verbatim: L10n.tr("journey.loading"))
+                        }
+                        .padding(FTSpacing.lg)
+                        .background(FTColors.background)
+                    } else if viewModel.trailUnavailable {
+                        statusView(icon: "wifi.exclamationmark", message: L10n.tr("trail.unavailable"),
+                                   action: retry)
+                    } else if viewModel.trailDrawing.fixes.isEmpty {
+                        statusView(icon: "map", message: L10n.tr("journey.map.empty.day"), action: nil)
+                    }
+
+                    if !viewModel.trailDrawing.fixes.isEmpty {
+                        if viewModel.trailDrawing.lines.isEmpty {
+                            Text(verbatim: L10n.tr("journey.map.empty.geometry"))
+                                .font(FTFont.caption())
+                                .foregroundColor(FTColors.textPrimary)
+                                .padding(FTSpacing.sm)
+                                .background(FTColors.background)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity,
+                                       alignment: .topLeading)
+                                .padding(.top, FTSpacing.md)
+                                .padding(.leading, FTSpacing.md)
+                                .padding(.trailing, 72)
+                        }
+
+                        mapControls
+                            .frame(maxWidth: .infinity, maxHeight: .infinity,
+                                   alignment: .topTrailing)
+                            .padding(FTSpacing.md)
+
+                    }
+                    if !viewModel.journeyEntries.isEmpty {
+                        timelinePanel(height: panelHeight)
+                    }
                 }
+                .background(FTColors.background)
             }
         }
+        .background(FTColors.background.ignoresSafeArea())
         .toolbar(.hidden, for: .navigationBar)
         .task { await viewModel.load() }
+        .onDisappear { viewModel.cancelPendingWork() }
     }
-
-    // MARK: - Header
 
     private var header: some View {
         VStack(spacing: 0) {
             HStack {
-                circleIconButton("chevron.left") { dismiss() }
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .semibold))
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel(L10n.tr("common.action.close"))
 
-                Spacer()
-
+                Spacer(minLength: 0)
                 VStack(spacing: 2) {
                     Text(verbatim: L10n.tr("journey.title.member", viewModel.memberName,
                                            language: AppLanguage(locale: locale)))
                         .font(FTFont.headline())
-                        .foregroundColor(FTColors.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                     Text(viewModel.formattedDisplayDate(locale: locale))
                         .font(FTFont.caption())
                         .foregroundColor(FTColors.textSecondary)
                 }
-
-                Spacer()
-
-                circleIconButton(showMap ? "map.fill" : "map") {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { showMap.toggle() }
-                }
+                Spacer(minLength: 0)
+                Color.clear.frame(width: 44, height: 44)
             }
-            .padding(.horizontal, FTSpacing.md)
-            .padding(.top, FTSpacing.md)
-            .padding(.bottom, FTSpacing.sm)
-
+            .foregroundColor(FTColors.textPrimary)
+            .padding(.horizontal, FTSpacing.sm)
             dayNavigation
         }
-    }
-
-    private func circleIconButton(_ icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(FTColors.primary)
-                .frame(width: 36, height: 36)
-                .background(FTColors.primary.opacity(0.1))
-                .clipShape(Circle())
-        }
+        .background(FTColors.background)
     }
 
     private var dayNavigation: some View {
-        HStack(spacing: 0) {
-            Button {
-                withAnimation { viewModel.goToPreviousDay() }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                    Text(verbatim: L10n.tr("journey.day.previous"))
-                }
-                .font(FTFont.caption())
-                .foregroundColor(FTColors.primary)
-                .padding(.horizontal, FTSpacing.md)
-                .padding(.vertical, 8)
-            }
-
+        HStack {
+            dayButton("journey.day.previous", icon: "chevron.left",
+                      action: viewModel.goToPreviousDay)
             Spacer()
-
             if !viewModel.isToday {
                 Button(action: viewModel.goToToday) {
                     Text(verbatim: L10n.tr("journey.day.today"))
                         .font(FTFont.caption())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, FTSpacing.md)
-                        .padding(.vertical, 5)
-                        .background(FTColors.primaryGradient)
-                        .cornerRadius(FTRadius.full)
+                        .frame(minWidth: 44, minHeight: 44)
                 }
             }
-
             Spacer()
+            dayButton("journey.day.next", icon: "chevron.right",
+                      action: viewModel.goToNextDay)
+                .disabled(viewModel.isToday)
+        }
+        .padding(.horizontal, FTSpacing.md)
+        .foregroundColor(FTColors.primary)
+    }
 
+    private func dayButton(_ key: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Label(L10n.tr(key), systemImage: icon)
+                .font(FTFont.caption())
+                .frame(minHeight: 44)
+        }
+    }
+
+    private var mapControls: some View {
+        Button(action: viewModel.recenter) {
+            Image(systemName: "scope")
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(FTColors.primary)
+                .frame(width: 44, height: 44)
+                .background(FTColors.background)
+                .clipShape(Circle())
+        }
+        .accessibilityLabel(L10n.tr("journey.map.action.recenter"))
+    }
+
+    private func timelinePanel(height: CGFloat) -> some View {
+        VStack(spacing: 0) {
             Button {
-                withAnimation { viewModel.goToNextDay() }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.25)) {
+                    panelExpanded.toggle()
+                }
             } label: {
-                HStack(spacing: 4) {
-                    Text(verbatim: L10n.tr("journey.day.next"))
-                    Image(systemName: "chevron.right")
+                VStack(spacing: 6) {
+                    Capsule().fill(FTColors.textTertiary.opacity(0.5))
+                        .frame(width: 36, height: 4)
+                    HStack {
+                        Text(verbatim: L10n.tr("journey.timeline.title"))
+                            .font(FTFont.headline())
+                        Spacer()
+                        Image(systemName: panelExpanded ? "chevron.down" : "chevron.up")
+                    }
                 }
-                .font(FTFont.caption())
-                .foregroundColor(viewModel.isToday ? FTColors.textTertiary : FTColors.primary)
-                .padding(.horizontal, FTSpacing.md)
-                .padding(.vertical, 8)
-            }
-            .disabled(viewModel.isToday)
-        }
-        .background(FTColors.card.opacity(0.6))
-        .overlay(
-            Rectangle()
-                .fill(Color(UIColor.separator).opacity(0.3))
-                .frame(height: 0.5),
-            alignment: .bottom
-        )
-    }
-
-    // MARK: - Summary
-
-    private var summaryCard: some View {
-        VStack(spacing: FTSpacing.sm) {
-            HStack(spacing: 0) {
-                summaryItem(value: "\(viewModel.stayPoints.count)", label: "Điểm dừng", icon: "mappin.circle.fill", color: FTColors.primary)
-                Divider().frame(height: 44)
-                summaryItem(value: viewModel.summary.map { L10n.duration(minutes: $0.totalStayMinutes, language: AppLanguage(locale: locale)) } ?? "--", label: "Thời gian ở", icon: "clock.fill", color: FTColors.accent)
-                Divider().frame(height: 44)
-                summaryItem(value: viewModel.summary.map { L10n.duration(minutes: $0.totalMovingMinutes, language: AppLanguage(locale: locale)) } ?? "--", label: "Di chuyển", icon: "figure.walk", color: FTColors.warning)
-            }
-            .padding(FTSpacing.md)
-            .ftCard()
-            .padding(.horizontal, FTSpacing.md)
-
-            if let first = viewModel.summary?.firstSeenAt, let last = viewModel.summary?.lastSeenAt {
-                HStack {
-                    Label(DisplayFormat.time(iso: first), systemImage: "sunrise.fill")
-                    Spacer()
-                    Label(DisplayFormat.time(iso: last), systemImage: "sunset.fill")
-                }
-                .font(FTFont.caption())
-                .foregroundColor(FTColors.textSecondary)
-                .padding(.horizontal, FTSpacing.xl)
-            }
-        }
-        .padding(.vertical, FTSpacing.md)
-    }
-
-    private func summaryItem(value: String, label: String, icon: String, color: Color) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .foregroundColor(color)
-                .font(.system(size: 16))
-            Text(value)
-                .font(FTFont.headline())
                 .foregroundColor(FTColors.textPrimary)
-                .minimumScaleFactor(0.8)
-                .lineLimit(1)
-            AppLocalizedText(label)
-                .font(FTFont.caption())
+                .padding(.horizontal, FTSpacing.md)
+                .frame(minHeight: 52)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.tr(panelExpanded
+                ? "journey.map.action.collapse" : "journey.map.action.expand"))
+            .gesture(DragGesture(minimumDistance: 20).onEnded { gesture in
+                if gesture.translation.height < -35 { panelExpanded = true }
+                if gesture.translation.height > 35 { panelExpanded = false }
+            })
+
+            summaryStrip
+            Divider()
+            ScrollViewReader { reader in
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(viewModel.journeyEntries.enumerated()), id: \.element.id) { index, entry in
+                            timelineRow(entry, index: index)
+                                .id(entry.id)
+                        }
+                    }
+                    .padding(.horizontal, FTSpacing.md)
+                    .padding(.bottom, FTSpacing.md)
+                }
+                .refreshable { await viewModel.load() }
+                .onChange(of: viewModel.selectedEntryID) { selected in
+                    guard let selected else { return }
+                    withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                        reader.scrollTo(selected, anchor: .center)
+                    }
+                }
+            }
+        }
+        .frame(height: height)
+        .frame(maxWidth: .infinity)
+        .background(FTColors.background)
+        .overlay(alignment: .top) { Divider() }
+    }
+
+    private var summaryStrip: some View {
+        HStack(spacing: FTSpacing.sm) {
+            summaryItem(value: "\(viewModel.stayPoints.count)", key: "Điểm dừng")
+            Divider().frame(height: 28)
+            summaryItem(value: L10n.duration(minutes: viewModel.totalStayMinutes,
+                                             language: AppLanguage(locale: locale)),
+                        key: "Thời gian ở")
+            Divider().frame(height: 28)
+            summaryItem(value: L10n.duration(minutes: viewModel.totalMovingMinutes,
+                                             language: AppLanguage(locale: locale)),
+                        key: "Di chuyển")
+        }
+        .padding(.horizontal, FTSpacing.md)
+        .padding(.bottom, FTSpacing.sm)
+    }
+
+    private func summaryItem(value: String, key: String) -> some View {
+        VStack(spacing: 2) {
+            Text(value).font(FTFont.subheadline()).lineLimit(2).minimumScaleFactor(0.8)
+            Text(verbatim: L10n.tr(key)).font(FTFont.caption()).lineLimit(2)
                 .foregroundColor(FTColors.textSecondary)
         }
         .frame(maxWidth: .infinity)
     }
 
-    // MARK: - Map
+    @ViewBuilder
+    private func timelineRow(_ entry: JourneyEntry, index: Int) -> some View {
+        let isFirst = index == 0
+        let isLast = index == viewModel.journeyEntries.count - 1
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            viewModel.select(entry)
+        } label: {
+            switch entry {
+            case .stay(let stay):
+                StayPointRow(stayPoint: stay, address: viewModel.address(for: stay),
+                             isFirst: isFirst, isLast: isLast,
+                             isSelected: viewModel.selectedStayId == stay.id)
+            case .moving(let segment):
+                MovingSegmentRow(segment: segment, isFirst: isFirst, isLast: isLast)
+                    .background(viewModel.selectedEntryID == entry.id
+                        ? FTColors.primary.opacity(0.08) : Color.clear)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityText(for: entry))
+        .frame(minHeight: 44)
+    }
 
-    private var journeyMap: some View {
-        Map(coordinateRegion: $viewModel.journeyMapRegion, annotationItems: viewModel.stayPoints) { stayPoint in
-            MapAnnotation(coordinate: stayPoint.coordinate) {
-                StayPointMapMarker(
-                    stayPoint: stayPoint,
-                    isSelected: viewModel.selectedStayId == stayPoint.id
-                )
-                .onTapGesture {
-                    withAnimation { viewModel.select(.stay(stayPoint)) }
+    private func accessibilityText(for entry: JourneyEntry) -> String {
+        let language = AppLanguage(locale: locale)
+        switch entry {
+        case .stay(let stay):
+            return L10n.tr("journey.map.stay.accessibility",
+                           L10n.time(stay.arrivalDate, language: language),
+                           L10n.time(stay.departureDate, language: language),
+                           L10n.duration(minutes: stay.durationMinutes, language: language),
+                           L10n.message(viewModel.address(for: stay), language: language),
+                           language: language)
+        case .moving(let segment):
+            return L10n.tr("journey.map.segment.accessibility",
+                           L10n.time(segment.startDate, language: language),
+                           L10n.time(segment.endDate, language: language),
+                           L10n.duration(minutes: segment.durationMinutes, language: language),
+                           language: language)
+        }
+    }
+
+    private func statusView(icon: String, message: String, action: (() -> Void)?) -> some View {
+        VStack(spacing: FTSpacing.sm) {
+            Image(systemName: icon).font(.system(size: 26))
+            Text(verbatim: message).multilineTextAlignment(.center)
+            if let action {
+                Button(action: action) {
+                    Text(verbatim: L10n.tr(viewModel.loadError == .forbidden
+                                          ? "common.action.close" : "common.action.retry"))
+                        .frame(minWidth: 88, minHeight: 44)
                 }
             }
         }
-        .frame(height: 240)
-        .cornerRadius(FTRadius.lg)
-        .padding(.horizontal, FTSpacing.md)
-        .padding(.bottom, FTSpacing.sm)
+        .foregroundColor(FTColors.textPrimary)
+        .padding(FTSpacing.lg)
+        .background(FTColors.background)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    // MARK: - Timeline
-
-    private var timeline: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(verbatim: L10n.tr("journey.timeline.title"))
-                .font(FTFont.headline())
-                .foregroundColor(FTColors.textPrimary)
-                .padding(.horizontal, FTSpacing.md)
-                .padding(.bottom, FTSpacing.sm)
-
-            LazyVStack(spacing: 0) {
-                ForEach(Array(viewModel.journeyEntries.enumerated()), id: \.element.id) { index, entry in
-                    let isFirst = index == 0
-                    let isLast = index == viewModel.journeyEntries.count - 1
-                    switch entry {
-                    case .stay(let stayPoint):
-                        StayPointRow(
-                            stayPoint: stayPoint,
-                            address: viewModel.address(for: stayPoint),
-                            isFirst: isFirst,
-                            isLast: isLast,
-                            isSelected: viewModel.selectedStayId == stayPoint.id
-                        )
-                        .onTapGesture {
-                            withAnimation {
-                                viewModel.select(entry)
-                                if !showMap { showMap = true }
-                            }
-                        }
-                    case .moving(let segment):
-                        MovingSegmentRow(segment: segment, isFirst: isFirst, isLast: isLast)
-                    }
-                }
-            }
-            .padding(.horizontal, FTSpacing.md)
-            .padding(.bottom, FTSpacing.xl)
-        }
+    private func panelHeight(for available: CGFloat) -> CGFloat {
+        let ratio: CGFloat = panelExpanded ? (dynamicTypeSize.isAccessibilitySize ? 0.78 : 0.65)
+                                            : (dynamicTypeSize.isAccessibilitySize ? 0.4 : 0.32)
+        return min(max(160, available * ratio), max(160, available - 96))
     }
+
+    private func selectFromMap(_ id: String) {
+        panelExpanded = true
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        viewModel.selectEntry(id: id)
+    }
+
+    private func retry() { Task { await viewModel.load() } }
 }
