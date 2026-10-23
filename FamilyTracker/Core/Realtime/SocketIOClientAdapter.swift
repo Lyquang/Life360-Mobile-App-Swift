@@ -9,6 +9,9 @@ final class SocketIOClientAdapter: SocketClient {
     private let url: URL
     private let logger: NetworkLogger
     private let tokenProvider: AccessTokenProvider
+    private let metrics: MobileMetricsRecording?
+    private let networkKind: () -> MobileNetworkKind
+    private var connectStartedUptime: TimeInterval?
     var onAuthenticationFailure: ((String) -> Void)?
     private var reconnectAllowed = false
     private var lastAuthFailureToken: String?
@@ -19,6 +22,13 @@ final class SocketIOClientAdapter: SocketClient {
     private(set) var status: SocketConnectionStatus = .disconnected {
         didSet {
             guard oldValue != status else { return }
+            if let metrics {
+                if status == .connected {
+                    Task { await metrics.record(.increment(.socketConnect)) }
+                } else if oldValue == .connected && status == .disconnected {
+                    Task { await metrics.record(.increment(.socketDisconnect)) }
+                }
+            }
             statusHandlers.forEach { $0(status) }
         }
     }
@@ -28,10 +38,14 @@ final class SocketIOClientAdapter: SocketClient {
     private var socket: SocketIOClient?
     #endif
 
-    init(url: URL, logger: NetworkLogger, tokenProvider: AccessTokenProvider) {
+    init(url: URL, logger: NetworkLogger, tokenProvider: AccessTokenProvider,
+         metrics: MobileMetricsRecording? = nil,
+         networkKind: @escaping () -> MobileNetworkKind = { .unknown }) {
         self.url = url
         self.logger = logger
         self.tokenProvider = tokenProvider
+        self.metrics = metrics
+        self.networkKind = networkKind
     }
 
     func on(_ event: String, handler: @escaping ([String: Any]) -> Void) {
@@ -46,6 +60,7 @@ final class SocketIOClientAdapter: SocketClient {
         disconnect()
         guard let currentToken = tokenProvider.accessToken, !currentToken.isEmpty else { return }
         reconnectAllowed = true
+        connectStartedUptime = ProcessInfo.processInfo.systemUptime
         status = .connecting
 
         #if canImport(SocketIO)
@@ -90,6 +105,7 @@ final class SocketIOClientAdapter: SocketClient {
 
     func disconnect() {
         reconnectAllowed = false
+        connectStartedUptime = nil
         #if canImport(SocketIO)
         socket?.removeAllHandlers()
         socket?.disconnect()
@@ -112,6 +128,9 @@ final class SocketIOClientAdapter: SocketClient {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             guard let self, self.reconnectAllowed, self.status == .disconnected,
                   let token = self.tokenProvider.accessToken else { return }
+            if let metrics = self.metrics {
+                Task { await metrics.record(.increment(.socketReconnect)) }
+            }
             self.connect(token: token)
         }
     }
@@ -119,7 +138,10 @@ final class SocketIOClientAdapter: SocketClient {
     func emit(_ event: String, _ payload: [String: Any]) {
         logger.logSocket(event: "→ \(event)", payload: payload)
         #if canImport(SocketIO)
-        socket?.emit(event, payload)
+        if let socket {
+            recordPayload(event, payload, sent: true)
+            socket.emit(event, payload)
+        }
         #endif
     }
 
@@ -128,6 +150,7 @@ final class SocketIOClientAdapter: SocketClient {
         logger.logSocket(event: "→ \(event)", payload: payload)
         #if canImport(SocketIO)
         guard let socket else { throw SocketClientError.disconnected }
+        recordPayload(event, payload, sent: true)
         return try await withCheckedThrowingContinuation { continuation in
             socket.emitWithAck(event, payload).timingOut(after: timeout) { [weak self] data in
                 if data.first as? String == SocketAckStatus.noAck.rawValue {
@@ -139,6 +162,7 @@ final class SocketIOClientAdapter: SocketClient {
                     return
                 }
                 self?.logger.logSocket(event: "← \(event):ack", payload: payload)
+                self?.recordPayload(event, payload, sent: false)
                 continuation.resume(returning: payload)
             }
         }
@@ -149,6 +173,24 @@ final class SocketIOClientAdapter: SocketClient {
 
     private func dispatch(_ event: String, _ payload: [String: Any]) {
         logger.logSocket(event: event, payload: payload)
+        recordPayload(event, payload, sent: false)
+        if event == SocketEvent.sessionReady, let started = connectStartedUptime, let metrics {
+            connectStartedUptime = nil
+            let elapsed = max(0, (ProcessInfo.processInfo.systemUptime - started) * 1_000)
+            let milliseconds = Int(min(elapsed, Double(Int.max)))
+            Task { await metrics.record(.socketReady(milliseconds: milliseconds)) }
+        }
         handlers[event]?.forEach { $0(payload) }
+    }
+
+    private func recordPayload(_ event: String, _ payload: [String: Any], sent: Bool) {
+        guard let metrics, let knownEvent = SocketMetricsPolicy.event(event),
+              let bytes = SocketMetricsPolicy.estimatedPayloadBytes(payload) else { return }
+        let kind = networkKind()
+        Task { [metrics] in
+            await metrics.record(.socketPayload(knownEvent, network: kind,
+                                                sent: sent ? bytes : 0,
+                                                received: sent ? 0 : bytes))
+        }
     }
 }

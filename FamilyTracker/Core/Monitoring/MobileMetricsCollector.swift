@@ -60,6 +60,22 @@ extension MobileMetricWindow {
             guard motion.group == .motion else { return }
             counters[.locationEmit] = saturatingAdd(counters[.locationEmit] ?? 0, 1)
             locationEmitsByMotion[motion] = saturatingAdd(locationEmitsByMotion[motion] ?? 0, 1)
+        case .socketPayload(let event, let network, let sent, let received):
+            guard sent >= 0, received >= 0 else { return }
+            socketSentBytesByEvent[event] = saturatingAdd(socketSentBytesByEvent[event] ?? 0, sent)
+            socketReceivedBytesByEvent[event] = saturatingAdd(socketReceivedBytesByEvent[event] ?? 0, received)
+            socketSentBytesByNetwork[network] = saturatingAdd(socketSentBytesByNetwork[network] ?? 0, sent)
+            socketReceivedBytesByNetwork[network] = saturatingAdd(socketReceivedBytesByNetwork[network] ?? 0, received)
+        case .socketReady(let milliseconds):
+            guard milliseconds >= 0 else { return }
+            let index: Int
+            switch milliseconds {
+            case ..<100: index = 0
+            case ..<500: index = 1
+            case ..<2_000: index = 2
+            default: index = 3
+            }
+            socketReadyLatencyBuckets[index] = saturatingAdd(socketReadyLatencyBuckets[index], 1)
         }
     }
 

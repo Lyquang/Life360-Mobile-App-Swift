@@ -31,6 +31,7 @@ final class AppContainer {
     let logger: NetworkLogger
     let batteryMonitor: BatteryMonitor
     let mobileMetrics: MobileMetricsCollector
+    private let networkPathObserver: NetworkPathObserver?
     private let locationDiagnostics: LocationDiagnostics
     let pushService: PushNotificationService
     private let socketClient: SocketIOClientAdapter
@@ -77,16 +78,25 @@ final class AppContainer {
         mobileMetrics = MobileMetricsCollector()
         let metrics = mobileMetrics
         #if DEBUG
+        let pathObserver: NetworkPathObserver? = NetworkPathObserver(recorder: metrics)
+        let socketMetrics: MobileMetricsRecording? = metrics
         batteryMonitor.onMetricsEvents = { [weak metrics] events in
             // One task preserves the order of values sampled from the same device-state change.
             Task { for event in events { await metrics?.record(event) } }
         }
+        #else
+        let pathObserver: NetworkPathObserver? = nil
+        let socketMetrics: MobileMetricsRecording? = nil
         #endif
+        networkPathObserver = pathObserver
         locationDiagnostics = LocationDiagnostics(logger: logger, battery: batteryMonitor.snapshot,
                                                   recorder: mobileMetrics)
         pushService = PushNotificationService()
         session = KeychainSessionRepository()
-        socketClient = SocketIOClientAdapter(url: environment.socketURL, logger: logger, tokenProvider: session)
+        socketClient = SocketIOClientAdapter(
+            url: environment.socketURL, logger: logger, tokenProvider: session,
+            metrics: socketMetrics, networkKind: { [weak pathObserver] in pathObserver?.networkKind ?? .unknown }
+        )
         locationService = CLLocationService(battery: batteryMonitor.snapshot, diagnostics: locationDiagnostics)
         #if DEBUG
         let restMetrics: MobileMetricsRecording? = mobileMetrics
@@ -106,6 +116,7 @@ final class AppContainer {
                 let expired = await MainActor.run {
                     guard sessionStore.clear(ifGeneration: generation) else { return false }
                     socket.disconnect()
+                    pathObserver?.stop()
                     offlineQueue.clear()
                     events.expire()
                     return true
@@ -182,9 +193,11 @@ final class AppContainer {
                 guard sessionStore?.locationSessionIdentity != nil else { return }
                 delivery?.prepareSession()
                 await metrics?.setEnabled(true)
+                pathObserver?.start()
             }
         }
         delivery.prepareSession()
+        pathObserver?.start()
         realtime.deliverLocation = { [weak delivery] fix, battery in delivery?.accept(fix, batteryLevel: battery) }
         realtime.onExplicitDisconnect = { [weak delivery] in delivery?.endSession(clearBuffer: true) }
 
@@ -215,6 +228,7 @@ final class AppContainer {
 
     func logout(allDevices: Bool = false) async -> Bool {
         shareLocation.stop()
+        networkPathObserver?.stop()
         await mobileMetrics.setEnabled(false)
         locationSharingGate.suspendUntilServerCheck()
         await tokenRefreshCoordinator.cancelSession()
