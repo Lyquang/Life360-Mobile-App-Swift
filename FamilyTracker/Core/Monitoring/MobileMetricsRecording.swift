@@ -7,6 +7,7 @@ enum MobileMetricCounter: String, Codable, Sendable, CaseIterable {
     case locationReconfiguration, locationPermissionChange, locationPause
     case sharingPause, batchDuplicate, batchRejectedPermanent, batchRejectedUnknown
     case batchDeferred, batchFailure
+    case socketReconnect
 }
 
 enum MobileMetricState: String, Codable, Sendable, CaseIterable {
@@ -19,6 +20,7 @@ enum MobileMetricState: String, Codable, Sendable, CaseIterable {
     case accuracyHundredMeters, accuracyKilometer, accuracyOther
     case permissionAlways, permissionWhenInUse, permissionDenied, permissionRestricted, permissionUndetermined
     case permissionFullAccuracy, permissionReducedAccuracy
+    case networkWifi, networkCellular, networkOther, networkOffline, networkUnknown
 
     var group: MobileMetricStateGroup {
         switch self {
@@ -33,12 +35,13 @@ enum MobileMetricState: String, Codable, Sendable, CaseIterable {
         case .permissionAlways, .permissionWhenInUse, .permissionDenied, .permissionRestricted,
              .permissionUndetermined: return .permission
         case .permissionFullAccuracy, .permissionReducedAccuracy: return .precisionPermission
+        case .networkWifi, .networkCellular, .networkOther, .networkOffline, .networkUnknown: return .network
         }
     }
 }
 
 enum MobileMetricStateGroup: Hashable, Sendable {
-    case app, battery, power, thermal, motion, accuracy, permission, precisionPermission
+    case app, battery, power, thermal, motion, accuracy, permission, precisionPermission, network
 }
 
 enum MobileEndpointGroup: String, Codable, Sendable, CaseIterable {
@@ -47,6 +50,41 @@ enum MobileEndpointGroup: String, Codable, Sendable, CaseIterable {
 
 enum MobileNetworkKind: String, Codable, Sendable, CaseIterable {
     case wifi, cellular, other, offline, unknown
+}
+
+/// A fixed event vocabulary keeps user-generated event names out of persisted metrics.
+enum MobileSocketMetricEvent: String, Codable, Sendable, CaseIterable {
+    case updateLocation = "update_location"
+    case sosAlert = "sos_alert"
+    case chatTyping = "chat:typing"
+    case chatSendMessage = "chat:send_message"
+    case journeyWatch = "journey:watch"
+    case journeyUnwatch = "journey:unwatch"
+    case sessionReady = "session:ready"
+    case locationUpdate = "location_update"
+    case sosConfirmed = "sos_confirmed"
+    case memberOnline = "member_online"
+    case memberOffline = "member_offline"
+    case locationStayAlert = "location_stay_alert"
+    case chatNewMessage = "chat:new_message"
+    case chatReadReceipt = "chat:read_receipt"
+    case chatConversationUpdated = "chat:conversation_updated"
+    case journeyTrailDelta = "journey:trail_delta"
+    case journeyTrailReset = "journey:trail_reset"
+    case journeyTrailClosed = "journey:trail_closed"
+}
+
+enum SocketMetricsPolicy {
+    static func event(_ name: String) -> MobileSocketMetricEvent? {
+        MobileSocketMetricEvent(rawValue: name)
+    }
+
+    /// JSON size excludes Socket.IO/WebSocket/TLS framing, compression and ping-pong traffic.
+    static func estimatedPayloadBytes(_ payload: [String: Any]) -> Int? {
+        guard JSONSerialization.isValidJSONObject(payload),
+              let data = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
+        return data.count
+    }
 }
 
 enum MobileMetricEvent: Sendable {
@@ -59,6 +97,8 @@ enum MobileMetricEvent: Sendable {
     case count(MobileMetricCounter, by: Int)
     case bufferSnapshot(depth: Int, oldestAgeSeconds: TimeInterval?)
     case locationEmit(motion: MobileMetricState)
+    case socketPayload(MobileSocketMetricEvent, network: MobileNetworkKind, sent: Int, received: Int)
+    case socketReady(milliseconds: Int)
 }
 
 protocol MobileMetricsRecording: Sendable {

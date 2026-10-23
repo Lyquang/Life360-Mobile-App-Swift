@@ -14,6 +14,11 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
     var bufferDepthPeak: Int?
     var bufferAgeBucketLatest: Int?
     var locationEmitsByMotion: [MobileMetricState: Int] = [:]
+    var socketSentBytesByEvent: [MobileSocketMetricEvent: Int] = [:]
+    var socketReceivedBytesByEvent: [MobileSocketMetricEvent: Int] = [:]
+    var socketSentBytesByNetwork: [MobileNetworkKind: Int] = [:]
+    var socketReceivedBytesByNetwork: [MobileNetworkKind: Int] = [:]
+    var socketReadyLatencyBuckets: [Int] = [0, 0, 0, 0]
 
     // Missing keys are defaults so a new app version can read older aggregate-only windows.
     init(start: Date) { self.start = start }
@@ -22,6 +27,8 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
         case start, counters, latencyBuckets, sentBytes, receivedBytes, secondsByState
         case horizontalAccuracyBuckets, batteryStart, batteryEnd
         case bufferDepthLatest, bufferDepthPeak, bufferAgeBucketLatest, locationEmitsByMotion
+        case socketSentBytesByEvent, socketReceivedBytesByEvent
+        case socketSentBytesByNetwork, socketReceivedBytesByNetwork, socketReadyLatencyBuckets
     }
 
     init(from decoder: Decoder) throws {
@@ -41,6 +48,16 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
         bufferAgeBucketLatest = try data.decodeIfPresent(Int.self, forKey: .bufferAgeBucketLatest)
         locationEmitsByMotion = try data.decodeIfPresent([MobileMetricState: Int].self,
                                                        forKey: .locationEmitsByMotion) ?? [:]
+        socketSentBytesByEvent = try data.decodeIfPresent([MobileSocketMetricEvent: Int].self,
+                                                          forKey: .socketSentBytesByEvent) ?? [:]
+        socketReceivedBytesByEvent = try data.decodeIfPresent([MobileSocketMetricEvent: Int].self,
+                                                              forKey: .socketReceivedBytesByEvent) ?? [:]
+        socketSentBytesByNetwork = try data.decodeIfPresent([MobileNetworkKind: Int].self,
+                                                            forKey: .socketSentBytesByNetwork) ?? [:]
+        socketReceivedBytesByNetwork = try data.decodeIfPresent([MobileNetworkKind: Int].self,
+                                                                forKey: .socketReceivedBytesByNetwork) ?? [:]
+        socketReadyLatencyBuckets = try data.decodeIfPresent([Int].self,
+                                                             forKey: .socketReadyLatencyBuckets) ?? [0, 0, 0, 0]
     }
 }
 
@@ -78,6 +95,12 @@ struct MobileMetricsStore {
                 && (window.bufferDepthPeak.map { $0 >= (window.bufferDepthLatest ?? 0) } ?? true)
                 && (window.bufferAgeBucketLatest.map { (0...4).contains($0) } ?? true)
                 && window.locationEmitsByMotion.allSatisfy { $0.key.group == .motion && $0.value >= 0 }
+                && window.socketSentBytesByEvent.values.allSatisfy { $0 >= 0 }
+                && window.socketReceivedBytesByEvent.values.allSatisfy { $0 >= 0 }
+                && window.socketSentBytesByNetwork.values.allSatisfy { $0 >= 0 }
+                && window.socketReceivedBytesByNetwork.values.allSatisfy { $0 >= 0 }
+                && window.socketReadyLatencyBuckets.count == 4
+                && window.socketReadyLatencyBuckets.allSatisfy { $0 >= 0 }
         }.suffix(96))
     }
 
