@@ -30,13 +30,14 @@ Legend:
   shortcut, HTTP/upload/socket logging, local AI JSON export and manual remote logging.
 - `[-]` Mobile monitoring T1: aggregate Debug-only power/GPS and offline-buffer
   metrics plus REST task bytes/latency, R2 PUT upload bytes by image/voice,
+  image-download bytes and URLCache hit/miss counts in chat,
   and Socket.IO payload-size estimates by
   allowlisted event are wired. A single passive path observer tags Socket bytes
   as Wi-Fi/cellular/other/offline and stops on logout/session expiry. Release
   collection remains off; Socket estimates exclude transport overhead. Debug/
   Release Simulator builds, networking/localization scripts and SwiftLint pass.
   XCTest source is present but cannot run until the scheme has a Test action;
-  image cache/download metrics, MetricKit, device energy measurements and consent remain pending.
+  voice playback traffic, MetricKit, device energy measurements and consent remain pending.
 
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
 - `[x]` Location P1: accepted GPS fixes now retain timestamp, horizontal accuracy,

@@ -46,6 +46,7 @@ final class ChatHubCoordinator: NavigationCoordinator {
     let viewModel: ChatHubViewModel
     let circleViewModel: CircleListViewModel
     let currentUserId: String
+    var mediaImageLoader: MediaImageLoader { container.mediaImageLoader }
 
     private let container: AppContainer
     private var openDirectTask: Task<Void, Never>?
@@ -259,6 +260,7 @@ struct ChatHubCoordinatorView: View {
                 switch route {
                 case let .conversation(id, title, greeting, groupId):
                     ChatView(viewModel: coordinator.makeChatViewModel(id: id, title: title, greeting: greeting),
+                             imageLoader: coordinator.mediaImageLoader,
                              onShowGroupInfo: groupId == nil ? nil : {
                                  coordinator.showGroupInfo(conversationID: id)
                              })

@@ -4,6 +4,7 @@ enum MobileMetricCounter: String, Codable, Sendable, CaseIterable {
     case fixReceived, fixAccepted, fixDropped, locationEmit, heartbeatAttempt
     case socketConnect, socketDisconnect, offlinePoint, batchPoint
     case request, requestFailure, mediaUpload, mediaUploadFailure
+    case mediaCacheHit, mediaCacheMiss, mediaDownloadFailure
     case locationReconfiguration, locationPermissionChange, locationPause
     case sharingPause, batchDuplicate, batchRejectedPermanent, batchRejectedUnknown
     case batchDeferred, batchFailure

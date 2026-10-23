@@ -4,11 +4,14 @@ import PhotosUI
 struct ChatView: View {
     @StateObject private var viewModel: ChatViewModel
     @State private var photoItem: PhotosPickerItem?
+    private let imageLoader: MediaImageLoader
     private let onShowGroupInfo: (() -> Void)?
 
     init(viewModel: @autoclosure @escaping () -> ChatViewModel,
+         imageLoader: MediaImageLoader,
          onShowGroupInfo: (() -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: viewModel())
+        self.imageLoader = imageLoader
         self.onShowGroupInfo = onShowGroupInfo
     }
 
@@ -111,6 +114,7 @@ struct ChatView: View {
                     }
                     ForEach(viewModel.messages) { item in
                         MessageBubble(item: item, isMine: viewModel.isMine(item.message), playback: viewModel.playback,
+                                      imageLoader: imageLoader,
                                       onRetry: { viewModel.retry(id: item.id) },
                                       onCancel: { viewModel.cancelUpload(id: item.id) })
                             .id(item.id)
@@ -200,6 +204,7 @@ struct MessageBubble: View {
     let item: ChatMessageItem
     let isMine: Bool
     @ObservedObject var playback: VoicePlaybackController
+    let imageLoader: MediaImageLoader
     let onRetry: () -> Void
     let onCancel: () -> Void
 
@@ -230,7 +235,7 @@ struct MessageBubble: View {
             if let data = item.previewData, let image = UIImage(data: data) {
                 Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: 220).cornerRadius(FTRadius.md)
             } else if let attachment = message.attachment, let url = URL(string: attachment.url) {
-                CachedMediaImage(url: url, blurhash: attachment.blurhash)
+                CachedMediaImage(url: url, blurhash: attachment.blurhash, loader: imageLoader)
                     .aspectRatio(imageRatio(attachment), contentMode: .fit)
                     .frame(maxWidth: 220).cornerRadius(FTRadius.md)
             }
