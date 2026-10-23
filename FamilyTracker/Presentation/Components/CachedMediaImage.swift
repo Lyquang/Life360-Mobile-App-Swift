@@ -3,6 +3,7 @@ import SwiftUI
 struct CachedMediaImage: View {
     let url: URL
     let blurhash: String?
+    let loader: MediaImageLoader
     @State private var image: UIImage?
 
     var body: some View {
@@ -22,14 +23,6 @@ struct CachedMediaImage: View {
     }
 
     private func load() async {
-        var request = URLRequest(url: url)
-        request.cachePolicy = .returnCacheDataElseLoad
-        if let cached = URLCache.shared.cachedResponse(for: request), let value = UIImage(data: cached.data) {
-            image = value; return
-        }
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              let value = UIImage(data: data) else { return }
-        URLCache.shared.storeCachedResponse(CachedURLResponse(response: response, data: data), for: request)
-        image = value
+        image = try? await loader.load(url)
     }
 }

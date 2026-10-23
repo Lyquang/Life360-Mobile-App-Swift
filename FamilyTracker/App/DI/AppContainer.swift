@@ -51,6 +51,7 @@ final class AppContainer {
     let realtime: SocketRealtimeRepository
     let chatRepository: ChatRepository
     let mediaRepository: MediaRepository
+    let mediaImageLoader: MediaImageLoader
     let deviceLocation: DeviceLocationRepository
     let deviceStatus: DeviceStatusRepository
     let geocoding: GeocodingRepository
@@ -163,6 +164,7 @@ final class AppContainer {
         mediaRepository = MediaRepositoryImpl(
             uploader: MediaUploadService(api: api, logger: logger, metrics: restMetrics)
         )
+        mediaImageLoader = MediaImageLoader(metrics: restMetrics)
         deviceLocation = DeviceLocationRepositoryImpl(service: locationService)
         deviceStatus = DeviceStatusRepositoryImpl(battery: batteryMonitor)
         geocoding = GeocodingRepositoryImpl(geocoder: ReverseGeocoder(), cache: GeocodeCache())
