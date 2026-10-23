@@ -30,6 +30,7 @@ final class AppContainer {
     // MARK: Core
     let logger: NetworkLogger
     let batteryMonitor: BatteryMonitor
+    let mobileMetrics: MobileMetricsCollector
     private let locationDiagnostics: LocationDiagnostics
     let pushService: PushNotificationService
     private let socketClient: SocketIOClientAdapter
@@ -73,6 +74,7 @@ final class AppContainer {
         logger = NoopNetworkLogger()
         #endif
         batteryMonitor = BatteryMonitor()
+        mobileMetrics = MobileMetricsCollector()
         locationDiagnostics = LocationDiagnostics(logger: logger, battery: batteryMonitor.snapshot)
         pushService = PushNotificationService()
         session = KeychainSessionRepository()
@@ -83,6 +85,7 @@ final class AppContainer {
         let socket = socketClient
         let sessionStore = session
         let offlineQueue = OfflineQueue()
+        let metrics = mobileMetrics
         tokenRefreshCoordinator = TokenRefreshCoordinator(
             store: session, transport: refreshTransport,
             onRotated: { token in await MainActor.run { socket.connect(token: token) } },
@@ -91,6 +94,7 @@ final class AppContainer {
                     guard sessionStore.clear(ifGeneration: generation) else { return }
                     socket.disconnect()
                     offlineQueue.clear()
+                    Task { await metrics.clear() }
                     events.expire()
                 }
             }
@@ -192,6 +196,7 @@ final class AppContainer {
 
     func logout(allDevices: Bool = false) async -> Bool {
         shareLocation.stop()
+        await mobileMetrics.clear()
         locationSharingGate.suspendUntilServerCheck()
         await tokenRefreshCoordinator.cancelSession()
         let result = await LogoutUseCase(auth: authRepository, session: session, realtime: realtime,
