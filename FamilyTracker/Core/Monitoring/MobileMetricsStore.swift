@@ -6,6 +6,10 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
     var latencyBuckets: [MobileEndpointGroup: [Int]] = [:]
     var sentBytes: [MobileNetworkKind: Int] = [:]
     var receivedBytes: [MobileNetworkKind: Int] = [:]
+    var secondsByState: [MobileMetricState: Double] = [:]
+    var horizontalAccuracyBuckets: [Int] = [0, 0, 0, 0, 0]
+    var batteryStart: Int?
+    var batteryEnd: Int?
 }
 
 struct MobileMetricsStore {
@@ -33,6 +37,11 @@ struct MobileMetricsStore {
             } && window.counters.values.allSatisfy { $0 >= 0 }
                 && window.sentBytes.values.allSatisfy { $0 >= 0 }
                 && window.receivedBytes.values.allSatisfy { $0 >= 0 }
+                && window.horizontalAccuracyBuckets.count == 5
+                && window.horizontalAccuracyBuckets.allSatisfy { $0 >= 0 }
+                && window.secondsByState.values.allSatisfy { $0.isFinite && $0 >= 0 }
+                && (window.batteryStart.map { (0...100).contains($0) } ?? true)
+                && (window.batteryEnd.map { (0...100).contains($0) } ?? true)
         }.suffix(96))
     }
 
