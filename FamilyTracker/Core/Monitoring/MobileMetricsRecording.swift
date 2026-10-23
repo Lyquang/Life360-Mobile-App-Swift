@@ -3,7 +3,7 @@ import Foundation
 enum MobileMetricCounter: String, Codable, Sendable, CaseIterable {
     case fixReceived, fixAccepted, fixDropped, locationEmit, heartbeatAttempt
     case socketConnect, socketDisconnect, offlinePoint, batchPoint
-    case request, requestFailure, mediaUpload
+    case request, requestFailure, mediaUpload, mediaUploadFailure
     case locationReconfiguration, locationPermissionChange, locationPause
     case sharingPause, batchDuplicate, batchRejectedPermanent, batchRejectedUnknown
     case batchDeferred, batchFailure
@@ -50,6 +50,10 @@ enum MobileEndpointGroup: String, Codable, Sendable, CaseIterable {
 
 enum MobileNetworkKind: String, Codable, Sendable, CaseIterable {
     case wifi, cellular, other, offline, unknown
+}
+
+enum MobileMediaMetricKind: String, Codable, Sendable, CaseIterable {
+    case imageUpload, voiceUpload, imageDownload
 }
 
 /// A fixed event vocabulary keeps user-generated event names out of persisted metrics.
@@ -99,6 +103,7 @@ enum MobileMetricEvent: Sendable {
     case locationEmit(motion: MobileMetricState)
     case socketPayload(MobileSocketMetricEvent, network: MobileNetworkKind, sent: Int, received: Int)
     case socketReady(milliseconds: Int)
+    case mediaTransfer(MobileMediaMetricKind, network: MobileNetworkKind, sent: Int, received: Int)
 }
 
 protocol MobileMetricsRecording: Sendable {

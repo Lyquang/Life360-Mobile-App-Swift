@@ -76,6 +76,12 @@ extension MobileMetricWindow {
             default: index = 3
             }
             socketReadyLatencyBuckets[index] = saturatingAdd(socketReadyLatencyBuckets[index], 1)
+        case .mediaTransfer(let kind, let network, let sent, let received):
+            guard sent >= 0, received >= 0 else { return }
+            mediaSentBytesByKind[kind] = saturatingAdd(mediaSentBytesByKind[kind] ?? 0, sent)
+            mediaReceivedBytesByKind[kind] = saturatingAdd(mediaReceivedBytesByKind[kind] ?? 0, received)
+            mediaSentBytesByNetwork[network] = saturatingAdd(mediaSentBytesByNetwork[network] ?? 0, sent)
+            mediaReceivedBytesByNetwork[network] = saturatingAdd(mediaReceivedBytesByNetwork[network] ?? 0, received)
         }
     }
 

@@ -4,11 +4,14 @@ final class MediaUploadService {
     private let api: APIClient
     private let session: URLSession
     private let logger: NetworkLogger
+    private let metrics: MobileMetricsRecording?
 
-    init(api: APIClient, session: URLSession = .shared, logger: NetworkLogger = NoopNetworkLogger()) {
+    init(api: APIClient, session: URLSession = .shared, logger: NetworkLogger = NoopNetworkLogger(),
+         metrics: MobileMetricsRecording? = nil) {
         self.api = api
         self.session = session
         self.logger = logger
+        self.metrics = metrics
     }
 
     func requestTicket(conversationId: String, kind: MediaKind, fileSize: Int) async throws -> MediaUploadTicket {
@@ -38,7 +41,7 @@ final class MediaUploadService {
         }
     }
 
-    func upload(_ data: Data, using ticket: MediaUploadTicket,
+    func upload(_ data: Data, using ticket: MediaUploadTicket, kind: MediaKind,
                 progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws {
         guard ticket.expiresAt > Date() else { throw MediaUploadError.ticketExpired }
         if let signedLength = header("Content-Length", in: ticket.headers).flatMap(Int.init),
@@ -56,8 +59,10 @@ final class MediaUploadService {
         ticket.headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
         request.setValue(nil, forHTTPHeaderField: "Authorization")
 
-        let delegate = UploadProgressDelegate(progress: progress)
+        let metricKind: MobileMediaMetricKind = kind == .image ? .imageUpload : .voiceUpload
+        let delegate = UploadProgressDelegate(progress: progress, metrics: metrics, kind: metricKind)
         let startedAt = Date()
+        if let metrics { await metrics.record(.increment(.mediaUpload)) }
         do {
             progress(0)
             let (responseData, response) = try await session.upload(for: request, from: data, delegate: delegate)
@@ -73,11 +78,13 @@ final class MediaUploadService {
         } catch is CancellationError {
             throw CancellationError()
         } catch let error as MediaUploadError {
+            if let metrics { await metrics.record(.increment(.mediaUploadFailure)) }
             throw error
         } catch {
             logger.logHTTP(request: request, response: nil, data: nil, error: error,
                            duration: Date().timeIntervalSince(startedAt))
             if (error as? URLError)?.code == .cancelled { throw CancellationError() }
+            if let metrics { await metrics.record(.increment(.mediaUploadFailure)) }
             throw MediaUploadError.uploadFailed(status: nil, retryable: true)
         }
     }
@@ -89,7 +96,7 @@ final class MediaUploadService {
         for attempt in 0..<2 {
             let ticket = try await requestTicket(conversationId: conversationId, kind: kind, fileSize: data.count)
             do {
-                try await upload(data, using: ticket, progress: progress)
+                try await upload(data, using: ticket, kind: kind, progress: progress)
                 return ticket
             } catch is CancellationError {
                 throw CancellationError()
@@ -115,9 +122,14 @@ final class MediaUploadService {
 
 private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate {
     private let progress: @Sendable (Double) -> Void
+    private let metrics: MobileMetricsRecording?
+    private let kind: MobileMediaMetricKind
 
-    init(progress: @escaping @Sendable (Double) -> Void) {
+    init(progress: @escaping @Sendable (Double) -> Void,
+         metrics: MobileMetricsRecording?, kind: MobileMediaMetricKind) {
         self.progress = progress
+        self.metrics = metrics
+        self.kind = kind
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
@@ -125,5 +137,22 @@ private final class UploadProgressDelegate: NSObject, URLSessionTaskDelegate {
                     totalBytesExpectedToSend: Int64) {
         guard totalBytesExpectedToSend > 0 else { return }
         progress(min(1, max(0, Double(totalBytesSent) / Double(totalBytesExpectedToSend))))
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask,
+                    didFinishCollecting taskMetrics: URLSessionTaskMetrics) {
+        guard let metrics else { return }
+        // URLSession may report multiple transactions after redirects; count network transfers only.
+        for transaction in taskMetrics.transactionMetrics where transaction.resourceFetchType == .networkLoad {
+            let sent = NetworkTaskMetricsDelegate.safeTotal(transaction.countOfRequestHeaderBytesSent,
+                                                            transaction.countOfRequestBodyBytesSent)
+            let received = NetworkTaskMetricsDelegate.safeTotal(transaction.countOfResponseHeaderBytesReceived,
+                                                                transaction.countOfResponseBodyBytesReceived)
+            guard sent > 0 || received > 0 else { continue }
+            let network: MobileNetworkKind = transaction.isCellular ? .cellular : .other
+            Task { [kind] in
+                await metrics.record(.mediaTransfer(kind, network: network, sent: sent, received: received))
+            }
+        }
     }
 }
