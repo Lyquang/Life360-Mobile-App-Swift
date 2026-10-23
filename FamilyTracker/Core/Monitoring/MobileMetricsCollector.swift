@@ -38,6 +38,28 @@ extension MobileMetricWindow {
             horizontalAccuracyBuckets[index] = saturatingAdd(horizontalAccuracyBuckets[index], 1)
         case .state:
             break // The actor accounts for elapsed time before changing state.
+        case .count(let counter, let amount):
+            guard amount > 0 else { return }
+            counters[counter] = saturatingAdd(counters[counter] ?? 0, amount)
+        case .bufferSnapshot(let depth, let oldestAgeSeconds):
+            guard (0...10_000).contains(depth) else { return }
+            bufferDepthLatest = depth
+            bufferDepthPeak = max(bufferDepthPeak ?? 0, depth)
+            guard depth > 0, let age = oldestAgeSeconds, age.isFinite, age >= 0 else {
+                bufferAgeBucketLatest = nil
+                return
+            }
+            switch age {
+            case ..<300: bufferAgeBucketLatest = 0
+            case ..<1_800: bufferAgeBucketLatest = 1
+            case ..<7_200: bufferAgeBucketLatest = 2
+            case ..<86_400: bufferAgeBucketLatest = 3
+            default: bufferAgeBucketLatest = 4
+            }
+        case .locationEmit(let motion):
+            guard motion.group == .motion else { return }
+            counters[.locationEmit] = saturatingAdd(counters[.locationEmit] ?? 0, 1)
+            locationEmitsByMotion[motion] = saturatingAdd(locationEmitsByMotion[motion] ?? 0, 1)
         }
     }
 

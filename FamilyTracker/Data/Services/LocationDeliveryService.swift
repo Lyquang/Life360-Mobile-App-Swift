@@ -14,6 +14,7 @@ final class LocationDeliveryService {
     private let readySessionID: () -> UUID?
     private let emit: (LocationFix, Int?) -> Bool
     private let diagnostics: LocationDiagnostics?
+    private let recorder: MobileMetricsRecording?
     private let logger: NetworkLogger
     private var active = false
     private var generation = 0
@@ -26,7 +27,7 @@ final class LocationDeliveryService {
     init(buffer: LocationBuffer?, synchronizer: LocationSyncCoordinator?,
          session: @escaping () -> LocationSessionIdentity?, readySessionID: @escaping () -> UUID?,
          emit: @escaping (LocationFix, Int?) -> Bool, diagnostics: LocationDiagnostics? = nil,
-         logger: NetworkLogger = NoopNetworkLogger()) {
+         logger: NetworkLogger = NoopNetworkLogger(), recorder: MobileMetricsRecording? = nil) {
         self.buffer = buffer
         self.synchronizer = synchronizer
         self.session = session
@@ -34,6 +35,7 @@ final class LocationDeliveryService {
         self.emit = emit
         self.diagnostics = diagnostics
         self.logger = logger
+        self.recorder = recorder
     }
 
     func setSharing(_ value: Bool) {
@@ -54,6 +56,9 @@ final class LocationDeliveryService {
                 try await self.buffer?.activate(ownerID: identity.ownerID)
                 // Access also prunes expired points on reauthentication.
                 _ = try await self.buffer?.points(ownerID: identity.ownerID)
+                if let buffer = self.buffer {
+                    await self.recordBufferSummary(buffer, ownerID: identity.ownerID)
+                }
             } catch { self.report("buffer_activation_failed") }
         }
     }
@@ -85,6 +90,7 @@ final class LocationDeliveryService {
                 if try await buffer.append(BufferedLocationPoint(fix: fix, batteryLevel: batteryLevel),
                                            ownerID: identity.ownerID) {
                     self.diagnostics?.recordOfflineEnqueue()
+                    await self.recordBufferSummary(buffer, ownerID: identity.ownerID)
                 }
             } catch { self.report("buffer_write_failed") }
         }
@@ -105,16 +111,34 @@ final class LocationDeliveryService {
             do {
                 try await buffer.activate(ownerID: identity.ownerID)
                 let points = try await buffer.points(ownerID: identity.ownerID)
+                await self.recordBufferSummary(buffer, ownerID: identity.ownerID)
                 guard !points.isEmpty, self.isCurrent(identity, generation: expectedGeneration) else { return }
                 let id = UUID()
                 self.syncID = id
                 self.syncTask = Task { [weak self] in
                     do {
                         try Task.checkCancellation()
-                        _ = try await synchronizer.synchronize(ownerID: identity.ownerID)
+                        let outcome = try await synchronizer.synchronize(ownerID: identity.ownerID)
+                        if let self, self.isCurrent(identity, generation: expectedGeneration) {
+                            switch outcome {
+                            case .completed(let accepted, let duplicates, let permanent, let unknown):
+                                self.recordMetrics([
+                                    .count(.batchPoint, by: accepted),
+                                    .count(.batchDuplicate, by: duplicates),
+                                    .count(.batchRejectedPermanent, by: permanent),
+                                    .count(.batchRejectedUnknown, by: unknown)
+                                ])
+                                await self.recordBufferSummary(buffer, ownerID: identity.ownerID)
+                            case .deferred:
+                                self.recordMetrics([.increment(.batchDeferred)])
+                            }
+                        }
                     } catch is CancellationError {
                         // Session cleanup cancels the shared synchronizer explicitly.
-                    } catch { self?.report("batch_sync_failed") }
+                    } catch {
+                        self?.recordMetrics([.increment(.batchFailure)])
+                        self?.report("batch_sync_failed")
+                    }
                     if let self, self.syncID == id {
                         self.syncTask = nil
                         self.syncID = nil
@@ -154,8 +178,20 @@ final class LocationDeliveryService {
                 catch { self.report("retry_gate_cleanup_failed") }
                 do { try await self.buffer?.clear() }
                 catch { self.report("buffer_cleanup_failed") }
+                self.recordMetrics([.bufferSnapshot(depth: 0, oldestAgeSeconds: nil)])
             }
         }
+    }
+
+    private func recordBufferSummary(_ buffer: LocationBuffer, ownerID: String) async {
+        guard recorder != nil else { return }
+        let summary = await buffer.metricsSummary(ownerID: ownerID)
+        recordMetrics([.bufferSnapshot(depth: summary.depth, oldestAgeSeconds: summary.oldestAgeSeconds)])
+    }
+
+    private func recordMetrics(_ events: [MobileMetricEvent]) {
+        guard let recorder else { return }
+        Task { for event in events { await recorder.record(event) } }
     }
 
     private func isCurrent(_ identity: LocationSessionIdentity, generation: Int) -> Bool {

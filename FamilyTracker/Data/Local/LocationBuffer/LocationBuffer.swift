@@ -96,6 +96,18 @@ actor LocationBuffer {
         return candidate.map(\.point)
     }
 
+    /// Aggregate-only snapshot; never returns a coordinate, point ID, or owner ID.
+    func metricsSummary(ownerID: String, now: Date = Date()) -> (depth: Int, oldestAgeSeconds: TimeInterval?) {
+        guard !ownerID.isEmpty, activeOwnerID == ownerID else { return (0, nil) }
+        guard let first = rows.first else { return (0, nil) }
+        if Self.isValid(first.point, now: now, maxAge: maxAge) {
+            return (rows.count, max(0, now.timeIntervalSince(first.point.recordedAt)))
+        }
+        // Only scan the bounded buffer when its oldest point has expired.
+        let valid = currentRows(for: ownerID, now: now)
+        return (valid.count, valid.first.map { max(0, now.timeIntervalSince($0.point.recordedAt)) })
+    }
+
     func remove(pointIDs: Set<UUID>, ownerID: String, now: Date = Date()) throws {
         guard !ownerID.isEmpty, activeOwnerID == ownerID else { return }
         let candidate = currentRows(for: ownerID, now: now).filter { !pointIDs.contains($0.point.pointId) }

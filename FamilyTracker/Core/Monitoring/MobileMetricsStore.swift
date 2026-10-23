@@ -10,6 +10,38 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
     var horizontalAccuracyBuckets: [Int] = [0, 0, 0, 0, 0]
     var batteryStart: Int?
     var batteryEnd: Int?
+    var bufferDepthLatest: Int?
+    var bufferDepthPeak: Int?
+    var bufferAgeBucketLatest: Int?
+    var locationEmitsByMotion: [MobileMetricState: Int] = [:]
+
+    // Missing keys are defaults so a new app version can read older aggregate-only windows.
+    init(start: Date) { self.start = start }
+
+    private enum CodingKeys: String, CodingKey {
+        case start, counters, latencyBuckets, sentBytes, receivedBytes, secondsByState
+        case horizontalAccuracyBuckets, batteryStart, batteryEnd
+        case bufferDepthLatest, bufferDepthPeak, bufferAgeBucketLatest, locationEmitsByMotion
+    }
+
+    init(from decoder: Decoder) throws {
+        let data = try decoder.container(keyedBy: CodingKeys.self)
+        start = try data.decode(Date.self, forKey: .start)
+        counters = try data.decodeIfPresent([MobileMetricCounter: Int].self, forKey: .counters) ?? [:]
+        latencyBuckets = try data.decodeIfPresent([MobileEndpointGroup: [Int]].self, forKey: .latencyBuckets) ?? [:]
+        sentBytes = try data.decodeIfPresent([MobileNetworkKind: Int].self, forKey: .sentBytes) ?? [:]
+        receivedBytes = try data.decodeIfPresent([MobileNetworkKind: Int].self, forKey: .receivedBytes) ?? [:]
+        secondsByState = try data.decodeIfPresent([MobileMetricState: Double].self, forKey: .secondsByState) ?? [:]
+        horizontalAccuracyBuckets = try data.decodeIfPresent([Int].self, forKey: .horizontalAccuracyBuckets)
+            ?? [0, 0, 0, 0, 0]
+        batteryStart = try data.decodeIfPresent(Int.self, forKey: .batteryStart)
+        batteryEnd = try data.decodeIfPresent(Int.self, forKey: .batteryEnd)
+        bufferDepthLatest = try data.decodeIfPresent(Int.self, forKey: .bufferDepthLatest)
+        bufferDepthPeak = try data.decodeIfPresent(Int.self, forKey: .bufferDepthPeak)
+        bufferAgeBucketLatest = try data.decodeIfPresent(Int.self, forKey: .bufferAgeBucketLatest)
+        locationEmitsByMotion = try data.decodeIfPresent([MobileMetricState: Int].self,
+                                                       forKey: .locationEmitsByMotion) ?? [:]
+    }
 }
 
 struct MobileMetricsStore {
@@ -42,6 +74,10 @@ struct MobileMetricsStore {
                 && window.secondsByState.values.allSatisfy { $0.isFinite && $0 >= 0 }
                 && (window.batteryStart.map { (0...100).contains($0) } ?? true)
                 && (window.batteryEnd.map { (0...100).contains($0) } ?? true)
+                && (window.bufferDepthLatest.map { $0 >= 0 } ?? true)
+                && (window.bufferDepthPeak.map { $0 >= (window.bufferDepthLatest ?? 0) } ?? true)
+                && (window.bufferAgeBucketLatest.map { (0...4).contains($0) } ?? true)
+                && window.locationEmitsByMotion.allSatisfy { $0.key.group == .motion && $0.value >= 0 }
         }.suffix(96))
     }
 
