@@ -167,7 +167,7 @@ final class AppContainer {
             readySessionID: { [weak realtimeRepository] in realtimeRepository?.readySessionID },
             emit: { [weak realtimeRepository] fix, battery in
                 realtimeRepository?.emitLocationIfReady(fix, batteryLevel: battery) ?? false
-            }, diagnostics: locationDiagnostics, logger: logger
+            }, diagnostics: locationDiagnostics, logger: logger, recorder: mobileMetrics
         )
         let delivery = locationDelivery
         session.onSessionSaved = { [weak delivery, weak metrics, weak sessionStore] in
@@ -268,6 +268,7 @@ final class AppContainer {
     func pauseLocationSharing(until: Date? = nil) async throws {
         guard let identity = session.locationSessionIdentity else { throw DomainError.unauthorized }
         shareLocation.stop()
+        Task { await mobileMetrics.record(.increment(.sharingPause)) }
         locationDelivery.endSession(clearBuffer: true)
         locationSharingGate.activate(ownerID: identity.ownerID)
         try locationSharingGate.beginPause(until: until)

@@ -133,16 +133,7 @@ final class LocationDiagnostics {
         state.segmentStartedAt = now
         state.segmentBattery = level
         lock.unlock()
-        let metric: MobileMetricState
-        switch motion {
-        case .stationary: metric = .motionStationary
-        case .walking: metric = .motionWalking
-        case .running: metric = .motionRunning
-        case .cycling: metric = .motionCycling
-        case .automotive: metric = .motionAutomotive
-        case .unknown: metric = .motionUnknown
-        }
-        recordMetric(.state(metric))
+        recordMetric(.state(Self.metricState(motion)))
     }
 
     func recordManagerReconfiguration() {
@@ -161,11 +152,12 @@ final class LocationDiagnostics {
     }
 
     func recordEmit() {
+        var motion: MotionActivity?
         update { state in
-            let motion = Self.name(state.currentMotion)
-            state.emitted[motion, default: 0] += 1
+            motion = state.currentMotion
+            state.emitted[Self.name(state.currentMotion), default: 0] += 1
         }
-        recordMetric(.increment(.locationEmit))
+        if let motion { recordMetric(.locationEmit(motion: Self.metricState(motion))) }
     }
 
     func recordOfflineEnqueue() {
@@ -292,6 +284,17 @@ final class LocationDiagnostics {
         case .cycling: return "cycling"
         case .automotive: return "automotive"
         case .unknown: return "unknown"
+        }
+    }
+
+    private static func metricState(_ motion: MotionActivity) -> MobileMetricState {
+        switch motion {
+        case .stationary: return .motionStationary
+        case .walking: return .motionWalking
+        case .running: return .motionRunning
+        case .cycling: return .motionCycling
+        case .automotive: return .motionAutomotive
+        case .unknown: return .motionUnknown
         }
     }
     #else

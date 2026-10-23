@@ -5,6 +5,8 @@ enum MobileMetricCounter: String, Codable, Sendable, CaseIterable {
     case socketConnect, socketDisconnect, offlinePoint, batchPoint
     case request, requestFailure, mediaUpload
     case locationReconfiguration, locationPermissionChange, locationPause
+    case sharingPause, batchDuplicate, batchRejectedPermanent, batchRejectedUnknown
+    case batchDeferred, batchFailure
 }
 
 enum MobileMetricState: String, Codable, Sendable, CaseIterable {
@@ -54,6 +56,9 @@ enum MobileMetricEvent: Sendable {
     case state(MobileMetricState)
     case batteryLevel(Int)
     case horizontalAccuracy(Double)
+    case count(MobileMetricCounter, by: Int)
+    case bufferSnapshot(depth: Int, oldestAgeSeconds: TimeInterval?)
+    case locationEmit(motion: MobileMetricState)
 }
 
 protocol MobileMetricsRecording: Sendable {
