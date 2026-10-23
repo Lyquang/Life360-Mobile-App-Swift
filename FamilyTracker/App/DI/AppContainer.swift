@@ -88,7 +88,13 @@ final class AppContainer {
         session = KeychainSessionRepository()
         socketClient = SocketIOClientAdapter(url: environment.socketURL, logger: logger, tokenProvider: session)
         locationService = CLLocationService(battery: batteryMonitor.snapshot, diagnostics: locationDiagnostics)
-        let refreshTransport = URLSessionRefreshTransport(baseURL: environment.apiBaseURL, logger: logger)
+        #if DEBUG
+        let restMetrics: MobileMetricsRecording? = mobileMetrics
+        #else
+        let restMetrics: MobileMetricsRecording? = nil
+        #endif
+        let refreshTransport = URLSessionRefreshTransport(baseURL: environment.apiBaseURL,
+                                                          logger: logger, metrics: restMetrics)
         let events = sessionEvents
         let socket = socketClient
         let sessionStore = session
@@ -131,7 +137,8 @@ final class AppContainer {
             }
         }
         api = URLSessionAPIClient(baseURL: environment.apiBaseURL, tokenProvider: session,
-                                  logger: logger, refreshCoordinator: tokenRefreshCoordinator)
+                                  logger: logger, refreshCoordinator: tokenRefreshCoordinator,
+                                  metrics: restMetrics)
         authRepository = AuthRepositoryImpl(api: api)
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)

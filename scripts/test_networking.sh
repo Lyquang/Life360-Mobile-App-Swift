@@ -23,6 +23,8 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/App/DI/AppEnvironment.swift \
   FamilyTracker/Core/Logging/NetworkLogger.swift \
   FamilyTracker/Core/Logging/DiagnosticRedactor.swift \
+  FamilyTracker/Core/Monitoring/MobileMetricsRecording.swift \
+  FamilyTracker/Core/Monitoring/NetworkTaskMetricsDelegate.swift \
   FamilyTracker/Data/Network/Endpoint.swift \
   FamilyTracker/Data/Network/Endpoints/Endpoints.swift \
   FamilyTracker/Data/Network/APIClient.swift \
