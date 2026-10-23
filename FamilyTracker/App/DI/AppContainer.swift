@@ -161,7 +161,7 @@ final class AppContainer {
                                             diagnostics: locationDiagnostics)
         chatRepository = ChatRepositoryImpl(api: api, socket: socketClient)
         mediaRepository = MediaRepositoryImpl(
-            uploader: MediaUploadService(api: api, logger: logger)
+            uploader: MediaUploadService(api: api, logger: logger, metrics: restMetrics)
         )
         deviceLocation = DeviceLocationRepositoryImpl(service: locationService)
         deviceStatus = DeviceStatusRepositoryImpl(battery: batteryMonitor)

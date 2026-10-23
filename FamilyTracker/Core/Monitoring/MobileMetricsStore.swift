@@ -19,6 +19,10 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
     var socketSentBytesByNetwork: [MobileNetworkKind: Int] = [:]
     var socketReceivedBytesByNetwork: [MobileNetworkKind: Int] = [:]
     var socketReadyLatencyBuckets: [Int] = [0, 0, 0, 0]
+    var mediaSentBytesByKind: [MobileMediaMetricKind: Int] = [:]
+    var mediaReceivedBytesByKind: [MobileMediaMetricKind: Int] = [:]
+    var mediaSentBytesByNetwork: [MobileNetworkKind: Int] = [:]
+    var mediaReceivedBytesByNetwork: [MobileNetworkKind: Int] = [:]
 
     // Missing keys are defaults so a new app version can read older aggregate-only windows.
     init(start: Date) { self.start = start }
@@ -29,6 +33,8 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
         case bufferDepthLatest, bufferDepthPeak, bufferAgeBucketLatest, locationEmitsByMotion
         case socketSentBytesByEvent, socketReceivedBytesByEvent
         case socketSentBytesByNetwork, socketReceivedBytesByNetwork, socketReadyLatencyBuckets
+        case mediaSentBytesByKind, mediaReceivedBytesByKind
+        case mediaSentBytesByNetwork, mediaReceivedBytesByNetwork
     }
 
     init(from decoder: Decoder) throws {
@@ -58,6 +64,14 @@ struct MobileMetricWindow: Codable, Equatable, Sendable {
                                                                 forKey: .socketReceivedBytesByNetwork) ?? [:]
         socketReadyLatencyBuckets = try data.decodeIfPresent([Int].self,
                                                              forKey: .socketReadyLatencyBuckets) ?? [0, 0, 0, 0]
+        mediaSentBytesByKind = try data.decodeIfPresent([MobileMediaMetricKind: Int].self,
+                                                       forKey: .mediaSentBytesByKind) ?? [:]
+        mediaReceivedBytesByKind = try data.decodeIfPresent([MobileMediaMetricKind: Int].self,
+                                                           forKey: .mediaReceivedBytesByKind) ?? [:]
+        mediaSentBytesByNetwork = try data.decodeIfPresent([MobileNetworkKind: Int].self,
+                                                          forKey: .mediaSentBytesByNetwork) ?? [:]
+        mediaReceivedBytesByNetwork = try data.decodeIfPresent([MobileNetworkKind: Int].self,
+                                                              forKey: .mediaReceivedBytesByNetwork) ?? [:]
     }
 }
 
@@ -101,6 +115,10 @@ struct MobileMetricsStore {
                 && window.socketReceivedBytesByNetwork.values.allSatisfy { $0 >= 0 }
                 && window.socketReadyLatencyBuckets.count == 4
                 && window.socketReadyLatencyBuckets.allSatisfy { $0 >= 0 }
+                && window.mediaSentBytesByKind.values.allSatisfy { $0 >= 0 }
+                && window.mediaReceivedBytesByKind.values.allSatisfy { $0 >= 0 }
+                && window.mediaSentBytesByNetwork.values.allSatisfy { $0 >= 0 }
+                && window.mediaReceivedBytesByNetwork.values.allSatisfy { $0 >= 0 }
         }.suffix(96))
     }
 
