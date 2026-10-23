@@ -46,29 +46,41 @@ final class LocationDiagnostics {
 
     private let logger: NetworkLogger
     private let battery: BatterySnapshot
+    private let recorder: MobileMetricsRecording?
     private let enabled: Bool
     private let summaryInterval: TimeInterval
     private let lock = NSLock()
     private var state = State()
     private var timer: DispatchSourceTimer?
     private var backgroundObserver: NSObjectProtocol?
+    private var foregroundObserver: NSObjectProtocol?
 
     init(logger: NetworkLogger, battery: BatterySnapshot, enabled: Bool = true,
-         summaryInterval: TimeInterval = 15 * 60, observesBackground: Bool = true) {
+         summaryInterval: TimeInterval = 15 * 60, observesBackground: Bool = true,
+         recorder: MobileMetricsRecording? = nil) {
         self.logger = logger
         self.battery = battery
+        self.recorder = recorder
         self.enabled = enabled
         self.summaryInterval = summaryInterval
         if enabled && observesBackground {
             backgroundObserver = NotificationCenter.default.addObserver(
                 forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: nil
-            ) { [weak self] _ in self?.logSummary() }
+            ) { [weak self] _ in
+                self?.logSummary()
+                self?.timer?.cancel()
+                self?.timer = nil
+            }
+            foregroundObserver = NotificationCenter.default.addObserver(
+                forName: UIApplication.didBecomeActiveNotification, object: nil, queue: nil
+            ) { [weak self] _ in self?.resumeTimerIfNeeded() }
         }
     }
 
     deinit {
         timer?.cancel()
         if let backgroundObserver { NotificationCenter.default.removeObserver(backgroundObserver) }
+        if let foregroundObserver { NotificationCenter.default.removeObserver(foregroundObserver) }
     }
 
     func startSession(batteryLevel: Int?, now: Date = Date()) {
@@ -82,11 +94,8 @@ final class LocationDiagnostics {
         lock.unlock()
 
         timer?.cancel()
-        let nextTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
-        nextTimer.schedule(deadline: .now() + summaryInterval, repeating: summaryInterval)
-        nextTimer.setEventHandler { [weak self] in self?.logSummary() }
-        timer = nextTimer
-        nextTimer.resume()
+        timer = nil
+        resumeTimerIfNeeded()
     }
 
     func stopSession(batteryLevel: Int?, now: Date = Date()) {
@@ -101,6 +110,7 @@ final class LocationDiagnostics {
         lock.lock()
         state.startedAt = nil
         lock.unlock()
+        recordMetric(.state(.motionOff))
     }
 
     func reset() {
@@ -116,25 +126,38 @@ final class LocationDiagnostics {
         guard enabled else { return }
         let level = battery.level
         lock.lock()
-        defer { lock.unlock() }
-        guard state.startedAt != nil, motion != state.currentMotion else { return }
+        guard state.startedAt != nil, motion != state.currentMotion else { lock.unlock(); return }
         closeSegment(at: now, batteryLevel: level)
         state.currentMotion = motion
         state.motionTransitions += 1
         state.segmentStartedAt = now
         state.segmentBattery = level
+        lock.unlock()
+        let metric: MobileMetricState
+        switch motion {
+        case .stationary: metric = .motionStationary
+        case .walking: metric = .motionWalking
+        case .running: metric = .motionRunning
+        case .cycling: metric = .motionCycling
+        case .automotive: metric = .motionAutomotive
+        case .unknown: metric = .motionUnknown
+        }
+        recordMetric(.state(metric))
     }
 
     func recordManagerReconfiguration() {
         update { $0.managerReconfigurations += 1 }
+        recordMetric(.increment(.locationReconfiguration))
     }
 
     func recordDrop(_ reason: DropReason) {
         update { $0.dropped[reason.rawValue, default: 0] += 1 }
+        recordMetric(.increment(.fixDropped))
     }
 
     func recordHeartbeatAttempt() {
         update { $0.heartbeatAttempts += 1 }
+        recordMetric(.increment(.heartbeatAttempt))
     }
 
     func recordEmit() {
@@ -142,11 +165,33 @@ final class LocationDiagnostics {
             let motion = Self.name(state.currentMotion)
             state.emitted[motion, default: 0] += 1
         }
+        recordMetric(.increment(.locationEmit))
     }
 
     func recordOfflineEnqueue() {
         update { $0.offlineQueueEnqueues += 1 }
+        recordMetric(.increment(.offlinePoint))
     }
+
+    func recordFixReceived(horizontalAccuracy: Double) {
+        recordMetrics([.increment(.fixReceived), .horizontalAccuracy(horizontalAccuracy)])
+    }
+
+    func recordFixAccepted() { recordMetric(.increment(.fixAccepted)) }
+
+    func recordAccuracyMode(_ mode: MobileMetricState) { recordMetric(.state(mode)) }
+
+    func recordPermission(_ permission: MobileMetricState, reduced: Bool, changed: Bool) {
+        var events: [MobileMetricEvent] = []
+        if changed { events.append(.increment(.locationPermissionChange)) }
+        events.append(.state(permission))
+        if permission == .permissionAlways || permission == .permissionWhenInUse {
+            events.append(.state(reduced ? .permissionReducedAccuracy : .permissionFullAccuracy))
+        }
+        recordMetrics(events)
+    }
+
+    func recordPause() { recordMetric(.increment(.locationPause)) }
 
     func recordPolicyDecision(outcome: PolicyOutcome, reason: String) {
         update { $0.policyDecisions["\(outcome.rawValue).\(reason)", default: 0] += 1 }
@@ -205,6 +250,28 @@ final class LocationDiagnostics {
         lock.unlock()
     }
 
+    private func recordMetric(_ event: MobileMetricEvent) {
+        recordMetrics([event])
+    }
+
+    private func recordMetrics(_ events: [MobileMetricEvent]) {
+        guard enabled, let recorder else { return }
+        Task { for event in events { await recorder.record(event) } }
+    }
+
+    private func resumeTimerIfNeeded() {
+        guard enabled, timer == nil, UIApplication.shared.applicationState != .background else { return }
+        lock.lock()
+        let active = state.startedAt != nil
+        lock.unlock()
+        guard active else { return }
+        let nextTimer = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        nextTimer.schedule(deadline: .now() + summaryInterval, repeating: summaryInterval)
+        nextTimer.setEventHandler { [weak self] in self?.logSummary() }
+        timer = nextTimer
+        nextTimer.resume()
+    }
+
     /// Called with the diagnostics lock held.
     private func closeSegment(at now: Date, batteryLevel: Int?) {
         let name = Self.name(state.currentMotion)
@@ -229,7 +296,8 @@ final class LocationDiagnostics {
     }
     #else
     init(logger: NetworkLogger, battery: BatterySnapshot, enabled: Bool = true,
-         summaryInterval: TimeInterval = 15 * 60, observesBackground: Bool = true) {}
+         summaryInterval: TimeInterval = 15 * 60, observesBackground: Bool = true,
+         recorder: MobileMetricsRecording? = nil) {}
     func startSession(batteryLevel: Int?, now: Date = Date()) {}
     func stopSession(batteryLevel: Int?, now: Date = Date()) {}
     func reset() {}
@@ -239,6 +307,11 @@ final class LocationDiagnostics {
     func recordHeartbeatAttempt() {}
     func recordEmit() {}
     func recordOfflineEnqueue() {}
+    func recordFixReceived(horizontalAccuracy: Double) {}
+    func recordFixAccepted() {}
+    func recordAccuracyMode(_ mode: MobileMetricState) {}
+    func recordPermission(_ permission: MobileMetricState, reduced: Bool, changed: Bool) {}
+    func recordPause() {}
     func recordPolicyDecision(outcome: PolicyOutcome, reason: String) {}
     func snapshot() -> Snapshot {
         Snapshot(emitted: [:], heartbeatAttempts: 0, motionTransitions: 0,

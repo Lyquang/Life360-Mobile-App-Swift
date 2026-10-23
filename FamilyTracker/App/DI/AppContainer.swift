@@ -75,7 +75,15 @@ final class AppContainer {
         #endif
         batteryMonitor = BatteryMonitor()
         mobileMetrics = MobileMetricsCollector()
-        locationDiagnostics = LocationDiagnostics(logger: logger, battery: batteryMonitor.snapshot)
+        let metrics = mobileMetrics
+        #if DEBUG
+        batteryMonitor.onMetricsEvents = { [weak metrics] events in
+            // One task preserves the order of values sampled from the same device-state change.
+            Task { for event in events { await metrics?.record(event) } }
+        }
+        #endif
+        locationDiagnostics = LocationDiagnostics(logger: logger, battery: batteryMonitor.snapshot,
+                                                  recorder: mobileMetrics)
         pushService = PushNotificationService()
         session = KeychainSessionRepository()
         socketClient = SocketIOClientAdapter(url: environment.socketURL, logger: logger, tokenProvider: session)
@@ -85,18 +93,18 @@ final class AppContainer {
         let socket = socketClient
         let sessionStore = session
         let offlineQueue = OfflineQueue()
-        let metrics = mobileMetrics
         tokenRefreshCoordinator = TokenRefreshCoordinator(
             store: session, transport: refreshTransport,
             onRotated: { token in await MainActor.run { socket.connect(token: token) } },
             onExpired: { generation in
-                await MainActor.run {
-                    guard sessionStore.clear(ifGeneration: generation) else { return }
+                let expired = await MainActor.run {
+                    guard sessionStore.clear(ifGeneration: generation) else { return false }
                     socket.disconnect()
                     offlineQueue.clear()
-                    Task { await metrics.clear() }
                     events.expire()
+                    return true
                 }
+                if expired { await metrics.setEnabled(false) }
             }
         )
         let coordinator = tokenRefreshCoordinator
@@ -162,8 +170,12 @@ final class AppContainer {
             }, diagnostics: locationDiagnostics, logger: logger
         )
         let delivery = locationDelivery
-        session.onSessionSaved = { [weak delivery] in
-            Task { @MainActor in delivery?.prepareSession() }
+        session.onSessionSaved = { [weak delivery, weak metrics, weak sessionStore] in
+            Task { @MainActor in
+                guard sessionStore?.locationSessionIdentity != nil else { return }
+                delivery?.prepareSession()
+                await metrics?.setEnabled(true)
+            }
         }
         delivery.prepareSession()
         realtime.deliverLocation = { [weak delivery] fix, battery in delivery?.accept(fix, batteryLevel: battery) }
@@ -196,7 +208,7 @@ final class AppContainer {
 
     func logout(allDevices: Bool = false) async -> Bool {
         shareLocation.stop()
-        await mobileMetrics.clear()
+        await mobileMetrics.setEnabled(false)
         locationSharingGate.suspendUntilServerCheck()
         await tokenRefreshCoordinator.cancelSession()
         let result = await LogoutUseCase(auth: authRepository, session: session, realtime: realtime,

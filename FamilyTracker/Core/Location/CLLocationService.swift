@@ -30,6 +30,8 @@ final class CLLocationService: NSObject, LocationService {
     private(set) var currentMotionActivity: MotionActivity = .unknown
     private var appliedSettings: LocationSettings?
     private var isRunning = false
+    private var lastAuthorization: CLAuthorizationStatus?
+    private var lastPrecision: CLAccuracyAuthorization?
 
     private(set) var lastLocation: CLLocation?
     var onLocationUpdate: ((CLLocation) -> Void)?
@@ -85,6 +87,7 @@ final class CLLocationService: NSObject, LocationService {
 
     func stop() {
         isRunning = false
+        diagnostics?.recordAccuracyMode(.accuracyOff)
         appliedSettings = nil
         motion.stop()
         manager.stopUpdatingLocation()
@@ -127,6 +130,10 @@ final class CLLocationService: NSObject, LocationService {
         )
         guard force || settings != appliedSettings else { return }
         diagnostics?.recordManagerReconfiguration()
+        diagnostics?.recordAccuracyMode(Self.accuracyMode(
+            for: settings,
+            significantAvailable: CLLocationManager.significantLocationChangeMonitoringAvailable()
+        ))
         appliedSettings = settings
 
         manager.desiredAccuracy = settings.desiredAccuracy
@@ -145,11 +152,39 @@ final class CLLocationService: NSObject, LocationService {
     @objc private func powerStateDidChange() {
         DispatchQueue.main.async { [weak self] in self?.applyPolicy() }
     }
+
+    private static func accuracyMode(for settings: LocationSettings, significantAvailable: Bool) -> MobileMetricState {
+        if settings.significantChangesOnly && significantAvailable { return .accuracySignificant }
+        switch settings.desiredAccuracy {
+        case kCLLocationAccuracyBestForNavigation, kCLLocationAccuracyBest: return .accuracyNavigation
+        case kCLLocationAccuracyNearestTenMeters: return .accuracyTenMeters
+        case kCLLocationAccuracyHundredMeters: return .accuracyHundredMeters
+        case kCLLocationAccuracyKilometer: return .accuracyKilometer
+        default: return .accuracyOther
+        }
+    }
 }
 
 extension CLLocationService: CLLocationManagerDelegate {
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         guard manager === self.manager else { return }
+        let status = manager.authorizationStatus
+        let precision = manager.accuracyAuthorization
+        let changed = lastAuthorization != nil && (lastAuthorization != status || lastPrecision != precision)
+        if lastAuthorization != status || lastPrecision != precision {
+            let permission: MobileMetricState
+            switch status {
+            case .authorizedAlways: permission = .permissionAlways
+            case .authorizedWhenInUse: permission = .permissionWhenInUse
+            case .denied: permission = .permissionDenied
+            case .restricted: permission = .permissionRestricted
+            case .notDetermined: permission = .permissionUndetermined
+            @unknown default: permission = .permissionUndetermined
+            }
+            diagnostics?.recordPermission(permission, reduced: precision == .reducedAccuracy, changed: changed)
+            lastAuthorization = status
+            lastPrecision = precision
+        }
         onAuthorizationChange?(manager.authorizationStatus)
         if isAuthorized {
             configureBackgroundUpdates()
@@ -160,12 +195,19 @@ extension CLLocationService: CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard isRunning, isAuthorized else { return }
         guard let location = locations.last else { return }
+        diagnostics?.recordFixReceived(horizontalAccuracy: location.horizontalAccuracy)
         guard location.horizontalAccuracy >= 0 else {
             diagnostics?.recordDrop(.invalidHorizontalAccuracy)
             return
         }
         lastLocation = location
+        diagnostics?.recordFixAccepted()
         onLocationUpdate?(location)
+    }
+
+    func locationManagerDidPauseLocationUpdates(_ manager: CLLocationManager) {
+        guard manager === self.manager else { return }
+        diagnostics?.recordPause()
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
