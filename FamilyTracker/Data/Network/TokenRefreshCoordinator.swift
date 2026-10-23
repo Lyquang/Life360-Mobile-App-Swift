@@ -154,11 +154,14 @@ final class URLSessionRefreshTransport: RefreshTokenTransport {
     private let baseURL: URL
     private let session: URLSession
     private let logger: NetworkLogger
+    private let metrics: MobileMetricsRecording?
 
-    init(baseURL: URL, session: URLSession = .shared, logger: NetworkLogger) {
+    init(baseURL: URL, session: URLSession = .shared, logger: NetworkLogger,
+         metrics: MobileMetricsRecording? = nil) {
         self.baseURL = baseURL
         self.session = session
         self.logger = logger
+        self.metrics = metrics
     }
 
     func rotate(refreshToken: String) async throws -> AuthTokens {
@@ -169,10 +172,22 @@ final class URLSessionRefreshTransport: RefreshTokenTransport {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try endpoint.encodedBody()
         let started = Date()
+        if let metrics { await metrics.record(.increment(.request)) }
         let data: Data
         let response: URLResponse
-        do { (data, response) = try await session.data(for: request) }
+        do {
+            if let metrics {
+                (data, response) = try await session.data(
+                    for: request, delegate: NetworkTaskMetricsDelegate(recorder: metrics))
+            } else {
+                (data, response) = try await session.data(for: request)
+            }
+        }
         catch let error as URLError {
+            if let metrics, error.code != .cancelled {
+                await metrics.record(.increment(.requestFailure))
+                await metrics.record(.latency(.auth, milliseconds: Self.elapsedMilliseconds(since: started)))
+            }
             logger.logHTTP(request: request, response: nil, data: nil, error: error,
                            duration: Date().timeIntervalSince(started))
             switch error.code {
@@ -183,9 +198,18 @@ final class URLSessionRefreshTransport: RefreshTokenTransport {
             default: throw RefreshFailure.network
             }
         }
+        if let metrics {
+            await metrics.record(.latency(.auth, milliseconds: Self.elapsedMilliseconds(since: started)))
+        }
         logger.logHTTP(request: request, response: response, data: data, error: nil,
                        duration: Date().timeIntervalSince(started))
-        guard let http = response as? HTTPURLResponse else { throw RefreshFailure.server }
+        guard let http = response as? HTTPURLResponse else {
+            if let metrics { await metrics.record(.increment(.requestFailure)) }
+            throw RefreshFailure.server
+        }
+        if let metrics, !(200..<300).contains(http.statusCode) {
+            await metrics.record(.increment(.requestFailure))
+        }
         let decoder = BackendJSONCoding.makeDecoder()
         if http.statusCode == 429 {
             let seconds = http.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init)
@@ -210,5 +234,9 @@ final class URLSessionRefreshTransport: RefreshTokenTransport {
         }
         return AuthTokens(accessToken: payload.accessToken, refreshToken: payload.refreshToken,
                           expiresIn: payload.expiresIn)
+    }
+
+    private static func elapsedMilliseconds(since start: Date) -> Int {
+        Int(min(max(0, Date().timeIntervalSince(start) * 1_000), Double(Int.max)))
     }
 }

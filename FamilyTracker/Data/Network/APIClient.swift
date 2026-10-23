@@ -29,14 +29,17 @@ final class URLSessionAPIClient: APIClient {
     private let tokenProvider: AccessTokenProvider
     private let logger: NetworkLogger
     private let refreshCoordinator: TokenRefreshCoordinator?
+    private let metrics: MobileMetricsRecording?
 
     init(baseURL: URL, session: URLSession = .shared, tokenProvider: AccessTokenProvider,
-         logger: NetworkLogger, refreshCoordinator: TokenRefreshCoordinator? = nil) {
+         logger: NetworkLogger, refreshCoordinator: TokenRefreshCoordinator? = nil,
+         metrics: MobileMetricsRecording? = nil) {
         self.baseURL = baseURL
         self.session = session
         self.tokenProvider = tokenProvider
         self.logger = logger
         self.refreshCoordinator = refreshCoordinator
+        self.metrics = metrics
     }
 
     func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T {
@@ -58,6 +61,8 @@ final class URLSessionAPIClient: APIClient {
         let url = request.url?.absoluteString ?? endpoint.path
         let requestId = UUID()
         let startedAt = Date()
+        let group = RESTMetricGroup.classify(endpoint.path)
+        if let metrics { await metrics.record(.increment(.request)) }
 
         // Request bodies can contain passwords or Google ID tokens.
         logger.logRequest(id: requestId, method: method, url: url, body: nil)
@@ -65,8 +70,17 @@ final class URLSessionAPIClient: APIClient {
         let data: Data
         let response: URLResponse
         do {
-            (data, response) = try await session.data(for: request)
+            if let metrics {
+                (data, response) = try await session.data(
+                    for: request, delegate: NetworkTaskMetricsDelegate(recorder: metrics))
+            } else {
+                (data, response) = try await session.data(for: request)
+            }
         } catch {
+            if let metrics, !Task.isCancelled, (error as? URLError)?.code != .cancelled {
+                await metrics.record(.increment(.requestFailure))
+                await metrics.record(.latency(group, milliseconds: Self.elapsedMilliseconds(since: startedAt)))
+            }
             logger.logHTTP(request: request, response: nil, data: nil, error: error,
                            duration: Date().timeIntervalSince(startedAt))
             if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw CancellationError() }
@@ -75,7 +89,16 @@ final class URLSessionAPIClient: APIClient {
             throw APIError.networkError(error.localizedDescription)
         }
 
-        guard let http = response as? HTTPURLResponse else { throw APIError.unknown }
+        if let metrics {
+            await metrics.record(.latency(group, milliseconds: Self.elapsedMilliseconds(since: startedAt)))
+        }
+        guard let http = response as? HTTPURLResponse else {
+            if let metrics { await metrics.record(.increment(.requestFailure)) }
+            throw APIError.unknown
+        }
+        if let metrics, !(200..<300).contains(http.statusCode) {
+            await metrics.record(.increment(.requestFailure))
+        }
         logger.logHTTP(request: request, response: response, data: data, error: nil,
                        duration: Date().timeIntervalSince(startedAt))
         logger.logResponse(id: requestId, method: method, url: url, statusCode: http.statusCode,
@@ -130,6 +153,10 @@ final class URLSessionAPIClient: APIClient {
         } catch {
             throw APIError.decodingError(error.localizedDescription)
         }
+    }
+
+    private static func elapsedMilliseconds(since start: Date) -> Int {
+        Int(min(max(0, Date().timeIntervalSince(start) * 1_000), Double(Int.max)))
     }
 
     private func makeRequest(for endpoint: Endpoint) throws -> (URLRequest, String?, Int) {
