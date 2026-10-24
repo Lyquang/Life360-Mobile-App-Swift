@@ -44,6 +44,10 @@ Legend:
   XCTest source is present but cannot run until the scheme has a Test action;
   voice playback traffic, device energy measurements and consent remain pending.
 
+- `[-]` T3b: Debug metrics screen and bounded aggregate JSON export wired from Pulse;
+  Debug/Release builds, networking/localization and lint pass. XCTest is blocked by the missing
+  Test action; device accessibility/visual review remains pending.
+
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
 - `[x]` Location P1: accepted GPS fixes now retain timestamp, horizontal accuracy,
   speed and course through the Domain repository and sharing use case. The 50 m/30 s

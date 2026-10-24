@@ -10,6 +10,13 @@ final class DebugCoordinator: ObservableObject {
     @Published var report = DiagnosticReportDocument()
 
     func open() { isPresented = true }
+    func monitoringView() -> MobileMonitoringView {
+        let container = CompositionRoot.container
+        return MobileMonitoringView(model: MobileMonitoringViewModel(
+            readWindows: { await container.mobileMetrics.snapshot() },
+            readMetricKit: { container.metricKitReceiver?.summaries ?? [] }
+        ))
+    }
     func exportForAI() {
         do {
             report = DiagnosticReportDocument(data: try PulseDiagnostics.shared.report())
@@ -48,6 +55,12 @@ struct DebugOverlay: ViewModifier {
             .sheet(isPresented: $coordinator.isPresented) {
                 NavigationStack {
                     NetworkInspectorView()
+                        .toolbar {
+                            NavigationLink(destination: coordinator.monitoringView()) {
+                                Image(systemName: "chart.bar.xaxis").frame(width: 44, height: 44)
+                            }
+                            .accessibilityLabel(L10n.tr("monitor.title"))
+                        }
                 }
             }
     }

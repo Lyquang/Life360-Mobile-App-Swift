@@ -118,6 +118,10 @@ T1a có `AppContainer` nhưng không thay Presentation/Location; T1b/T1c/T1d/T3 
 
 ## Rủi ro, rollback và điều cần quyết định
 
+### T3b: màn chẩn đoán cục bộ
+
+Mở từ toolbar của bảng Debug; chỉ compile trong Debug. ViewModel nhận closure đọc snapshot và MetricKit qua Coordinator. Màn hình tải theo yêu cầu, không polling. Trạng thái: đang tải, chưa có dữ liệu, dữ liệu hiện có, lỗi xuất; hỗ trợ kéo để làm mới, Dynamic Type và xuất JSON tổng hợp có trần 512 KiB. Không gộp Pulse payload vào tệp. Giá trị mạng tách REST/media/socket, socket là ước tính; pin là toàn máy. Bảng L10n bổ sung nhóm `monitor.*` trong cả vi/en cùng thay đổi. Kiểm tra thủ công: mở từ Pulse, kéo làm mới, xuất và đọc JSON, thử chưa có MetricKit, VoiceOver/chữ lớn/Dark Mode. Rollback: bỏ điểm vào ở DebugCoordinator; các bộ thu không phụ thuộc màn hình.
+
 - Rủi ro: collector làm tăng pin/ghi đĩa; tag cardinality/fingerprinting; race khi logout; payload MetricKit cũ đến sau đổi phiên; `URLSessionTaskMetrics` có nhiều transaction/redirect; estimations của Socket/AVPlayer thiếu overhead; so sánh version bị trộn; consent không tương đương ẩn danh nếu server xác thực/IP log. Tất cả đi qua typed serializer + unit privacy test và gate tắt toàn cục.
 - Rollback T1-T3: tắt collector flag, giữ LocationDiagnostics hiện tại, không thay API/Socket behavior. T4: tắt gửi từ server/client, xóa local reports; không ảnh hưởng location/chat/SOS.
 - **Cần tôi quyết định:** (1) T1-T3 local trước (đề xuất) hay T4 ngay; (2) Release chỉ sau consent (đề xuất); (3) T4 Wi-Fi only (đề xuất); (4) nhãn thiết bị: chỉ iOS major (đề xuất) hay họ iPhone; (5) không có Sentry hiện tại, MetricKit diagnostics counts thôi (đề xuất); (6) Release thật hay internal-only; (7) ngưỡng pin/data và app tham chiếu sau baseline; (8) BE auth nhưng muốn “ẩn danh”: chọn không gửi, endpoint vô danh có chống lạm dụng, hoặc chấp nhận pseudonymous có công bố minh bạch. **Đề xuất T0: chỉ làm T1-T3 cục bộ trước, T4 hoãn.**
