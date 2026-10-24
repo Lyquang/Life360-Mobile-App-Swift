@@ -31,6 +31,7 @@ final class AppContainer {
     let logger: NetworkLogger
     let batteryMonitor: BatteryMonitor
     let mobileMetrics: MobileMetricsCollector
+    let metricKitReceiver: MetricKitReceiver?
     private let networkPathObserver: NetworkPathObserver?
     private let locationDiagnostics: LocationDiagnostics
     let pushService: PushNotificationService
@@ -80,6 +81,7 @@ final class AppContainer {
         let metrics = mobileMetrics
         #if DEBUG
         let pathObserver: NetworkPathObserver? = NetworkPathObserver(recorder: metrics)
+        let metricReceiver: MetricKitReceiver? = MetricKitReceiver()
         let socketMetrics: MobileMetricsRecording? = metrics
         batteryMonitor.onMetricsEvents = { [weak metrics] events in
             // One task preserves the order of values sampled from the same device-state change.
@@ -87,9 +89,11 @@ final class AppContainer {
         }
         #else
         let pathObserver: NetworkPathObserver? = nil
+        let metricReceiver: MetricKitReceiver? = nil
         let socketMetrics: MobileMetricsRecording? = nil
         #endif
         networkPathObserver = pathObserver
+        metricKitReceiver = metricReceiver
         locationDiagnostics = LocationDiagnostics(logger: logger, battery: batteryMonitor.snapshot,
                                                   recorder: mobileMetrics)
         pushService = PushNotificationService()
@@ -118,6 +122,7 @@ final class AppContainer {
                     guard sessionStore.clear(ifGeneration: generation) else { return false }
                     socket.disconnect()
                     pathObserver?.stop()
+                    metricReceiver?.stop(clear: true)
                     offlineQueue.clear()
                     events.expire()
                     return true
@@ -196,10 +201,13 @@ final class AppContainer {
                 delivery?.prepareSession()
                 await metrics?.setEnabled(true)
                 pathObserver?.start()
+                metricReceiver?.start(clearPrevious: true)
             }
         }
         delivery.prepareSession()
         pathObserver?.start()
+        if session.locationSessionIdentity != nil { metricReceiver?.start() }
+        else { metricReceiver?.stop(clear: true) }
         realtime.deliverLocation = { [weak delivery] fix, battery in delivery?.accept(fix, batteryLevel: battery) }
         realtime.onExplicitDisconnect = { [weak delivery] in delivery?.endSession(clearBuffer: true) }
 
@@ -225,12 +233,15 @@ final class AppContainer {
     // MARK: - Session lifecycle
 
     func restoreSession() async -> User? {
-        await RestoreSessionUseCase(auth: authRepository, session: session, realtime: realtime)()
+        let user = await RestoreSessionUseCase(auth: authRepository, session: session, realtime: realtime)()
+        if session.locationSessionIdentity == nil { metricKitReceiver?.stop(clear: true) }
+        return user
     }
 
     func logout(allDevices: Bool = false) async -> Bool {
         shareLocation.stop()
         networkPathObserver?.stop()
+        metricKitReceiver?.stop(clear: true)
         await mobileMetrics.setEnabled(false)
         locationSharingGate.suspendUntilServerCheck()
         await tokenRefreshCoordinator.cancelSession()

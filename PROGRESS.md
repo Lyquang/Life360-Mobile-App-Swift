@@ -28,7 +28,7 @@ Legend:
 
 - `[x]` Debug tooling: Pulse/PulseUI 5.2.3 console, Debug root button/keyboard
   shortcut, HTTP/upload/socket logging, local AI JSON export and manual remote logging.
-- `[-]` Mobile monitoring T1: aggregate Debug-only power/GPS and offline-buffer
+- `[-]` Mobile monitoring T1-T2: aggregate Debug-only power/GPS and offline-buffer
   metrics plus REST task bytes/latency, R2 PUT upload bytes by image/voice,
   image-download bytes and URLCache hit/miss counts in chat,
   and Socket.IO payload-size estimates by
@@ -36,8 +36,10 @@ Legend:
   as Wi-Fi/cellular/other/offline and stops on logout/session expiry. Release
   collection remains off; Socket estimates exclude transport overhead. Debug/
   Release Simulator builds, networking/localization scripts and SwiftLint pass.
+  MetricKit now records bounded, typed daily summaries and diagnostic counts in
+  Debug only; logout/session expiry clears them, and Release does not subscribe.
   XCTest source is present but cannot run until the scheme has a Test action;
-  voice playback traffic, MetricKit, device energy measurements and consent remain pending.
+  voice playback traffic, device energy measurements and consent remain pending.
 
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
 - `[x]` Location P1: accepted GPS fixes now retain timestamp, horizontal accuracy,
