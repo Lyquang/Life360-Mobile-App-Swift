@@ -38,7 +38,7 @@ Legend:
   Release Simulator builds, networking/localization scripts and SwiftLint pass.
   MetricKit now records bounded, typed daily summaries and diagnostic counts in
   Debug only; logout/session expiry clears them, and Release does not subscribe.
-  Static signposts now bracket app composition, session restore, Journey load,
+  Static signposts now bracket app composition, session restore, Journey/Chat loads,
   media PUT and delivery of one accepted location fix; device Instruments review
   remains pending.
   XCTest source is present but cannot run until the scheme has a Test action;
