@@ -68,6 +68,8 @@ final class AppContainer {
     )
 
     init(environment: AppEnvironment = .current) {
+        let signpost = PerformanceSignposts.begin(.composeApp)
+        defer { PerformanceSignposts.end(.composeApp, signpost) }
         self.environment = environment
         languageSettings = LanguageSettingsViewModel(preferences: UserDefaultsLanguagePreferences())
 
@@ -233,6 +235,8 @@ final class AppContainer {
     // MARK: - Session lifecycle
 
     func restoreSession() async -> User? {
+        let signpost = PerformanceSignposts.begin(.restoreSession)
+        defer { PerformanceSignposts.end(.restoreSession, signpost) }
         let user = await RestoreSessionUseCase(auth: authRepository, session: session, realtime: realtime)()
         if session.locationSessionIdentity == nil { metricKitReceiver?.stop(clear: true) }
         return user

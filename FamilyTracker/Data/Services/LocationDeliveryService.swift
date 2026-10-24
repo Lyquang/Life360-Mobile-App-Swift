@@ -78,6 +78,8 @@ final class LocationDeliveryService {
         pending = Task { [weak self] in
             await previous?.value
             guard let self, self.isCurrent(identity, generation: expectedGeneration) else { return }
+            let signpost = PerformanceSignposts.begin(.deliverLocationFix)
+            defer { PerformanceSignposts.end(.deliverLocationFix, signpost) }
             do {
                 try await self.buffer?.activate(ownerID: identity.ownerID)
                 guard self.isCurrent(identity, generation: expectedGeneration) else { return }
