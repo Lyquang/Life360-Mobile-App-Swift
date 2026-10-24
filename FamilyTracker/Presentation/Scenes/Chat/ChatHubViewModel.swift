@@ -119,6 +119,8 @@ final class ChatHubViewModel: ObservableObject {
     }
 
     private func performLoad() async {
+        let signpost = PerformanceSignposts.begin(.loadChats)
+        defer { PerformanceSignposts.end(.loadChats, signpost) }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }

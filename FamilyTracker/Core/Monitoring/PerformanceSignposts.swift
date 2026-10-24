@@ -6,6 +6,7 @@ enum PerformanceSignposts {
         case composeApp
         case restoreSession
         case loadJourney
+        case loadChats
         case uploadMedia
         case deliverLocationFix
     }
@@ -18,6 +19,7 @@ enum PerformanceSignposts {
         case .composeApp: return signposter.beginInterval("ComposeApp", id: id)
         case .restoreSession: return signposter.beginInterval("RestoreSession", id: id)
         case .loadJourney: return signposter.beginInterval("LoadJourney", id: id)
+        case .loadChats: return signposter.beginInterval("LoadChats", id: id)
         case .uploadMedia: return signposter.beginInterval("UploadMedia", id: id)
         case .deliverLocationFix: return signposter.beginInterval("DeliverLocationFix", id: id)
         }
@@ -28,6 +30,7 @@ enum PerformanceSignposts {
         case .composeApp: signposter.endInterval("ComposeApp", state)
         case .restoreSession: signposter.endInterval("RestoreSession", state)
         case .loadJourney: signposter.endInterval("LoadJourney", state)
+        case .loadChats: signposter.endInterval("LoadChats", state)
         case .uploadMedia: signposter.endInterval("UploadMedia", state)
         case .deliverLocationFix: signposter.endInterval("DeliverLocationFix", state)
         }
