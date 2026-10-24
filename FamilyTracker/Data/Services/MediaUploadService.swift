@@ -62,6 +62,8 @@ final class MediaUploadService {
         let metricKind: MobileMediaMetricKind = kind == .image ? .imageUpload : .voiceUpload
         let delegate = UploadProgressDelegate(progress: progress, metrics: metrics, kind: metricKind)
         let startedAt = Date()
+        let signpost = PerformanceSignposts.begin(.uploadMedia)
+        defer { PerformanceSignposts.end(.uploadMedia, signpost) }
         if let metrics { await metrics.record(.increment(.mediaUpload)) }
         do {
             progress(0)

@@ -89,6 +89,8 @@ final class JourneyViewModel: ObservableObject {
     }
 
     func load() async {
+        let signpost = PerformanceSignposts.begin(.loadJourney)
+        defer { PerformanceSignposts.end(.loadJourney, signpost) }
         loadRevision += 1
         let revision = loadRevision
         let day = displayDate
