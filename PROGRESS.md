@@ -48,6 +48,10 @@ Legend:
   Debug/Release builds, networking/localization and lint pass. XCTest is blocked by the missing
   Test action; device accessibility/visual review remains pending.
 
+- `[-]` T5 preparation: interview notes and practical Debug export/Instruments guide added.
+  Physical-device energy/traffic/overhead trials remain unmeasured; the full monitoring
+  kill switch for M1 and XCTest Test action are still prerequisites. T4 remains deferred.
+
 - `[-]` LiveMap: realtime family locations, adaptive location, member cards, tracking controls.
 - `[x]` Location P1: accepted GPS fixes now retain timestamp, horizontal accuracy,
   speed and course through the Domain repository and sharing use case. The 50 m/30 s
