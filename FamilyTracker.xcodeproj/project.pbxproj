@@ -371,7 +371,7 @@
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 10.0.0;
+				minimumVersion = 10.1.0;
 			};
 		};
 		87EAC794E1D94CEA2EEA8604 /* XCRemoteSwiftPackageReference "Pulse" */ = {
