@@ -161,6 +161,9 @@ Legend:
   existing SOS UI still uses the legacy flow until a later cutover. XCTest remains
   blocked by the scheme's missing Test action. User confirmed backend flags and
   transactions on 2026-10-29; production responses remain unverified.
+  S2a adds owner/session-scoped durable pending intents and a deterministic retry
+  policy. S2b adds a single-flight foreground runner with persist-before-send,
+  bounded retry and cooldown; it is not wired to UI or session lifecycle yet.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,

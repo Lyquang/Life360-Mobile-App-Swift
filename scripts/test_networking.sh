@@ -14,6 +14,9 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Domain/Entities/AuthTokens.swift \
   FamilyTracker/Domain/Entities/SOSIncident.swift \
   FamilyTracker/Domain/Repositories/SOSIncidentRepository.swift \
+  FamilyTracker/Domain/UseCases/SOS/SOSRetryPolicy.swift \
+  FamilyTracker/Data/Local/SOS/SOSPendingIntentStore.swift \
+  FamilyTracker/Data/Services/SOSIntentRunner.swift \
   FamilyTracker/Domain/Entities/GeoPoint.swift \
   FamilyTracker/Domain/Entities/LiveTrail.swift \
   FamilyTracker/Domain/Entities/LiveTrailAssembler.swift \
