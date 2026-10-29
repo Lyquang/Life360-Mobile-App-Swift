@@ -2,6 +2,11 @@
 
 Ngày kiểm kê: 29/10/2026. Trạng thái: **đã duyệt triển khai; S1 REST xong**, chưa chuyển luồng SOS trên UI.
 
+S2a: đã tạo store pending bền vững và policy retry thuần. Store yêu cầu `activate`
+cho mỗi phiên, dùng session UUID để chặn callback cũ khi đổi tài khoản, giữ payload
+gốc và báo lỗi khi file hỏng thay vì tự sinh ý định khác. Policy tính mốc Retry-After
+và giới hạn số lần thử; chưa có runner, chưa nối logout/UI và chưa tự gửi request.
+
 S1 đã build Debug/Release Simulator; mock networking kiểm tra 5 endpoint, response
 create/replay/detail/assistance/close, lỗi và UUID giữ nguyên qua 401 → refresh.
 Localization và SwiftLint qua với cảnh báo cũ; `xcodebuild test` chưa chạy vì scheme
