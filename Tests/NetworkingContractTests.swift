@@ -108,6 +108,7 @@ enum NetworkingContractTests {
         try requests()
         try mediaContracts()
         try await locationBatchContract()
+        try await sosContract()
         try redaction()
         try liveTrailAssemblyAndGeometry()
         try socketLocationContract()
@@ -120,7 +121,121 @@ enum NetworkingContractTests {
         try await refreshTransportContract()
         try await retryUnauthorizedStops()
         try await lateRefreshCannotExpireNewSession()
-        print("PASS: REST contracts, auth refresh, media ticket/PUT retry, decoding and errors")
+        print("PASS: REST/SOS contracts, auth refresh, media ticket/PUT retry, decoding and errors")
+    }
+
+    static func sosContract() async throws {
+        let id = "000000000000000000000001"
+        let intent = SOSCreationIntent(clientRequestId: UUID(), message: "Help", location: nil)
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ProtocolStub.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); ProtocolStub.handler = nil; ProtocolStub.responseHeaders = [:] }
+        let store = PairStoreStub()
+        let refresh = RefreshStub()
+        let coordinator = TokenRefreshCoordinator(store: store, transport: refresh)
+        let client = URLSessionAPIClient(baseURL: URL(string: "https://example.test/api/v1")!, session: session,
+                                         tokenProvider: store, logger: NoopNetworkLogger(), refreshCoordinator: coordinator)
+        let repository = SOSIncidentRepositoryImpl(api: client)
+        let summary = """
+        {"id":"\(id)","ownerId":"000000000000000000000002","status":"active","revision":1,
+         "groupCount":2,"recipientCount":3,"createdAt":"2026-10-29T10:00:00.000Z"}
+        """
+        var observedIDs: [String] = []
+        ProtocolStub.handler = { request in
+            try check(request.url?.path == "/api/v1/sos" && request.httpMethod == "POST", "SOS create route")
+            let body = try JSONSerialization.jsonObject(with: sosRequestBody(request)) as! [String: Any]
+            try check(Set(body.keys) == ["clientRequestId", "message"], "SOS strict body")
+            observedIDs.append(body["clientRequestId"] as! String)
+            if request.value(forHTTPHeaderField: "Authorization") == "Bearer expired" {
+                return (401, Data(#"{"success":false,"code":"UNAUTHORIZED"}"#.utf8))
+            }
+            return (201, Data("{\"success\":true,\"data\":{\"created\":true,\"incident\":\(summary)}}".utf8))
+        }
+        let created = try await repository.create(intent)
+        try check(created.created && created.incident.revision == 1, "SOS summary decode")
+        let rotations = await refresh.calls
+        try check(rotations == 1 && observedIDs == Array(repeating: intent.clientRequestId.uuidString.lowercased(), count: 2),
+                  "SOS refresh must reuse request UUID")
+
+        ProtocolStub.handler = { _ in
+            (200, Data("{\"success\":true,\"data\":{\"created\":false,\"incident\":\(summary)}}".utf8))
+        }
+        let replay = try await repository.create(intent)
+        try check(!replay.created && replay.incident.id == id, "SOS replay")
+
+        ProtocolStub.handler = { request in
+            try check(request.url?.query?.contains("afterId=") == true, "Responder afterId missing")
+            try check(request.url?.query?.contains("cursor=") == false, "Incident cursor leaked into detail")
+            return (200, Data("""
+            {"success":true,"data":{"incident":{"id":"\(id)","ownerId":"000000000000000000000002",
+            "status":"active","revision":2,"message":"Help","location":null,"groupIds":[],
+            "createdAt":"2026-10-29T10:00:00.123Z","closedAt":null},"responders":[
+            {"id":"000000000000000000000004","responderId":"000000000000000000000005",
+            "name":null,"avatar":null,"status":"coming","respondedAt":"2026-10-29T10:01:00Z"}],
+            "hasMore":false,"nextAfterId":null}}
+            """.utf8))
+        }
+        let detail = try await repository.detail(id: id, afterId: id)
+        try check(detail.incident.location == nil && detail.responders.first?.name == nil, "SOS null fields")
+        try check(detail.incident.createdAt == ISO8601.date(from: "2026-10-29T10:00:00.123Z"), "SOS fractional date")
+
+        ProtocolStub.handler = { request in
+            try check(request.url?.query?.contains("cursor=") == true, "Incident cursor missing")
+            try check(request.url?.query?.contains("afterId=") == false, "Responder cursor leaked into list")
+            return (200, Data(#"{"success":true,"data":{"items":[],"hasMore":false,"nextCursor":null}}"#.utf8))
+        }
+        let page = try await repository.list(cursor: id)
+        try check(page.items.isEmpty && !page.hasMore, "SOS empty list")
+
+        ProtocolStub.handler = { request in
+            try check(request.url?.path == "/api/v1/sos/\(id)/responses", "SOS respond route")
+            let body = try JSONSerialization.jsonObject(with: sosRequestBody(request)) as! [String: String]
+            try check(body == ["status": "coming"], "SOS respond strict body")
+            return (201, Data("""
+            {"success":true,"data":{"created":true,"sosId":"\(id)","revision":2,"response":{
+            "id":"000000000000000000000004","responderId":"000000000000000000000005",
+            "status":"coming","respondedAt":"2026-10-29T10:01:00.000Z"}}}
+            """.utf8))
+        }
+        let assistance = try await repository.respond(id: id)
+        try check(assistance.response.name == nil && assistance.created, "Write response has no profile")
+
+        ProtocolStub.handler = { request in
+            try check(request.httpMethod == "PATCH", "SOS close method")
+            let closed = summary.replacingOccurrences(of: "active", with: "resolved")
+            return (200, Data("{\"success\":true,\"data\":{\"changed\":false,\"incident\":\(closed)}}".utf8))
+        }
+        let closed = try await repository.close(id: id, status: .resolved)
+        try check(!closed.changed && closed.incident.status == .resolved, "SOS close replay")
+
+        let cases: [(Int, SOSFailure)] = [(400, .invalidRequest), (403, .forbidden), (404, .notFound),
+            (409, .conflict), (413, .payloadTooLarge), (429, .rateLimited(retryAfter: "75")),
+            (503, .unavailable), (500, .server)]
+        ProtocolStub.responseHeaders = ["Retry-After": "75"]
+        for (status, expected) in cases {
+            ProtocolStub.handler = { _ in (status, Data(#"{"success":false,"message":"private"}"#.utf8)) }
+            do { _ = try await repository.list(); throw CheckFailure(message: "SOS error accepted as success") }
+            catch let error as SOSFailure { try check(error == expected, "SOS error mapping \(status)") }
+        }
+        ProtocolStub.handler = { _ in (200, Data(#"{"success":true,"data":null}"#.utf8)) }
+        do { _ = try await repository.list(); throw CheckFailure(message: "Missing data accepted") }
+        catch let error as SOSFailure { try check(error == .invalidResponse, "SOS invalid envelope") }
+    }
+
+    private static func sosRequestBody(_ request: URLRequest) throws -> Data {
+        if let body = request.httpBody { return body }
+        guard let stream = request.httpBodyStream else { throw CheckFailure(message: "Missing SOS request body") }
+        stream.open()
+        defer { stream.close() }
+        var result = Data()
+        var buffer = [UInt8](repeating: 0, count: 1_024)
+        while true {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            guard count >= 0 else { throw CheckFailure(message: "Cannot read SOS request body") }
+            if count == 0 { return result }
+            result.append(contentsOf: buffer.prefix(count))
+        }
     }
 
     static func locationBatchContract() async throws {

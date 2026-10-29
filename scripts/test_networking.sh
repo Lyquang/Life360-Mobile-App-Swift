@@ -12,6 +12,8 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Domain/Common/ISO8601.swift \
   FamilyTracker/Domain/Entities/MediaUpload.swift \
   FamilyTracker/Domain/Entities/AuthTokens.swift \
+  FamilyTracker/Domain/Entities/SOSIncident.swift \
+  FamilyTracker/Domain/Repositories/SOSIncidentRepository.swift \
   FamilyTracker/Domain/Entities/GeoPoint.swift \
   FamilyTracker/Domain/Entities/LiveTrail.swift \
   FamilyTracker/Domain/Entities/LiveTrailAssembler.swift \
@@ -28,6 +30,8 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Core/Monitoring/NetworkTaskMetricsDelegate.swift \
   FamilyTracker/Data/Network/Endpoint.swift \
   FamilyTracker/Data/Network/Endpoints/Endpoints.swift \
+  FamilyTracker/Data/Network/Endpoints/SOSEndpoint.swift \
+  FamilyTracker/Data/Repositories/SOSIncidentRepositoryImpl.swift \
   FamilyTracker/Data/Network/APIClient.swift \
   FamilyTracker/Data/Network/BackendJSONDecoder.swift \
   FamilyTracker/Data/Network/TokenRefreshCoordinator.swift \
