@@ -164,6 +164,12 @@ Legend:
   S2a adds owner/session-scoped durable pending intents and a deterministic retry
   policy. S2b adds a single-flight foreground runner with persist-before-send,
   bounded retry and cooldown; it is not wired to UI or session lifecycle yet.
+  S3 adds a session-scoped REST recovery controller with full incident pagination,
+  revision fences, responder paging, 403/404 cleanup and read-side rate-limit
+  cooldown. S4a connects authenticated lifecycle and deduplicated `sos_alert`/
+  `sos:updated` invalidations to detail recovery; shared read/write cooldown,
+  REST write cutover, chat SOS metadata and responder UI remain pending. The
+  legacy SOS banner is not yet deduplicated by sosId.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,

@@ -1,8 +1,8 @@
 # SOS assistance integration
 
-Status: approved for implementation, 2026-10-29. S1 REST contract and S2 durable
-pending store/retry policy/runner implemented; lifecycle wiring, session recovery,
-socket updates and UI cutover remain.
+Status: approved for implementation, 2026-10-29. S1 REST contract, S2 durable
+pending/retry runner, S3 REST recovery and S4a socket/lifecycle invalidations implemented;
+shared read/write cooldown, secure REST write cutover, chat metadata and UI remain.
 User requests reviewable batches of approximately 10–12 files or one coherent part.
 
 Canonical mobile execution plan: [study/sos-assistance-integration.md](../study/sos-assistance-integration.md).
