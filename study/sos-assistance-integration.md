@@ -2,6 +2,19 @@
 
 Ngày kiểm kê: 29/10/2026. Trạng thái: **đã duyệt triển khai; S1 REST xong**, chưa chuyển luồng SOS trên UI.
 
+S2a: đã tạo store pending bền vững và policy retry thuần. Store yêu cầu `activate`
+cho mỗi phiên, dùng session UUID để chặn callback cũ khi đổi tài khoản, giữ payload
+gốc và báo lỗi khi file hỏng thay vì tự sinh ý định khác. Policy tính mốc Retry-After
+và giới hạn số lần thử.
+
+S2b: `SOSIntentRunner` lưu trạng thái chưa chắc chắn trước POST, chia sẻ một flight
+giữa các caller, retry tối đa ba lần trong lượt foreground và lưu cooldown. Kết quả
+thành công chỉ xóa đúng UUID; lỗi xóa sau commit được báo riêng. Logout/cancel trên
+runner chặn áp dụng callback cũ, nhưng runner **chưa được nối** vào logout/UI thật.
+Trước S6 phải ràng buộc session generation của request REST ngay tại lần tạo request
+đầu tiên: fence trong runner không đảm bảo token không đổi giữa lúc gọi closure và
+`APIClient.makeRequest`. Không được nối runner vào UI trước khi có kiểm thử race này.
+
 S1 đã build Debug/Release Simulator; mock networking kiểm tra 5 endpoint, response
 create/replay/detail/assistance/close, lỗi và UUID giữ nguyên qua 401 → refresh.
 Localization và SwiftLint qua với cảnh báo cũ; `xcodebuild test` chưa chạy vì scheme
@@ -19,33 +32,33 @@ thiếu Test action. Các response production, tích hợp realtime và UI chưa
 
 ## 2. Hiện trạng và gap analysis
 
-| Phần | Đã có trong Mobile | Cần thay đổi |
-| --- | --- | --- |
-| Tạo SOS | `SOSUseCases.swift`: `SendSOSUseCase` dùng `lastKnownLocation` và battery, gọi `SocketRealtimeRepository.sendSOS` | REST-only; UUID bền vững; không tự dùng tọa độ cache; body không có battery |
-| UX gửi | `EmergencyCoordinator.confirmSOS` đặt `isSending`, kết thúc bằng timer 3 giây | Thành công chỉ sau response 200/201 hợp lệ; phân biệt lỗi và chưa xác định kết quả |
-| Offline | `OfflineQueue` thực tế đã lưu JSON trên đĩa; `drain()` xóa trước emit; flush cả lúc connected và session:ready | Không đưa SOS mới vào queue socket; có migration xử lý SOS legacy, không phát lại ngoài REST |
-| Cảnh báo | `SOSAlertDTO` bỏ qua `eventId/sosId/revision/status/location`; `SOSAlert.id` là UUID mới mỗi decode | Identity theo incident/event Backend; nhận nullable location và trạng thái |
-| Cập nhật | Chỉ nghe `sos_alert`; chưa có `sos:updated` | Invalidation → GET detail; chống stale response và coalesce reload |
-| Chi tiết/hỗ trợ | Chưa có REST SOS, responders, resolve/cancel | Bổ sung repository, use cases, state và màn detail |
-| Chat | `ChatMessageDTO`/Domain chưa có `sos`; mapper bỏ metadata | Optional `sos {id,kind,responderId?}`, optional `eventId`; cả REST history và realtime |
-| Chat dedupe | Chat room kiểm `message.id`; ChatHub có seen IDs nhưng clear-all khi vượt 500 | Giữ dedupe theo message.id; bounded eviction thay vì reset toàn bộ khi chạm trần |
-| Auth | APIClient Bearer + `TokenRefreshCoordinator` single-flight; rotation reconnect socket | Dùng nguyên cơ chế chung; bảo vệ SOS bằng session generation |
-| Rate limit | `sendWithMetadata` giữ `APIError.rateLimited(retryAfter:)`; `send` thường chỉ trả HTTP error | SOS dùng `sendWithMetadata`, map lỗi theo feature trước generic `withDomainErrors` làm mất ngữ nghĩa |
-| Location pause | `requestFreshLocation` và callback của `CLLocationService` đều guard `isRunning` | One-shot riêng cho SOS chủ động, không resume chia sẻ vị trí nền |
-| Notification | `RealtimeNotificationBridge` phát local notification khi nhận socket lúc app không active; deep link theo userId | Dedupe cùng nguồn SOS; route detail theo sosId; không hứa push/đánh thức app |
-| Logging | Pulse dùng `DiagnosticRedactor` cho HTTP/socket, che token và tọa độ kể cả object lồng | Test regression với payload SOS mới, không thêm log raw; lỗi UI theo key vi/en |
+| Phần            | Đã có trong Mobile                                                                                                | Cần thay đổi                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Tạo SOS         | `SOSUseCases.swift`: `SendSOSUseCase` dùng `lastKnownLocation` và battery, gọi `SocketRealtimeRepository.sendSOS` | REST-only; UUID bền vững; không tự dùng tọa độ cache; body không có battery                          |
+| UX gửi          | `EmergencyCoordinator.confirmSOS` đặt `isSending`, kết thúc bằng timer 3 giây                                     | Thành công chỉ sau response 200/201 hợp lệ; phân biệt lỗi và chưa xác định kết quả                   |
+| Offline         | `OfflineQueue` thực tế đã lưu JSON trên đĩa; `drain()` xóa trước emit; flush cả lúc connected và session:ready    | Không đưa SOS mới vào queue socket; có migration xử lý SOS legacy, không phát lại ngoài REST         |
+| Cảnh báo        | `SOSAlertDTO` bỏ qua `eventId/sosId/revision/status/location`; `SOSAlert.id` là UUID mới mỗi decode               | Identity theo incident/event Backend; nhận nullable location và trạng thái                           |
+| Cập nhật        | Chỉ nghe `sos_alert`; chưa có `sos:updated`                                                                       | Invalidation → GET detail; chống stale response và coalesce reload                                   |
+| Chi tiết/hỗ trợ | Chưa có REST SOS, responders, resolve/cancel                                                                      | Bổ sung repository, use cases, state và màn detail                                                   |
+| Chat            | `ChatMessageDTO`/Domain chưa có `sos`; mapper bỏ metadata                                                         | Optional `sos {id,kind,responderId?}`, optional `eventId`; cả REST history và realtime               |
+| Chat dedupe     | Chat room kiểm `message.id`; ChatHub có seen IDs nhưng clear-all khi vượt 500                                     | Giữ dedupe theo message.id; bounded eviction thay vì reset toàn bộ khi chạm trần                     |
+| Auth            | APIClient Bearer + `TokenRefreshCoordinator` single-flight; rotation reconnect socket                             | Dùng nguyên cơ chế chung; bảo vệ SOS bằng session generation                                         |
+| Rate limit      | `sendWithMetadata` giữ `APIError.rateLimited(retryAfter:)`; `send` thường chỉ trả HTTP error                      | SOS dùng `sendWithMetadata`, map lỗi theo feature trước generic `withDomainErrors` làm mất ngữ nghĩa |
+| Location pause  | `requestFreshLocation` và callback của `CLLocationService` đều guard `isRunning`                                  | One-shot riêng cho SOS chủ động, không resume chia sẻ vị trí nền                                     |
+| Notification    | `RealtimeNotificationBridge` phát local notification khi nhận socket lúc app không active; deep link theo userId  | Dedupe cùng nguồn SOS; route detail theo sosId; không hứa push/đánh thức app                         |
+| Logging         | Pulse dùng `DiagnosticRedactor` cho HTTP/socket, che token và tọa độ kể cả object lồng                            | Test regression với payload SOS mới, không thêm log raw; lỗi UI theo key vi/en                       |
 
 `SocketClient.on` hiện không có API remove listener; handlers sống qua reconnect. Đề xuất một event adapter sống cùng AppContainer, đăng ký đúng một lần bằng weak closure. Session/UI subscribe AsyncStream có hủy; không đăng ký lại socket handler mỗi lần mở view/login.
 
 ## 3. Contract phải giữ chính xác
 
-| Endpoint (sau prefix `/api/v1`) | Request | Decode `data` |
-| --- | --- | --- |
-| POST `/sos` | UUID `clientRequestId`, message optional ≤500, cặp lat/lon optional, `recordedAt` ISO chỉ khi có tọa độ | `{created, incident: SOSSummary}`; 201 mới, 200 replay |
-| GET `/sos` | `status=active`, `limit` 1–100, `cursor=nextCursor` | `{items:[SOSIncident],hasMore,nextCursor}` |
-| GET `/sos/{id}` | `limit` 1–100, `afterId=nextAfterId` | `{incident,responders,hasMore,nextAfterId}` |
-| POST `/sos/{id}/responses` | Chỉ `{status:"coming"}` | `{created,sosId,revision,response}`; response không có name/avatar |
-| PATCH `/sos/{id}` | Chỉ `{status:"resolved"}` hoặc `{status:"cancelled"}` | `{changed,incident:SOSSummary}`; summary có closedAt |
+| Endpoint (sau prefix `/api/v1`) | Request                                                                                                 | Decode `data`                                                      |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| POST `/sos`                     | UUID `clientRequestId`, message optional ≤500, cặp lat/lon optional, `recordedAt` ISO chỉ khi có tọa độ | `{created, incident: SOSSummary}`; 201 mới, 200 replay             |
+| GET `/sos`                      | `status=active`, `limit` 1–100, `cursor=nextCursor`                                                     | `{items:[SOSIncident],hasMore,nextCursor}`                         |
+| GET `/sos/{id}`                 | `limit` 1–100, `afterId=nextAfterId`                                                                    | `{incident,responders,hasMore,nextAfterId}`                        |
+| POST `/sos/{id}/responses`      | Chỉ `{status:"coming"}`                                                                                 | `{created,sosId,revision,response}`; response không có name/avatar |
+| PATCH `/sos/{id}`               | Chỉ `{status:"resolved"}` hoặc `{status:"cancelled"}`                                                   | `{changed,incident:SOSSummary}`; summary có closedAt               |
 
 - Tái sử dụng `APIResponseDTO<T>`, không tạo envelope song song. Tách `SOSSummaryDTO` với `SOSIncidentDTO`; không ép summary có message/location/groupIds.
 - Detail/list chứa ownerId nhưng **không có owner name/avatar**. UI lấy tên đã biết từ member/chat context, nếu thiếu dùng tên dự phòng đã dịch; không invent endpoint lấy profile.
@@ -152,17 +165,17 @@ Phải ngăn SOS legacy trong `OfflineQueue` bị phát khi reconnect hoặc res
 
 SOS mapping riêng giữ HTTP status/code/notBefore; không đổi nghĩa lỗi của các feature khác.
 
-| Lỗi | Hành vi |
-| --- | --- |
-| 400 | Lỗi payload/no Circle/self-assistance; không retry y nguyên; thông báo localized, giữ chi tiết kỹ thuật đã redacted khi debug |
-| 401 | Shared refresh single-flight, retry request một lần bởi APIClient với cùng UUID; hết phiên thì cleanup; không dựng refresh riêng |
-| 403 | Dừng retry, xóa incident/responders không còn quyền; đóng trạng thái hỗ trợ/định vị |
-| 404 | Bỏ cache/card actionable và báo không còn SOS; tin text chat lịch sử vẫn theo quyền chat |
-| 409 | GET/list đối soát; không reopen, không đổi UUID tự động; close khác terminal state hiển thị trạng thái server |
-| 413 | Báo nội dung quá lớn, không retry body cũ |
-| 429 | Lấy Retry-After từ `sendWithMetadata`; mốc thử tiếp ≥ header + jitter không âm, dùng chung cooldown SOS cho read/write |
-| 503 | Chưa xác nhận thành công; giữ payload/UUID để người dùng thử lại. Không kết luận chỉ do flag: có thể transaction/capacity/chat unavailable |
-| 500/mất response | Retry hữu hạn cùng operation; trạng thái unknown nếu chưa đối soát được; không tự thông báo đã gửi |
+| Lỗi              | Hành vi                                                                                                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| 400              | Lỗi payload/no Circle/self-assistance; không retry y nguyên; thông báo localized, giữ chi tiết kỹ thuật đã redacted khi debug              |
+| 401              | Shared refresh single-flight, retry request một lần bởi APIClient với cùng UUID; hết phiên thì cleanup; không dựng refresh riêng           |
+| 403              | Dừng retry, xóa incident/responders không còn quyền; đóng trạng thái hỗ trợ/định vị                                                        |
+| 404              | Bỏ cache/card actionable và báo không còn SOS; tin text chat lịch sử vẫn theo quyền chat                                                   |
+| 409              | GET/list đối soát; không reopen, không đổi UUID tự động; close khác terminal state hiển thị trạng thái server                              |
+| 413              | Báo nội dung quá lớn, không retry body cũ                                                                                                  |
+| 429              | Lấy Retry-After từ `sendWithMetadata`; mốc thử tiếp ≥ header + jitter không âm, dùng chung cooldown SOS cho read/write                     |
+| 503              | Chưa xác nhận thành công; giữ payload/UUID để người dùng thử lại. Không kết luận chỉ do flag: có thể transaction/capacity/chat unavailable |
+| 500/mất response | Retry hữu hạn cùng operation; trạng thái unknown nếu chưa đối soát được; không tự thông báo đã gửi                                         |
 
 Đề xuất tối đa 3 HTTP attempt cho một lượt SOS (không tính 1 retry refresh nội bộ); clock/sleeper/random được inject để test. Sau khi background/hủy UI, không duy trì vòng retry nền. Retry-After dài >60s: lưu notBefore, kết thúc lượt thay vì giữ task sleep; trước deadline nút retry cũng không bypass. Header thiếu/hỏng: exponential backoff có jitter, không loop.
 
@@ -172,20 +185,20 @@ SOS mapping riêng giữ HTTP status/code/notBefore; không đổi nghĩa lỗi 
 
 Chia nhịp nhỏ, mỗi nhịp build được. Người dùng duyệt ngày 29/10/2026: khoảng 10–12 file hoặc một phần chức năng để review. Không commit/push tự động. Các nhịp UI thêm key vi/en cùng thay đổi; dừng báo cáo sau từng phần. S1 chưa nối vào DI/nút SOS, chưa tạo SOS thật trên production.
 
-| Nhịp | File tạo/sửa chính | Hoàn thành và kiểm tra |
-| --- | --- | --- |
-| S1 – Contract REST | Mới `Domain/Entities/SOSIncident.swift`, `Domain/Repositories/SOSIncidentRepository.swift`, `Data/Network/DTOs/SOSDTOs.swift`, `Data/Network/Endpoints/SOSEndpoint.swift`, `Data/Repositories/SOSIncidentRepositoryImpl.swift`, `FamilyTrackerTests/SOSContractTests.swift` | 5 endpoints/body strict/query riêng; fixtures từ doc/source; 201/200 replay, null/date/error mapping; chưa thay UI |
-| S2 – Pending/retry | Mới `Data/Local/SOS/SOSPendingIntentStore.swift`, `Domain/UseCases/SOS/SOSRetryPolicy.swift`, `SOSIntentUseCase.swift`, tests tương ứng | Persist-before-send, UUID/payload không đổi, clock giả, 429/timeout, logout/file hỏng; chưa nối nút |
-| S3 – State/REST recovery | Mới `SOSSessionController.swift` (Application service ở `Data/Services`), port state/use cases và tests | Single-flight, revision fence, responders pagination, list full scan, permission revocation, generation; model độc lập UI |
-| S4a – Events | Sửa `SocketEvent.swift`, `RealtimeDTOs.swift`, `Alerts.swift`, `ChatRealtimeMappers.swift`; thêm SOS event adapter + tests | Decode alert/update, dedupe, đăng ký một lần, legacy thiếu sosId là cảnh báo chưa persist không có action coming |
-| S4b – Chat metadata | Sửa `ChatDTOs.swift`, `Chat.swift`, `ChatRealtimeMappers.swift`, `ChatRepositoryImpl.swift`, dedupe ChatHub nếu cần; tests | Optional metadata/default nil giữ initializer cũ; history và realtime nhất quán; không gửi thêm text SOS |
-| S5 – GPS chủ động | Mới port/provider one-shot + tests | Không đọc cache, không bật tracking nền; pause/denied/timeout/cancel và measured timestamp |
-| S6a – Session wiring | Sửa `AppContainer.swift`, `MainTabCoordinator.swift`, `FamilyTrackerApp.swift`; tests lifecycle | Start/ready/foreground recovery, cleanup explicit logout/onExpired/owner change, stale result ignored |
-| S6b – REST cutover | Sửa `SOSUseCases.swift`, `EmergencyCoordinator.swift`, `SocketRealtimeRepository.swift`, `OfflineQueue.swift`; tests regression và L10n nếu có text | Nút dùng REST duy nhất; bỏ timer giả thành công; không emit/flush SOS legacy. Backend vẫn là nơi tạo chat |
-| S7a – State màn hình | Mới `SOSViewModel.swift`, tests; hoàn thiện factory và intents coordinator | Sending/unknown/active/closed/no-access, operation locks, responders load-more |
-| S7b – Banner/detail | Mới `SOSDetailView.swift`; sửa `SOSAlertBanner.swift`, `EmergencyCoordinator.swift`, vi/en; tests/Preview | Nút coming, safe/cancel, list người hỗ trợ, Dynamic Type; lấy trạng thái từ shared model |
-| S7c – Chat route/notification | Sửa `ChatView.swift`, `ChatHubCoordinator.swift`, `MainTabCoordinator.swift`, `RealtimeNotificationBridge.swift`, notification deeplink và vi/en; tách nếu vượt trần | Card mở đúng incident, không popup trùng; best-effort local route sosId, không hứa APNs |
-| S8 – Đối chiếu thật và chốt | Tests, study doc, `PROGRESS.md`, networking/localization fixtures/scripts nếu cần | Backend gate xác nhận; test 2 thiết bị, fixtures response thực đã ẩn dữ liệu; rollback/checklist |
+| Nhịp                          | File tạo/sửa chính                                                                                                                                                                                                                                                          | Hoàn thành và kiểm tra                                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| S1 – Contract REST            | Mới `Domain/Entities/SOSIncident.swift`, `Domain/Repositories/SOSIncidentRepository.swift`, `Data/Network/DTOs/SOSDTOs.swift`, `Data/Network/Endpoints/SOSEndpoint.swift`, `Data/Repositories/SOSIncidentRepositoryImpl.swift`, `FamilyTrackerTests/SOSContractTests.swift` | 5 endpoints/body strict/query riêng; fixtures từ doc/source; 201/200 replay, null/date/error mapping; chưa thay UI        |
+| S2 – Pending/retry            | Mới `Data/Local/SOS/SOSPendingIntentStore.swift`, `Domain/UseCases/SOS/SOSRetryPolicy.swift`, `SOSIntentUseCase.swift`, tests tương ứng                                                                                                                                     | Persist-before-send, UUID/payload không đổi, clock giả, 429/timeout, logout/file hỏng; chưa nối nút                       |
+| S3 – State/REST recovery      | Mới `SOSSessionController.swift` (Application service ở `Data/Services`), port state/use cases và tests                                                                                                                                                                     | Single-flight, revision fence, responders pagination, list full scan, permission revocation, generation; model độc lập UI |
+| S4a – Events                  | Sửa `SocketEvent.swift`, `RealtimeDTOs.swift`, `Alerts.swift`, `ChatRealtimeMappers.swift`; thêm SOS event adapter + tests                                                                                                                                                  | Decode alert/update, dedupe, đăng ký một lần, legacy thiếu sosId là cảnh báo chưa persist không có action coming          |
+| S4b – Chat metadata           | Sửa `ChatDTOs.swift`, `Chat.swift`, `ChatRealtimeMappers.swift`, `ChatRepositoryImpl.swift`, dedupe ChatHub nếu cần; tests                                                                                                                                                  | Optional metadata/default nil giữ initializer cũ; history và realtime nhất quán; không gửi thêm text SOS                  |
+| S5 – GPS chủ động             | Mới port/provider one-shot + tests                                                                                                                                                                                                                                          | Không đọc cache, không bật tracking nền; pause/denied/timeout/cancel và measured timestamp                                |
+| S6a – Session wiring          | Sửa `AppContainer.swift`, `MainTabCoordinator.swift`, `FamilyTrackerApp.swift`; tests lifecycle                                                                                                                                                                             | Start/ready/foreground recovery, cleanup explicit logout/onExpired/owner change, stale result ignored                     |
+| S6b – REST cutover            | Sửa `SOSUseCases.swift`, `EmergencyCoordinator.swift`, `SocketRealtimeRepository.swift`, `OfflineQueue.swift`; tests regression và L10n nếu có text                                                                                                                         | Nút dùng REST duy nhất; bỏ timer giả thành công; không emit/flush SOS legacy. Backend vẫn là nơi tạo chat                 |
+| S7a – State màn hình          | Mới `SOSViewModel.swift`, tests; hoàn thiện factory và intents coordinator                                                                                                                                                                                                  | Sending/unknown/active/closed/no-access, operation locks, responders load-more                                            |
+| S7b – Banner/detail           | Mới `SOSDetailView.swift`; sửa `SOSAlertBanner.swift`, `EmergencyCoordinator.swift`, vi/en; tests/Preview                                                                                                                                                                   | Nút coming, safe/cancel, list người hỗ trợ, Dynamic Type; lấy trạng thái từ shared model                                  |
+| S7c – Chat route/notification | Sửa `ChatView.swift`, `ChatHubCoordinator.swift`, `MainTabCoordinator.swift`, `RealtimeNotificationBridge.swift`, notification deeplink và vi/en; tách nếu vượt trần                                                                                                        | Card mở đúng incident, không popup trùng; best-effort local route sosId, không hứa APNs                                   |
+| S8 – Đối chiếu thật và chốt   | Tests, study doc, `PROGRESS.md`, networking/localization fixtures/scripts nếu cần                                                                                                                                                                                           | Backend gate xác nhận; test 2 thiết bị, fixtures response thực đã ẩn dữ liệu; rollback/checklist                          |
 
 Tại mỗi nhịp có Swift: build Simulator Debug/Release không ký, networking/localization scripts, SwiftLint, `git diff --check`; chạy XCTest khi target khả dụng. Nếu target chưa có: để test trong `FamilyTrackerTests`, báo chưa chạy, không coi syntax parse là unit test pass. Không tạo target bằng sửa pbxproj thủ công.
 
@@ -219,27 +232,27 @@ Tại mỗi nhịp có Swift: build Simulator Debug/Release không ký, networki
 
 ## 11. Localization dự kiến
 
-| Key | vi | en |
-| --- | --- | --- |
-| `sos.incidents.title` | Yêu cầu SOS | SOS requests |
-| `sos.send.with_location` | Gửi kèm vị trí hiện tại | Include current location |
-| `sos.send.without_location` | Gửi không kèm vị trí | Send without location |
-| `sos.state.sending` | Đang gửi yêu cầu SOS… | Sending SOS request… |
-| `sos.state.committed` | Đã gửi yêu cầu | Request sent |
-| `sos.state.unknown` | Chưa xác nhận gửi thành công. Thử lại sẽ dùng cùng yêu cầu. | Sending is not confirmed. Retrying will reuse this request. |
-| `sos.action.coming` | Tôi sẽ đến ngay | I'm on my way |
-| `sos.state.coming` | Bạn đã xác nhận sẽ đến | You confirmed you're on your way |
-| `sos.action.resolve` | Tôi đã an toàn | I'm safe now |
-| `sos.action.cancel` | Hủy SOS | Cancel SOS |
-| `sos.responders.title` | Người xác nhận hỗ trợ | People offering help |
-| `sos.responders.empty` | Chưa có người xác nhận hỗ trợ | No one has confirmed help yet |
-| `sos.responders.more` | Tải thêm người hỗ trợ | Load more helpers |
-| `sos.state.resolved` | Đã an toàn | Resolved |
-| `sos.state.cancelled` | Đã hủy | Cancelled |
-| `sos.state.expired` | Đã hết hạn | Expired |
-| `sos.error.unavailable` | SOS tạm thời chưa khả dụng. Chưa xác nhận yêu cầu đã được gửi. | SOS is temporarily unavailable. Sending has not been confirmed. |
-| `sos.error.access` | Bạn không còn quyền xem SOS này | You can no longer view this SOS |
-| `sos.error.rate_limit` | Vui lòng chờ trước khi thử lại | Please wait before retrying |
+| Key                         | vi                                                             | en                                                              |
+| --------------------------- | -------------------------------------------------------------- | --------------------------------------------------------------- |
+| `sos.incidents.title`       | Yêu cầu SOS                                                    | SOS requests                                                    |
+| `sos.send.with_location`    | Gửi kèm vị trí hiện tại                                        | Include current location                                        |
+| `sos.send.without_location` | Gửi không kèm vị trí                                           | Send without location                                           |
+| `sos.state.sending`         | Đang gửi yêu cầu SOS…                                          | Sending SOS request…                                            |
+| `sos.state.committed`       | Đã gửi yêu cầu                                                 | Request sent                                                    |
+| `sos.state.unknown`         | Chưa xác nhận gửi thành công. Thử lại sẽ dùng cùng yêu cầu.    | Sending is not confirmed. Retrying will reuse this request.     |
+| `sos.action.coming`         | Tôi sẽ đến ngay                                                | I'm on my way                                                   |
+| `sos.state.coming`          | Bạn đã xác nhận sẽ đến                                         | You confirmed you're on your way                                |
+| `sos.action.resolve`        | Tôi đã an toàn                                                 | I'm safe now                                                    |
+| `sos.action.cancel`         | Hủy SOS                                                        | Cancel SOS                                                      |
+| `sos.responders.title`      | Người xác nhận hỗ trợ                                          | People offering help                                            |
+| `sos.responders.empty`      | Chưa có người xác nhận hỗ trợ                                  | No one has confirmed help yet                                   |
+| `sos.responders.more`       | Tải thêm người hỗ trợ                                          | Load more helpers                                               |
+| `sos.state.resolved`        | Đã an toàn                                                     | Resolved                                                        |
+| `sos.state.cancelled`       | Đã hủy                                                         | Cancelled                                                       |
+| `sos.state.expired`         | Đã hết hạn                                                     | Expired                                                         |
+| `sos.error.unavailable`     | SOS tạm thời chưa khả dụng. Chưa xác nhận yêu cầu đã được gửi. | SOS is temporarily unavailable. Sending has not been confirmed. |
+| `sos.error.access`          | Bạn không còn quyền xem SOS này                                | You can no longer view this SOS                                 |
+| `sos.error.rate_limit`      | Vui lòng chờ trước khi thử lại                                 | Please wait before retrying                                     |
 
 Tên người, nội dung do người dùng/Backend tạo giữ nguyên. Các nhãn trạng thái và action do app sở hữu được dịch. Kiểm tra câu unknown/unavailable (dài nhất), tên có dấu/tên dài, VoiceOver và cỡ chữ lớn; không hard-code số count dạng singular/plural.
 
