@@ -27,7 +27,7 @@ Considered but rejected for P1: replacing all `GeoPoint` APIs (breaks Map/SOS), 
 3. Route only `ShareLocationUseCase` through fixes; adapt the baseline test to fix input with deliberately different GPS timestamp and `now`, asserting identical send decisions/payload. Do not touch Map, SOS, socket or backend implementations.
 4. Verify unsigned Simulator build, `scripts/test_networking.sh`, `scripts/test_localization.sh`, SwiftLint, `git diff --check`; attempt `xcodebuild test` only if the target/scheme exists and report the actual outcome. Update `PROGRESS.md`. Suggested single commit: `refactor(location): carry GPS fix metadata without changing emissions`.
 
-Files after approval (8 total including this plan): new `FamilyTracker/Domain/Entities/LocationFix.swift`, new `FamilyTrackerTests/LocationFixTests.swift`, new `.spec/location-fix.md`; edit `FamilyTracker/Domain/Repositories/RealtimeRepositories.swift`, `FamilyTracker/Data/Repositories/DeviceRepositories.swift`, `FamilyTracker/Domain/UseCases/LiveMap/LiveMapUseCases.swift`, `PROGRESS.md`. No `project.pbxproj` edit.
+Files after approval (8 total including this plan): new `FamilyTracker/Domain/Entities/LocationFix.swift`, new `FamilyTrackerTests/LocationFixTests.swift`, new `.spec/005-location/references/location-fix.md`; edit `FamilyTracker/Domain/Repositories/RealtimeRepositories.swift`, `FamilyTracker/Data/Repositories/DeviceRepositories.swift`, `FamilyTracker/Domain/UseCases/LiveMap/LiveMapUseCases.swift`, `PROGRESS.md`. No `project.pbxproj` edit.
 
 ## Risks and rollback
 

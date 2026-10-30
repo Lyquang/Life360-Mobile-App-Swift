@@ -143,7 +143,7 @@ If the existing code uses `DomainError`, bridge or extend it deliberately rather
 
 Before writing Swift for a feature:
 
-1. Create `.spec/<feature-name>.md` from `.spec/templates/feature-spec.md`.
+1. Update the relevant `.spec/<number>-<feature>/spec.md`, or create a new numbered feature folder using `.spec/templates/` and the workflow in `.spec/README.md`.
 2. Define objective, input/output, modeled state, architecture path, edge cases, and test plan.
 3. Use `scripts/codebase_skeleton.sh` and AST/code graph tools to identify touched files.
 4. Implement by layer: Domain contracts, UseCases, Core/Data services, ViewModel, View, Coordinator.

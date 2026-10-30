@@ -85,7 +85,7 @@ Backend follow-ups outside this mobile task: verify Render `trust proxy` and CGN
 
 ### G1 - Models, secure storage and diagnostics
 
-Files: add `.spec/refresh-token-rotation.md`; update `Domain/Entities/User.swift` or add a focused `AuthTokens.swift`, `Data/Network/DTOs/CoreDTOs.swift`, `Data/Network/DTOs/RequestDTOs.swift`, `Data/Network/Mappers/CoreMappers.swift`, `Data/Local/Keychain/KeychainStore.swift`, `Core/Logging/DiagnosticRedactor.swift`, and `Core/Logging/PulseDiagnostics.swift`. Add tests under `FamilyTrackerTests/` without creating a target. Completion: decoded auth pair and absolute expiry, atomic Keychain replacement with checked OSStatus, legacy access-only read, no auth bodies in Pulse. Test DTO fixtures, migration, simulated Keychain failure and redaction; build, lint and relevant contract suites.
+Files: add `.spec/002-api-auth/references/refresh-token-rotation.md`; update `Domain/Entities/User.swift` or add a focused `AuthTokens.swift`, `Data/Network/DTOs/CoreDTOs.swift`, `Data/Network/DTOs/RequestDTOs.swift`, `Data/Network/Mappers/CoreMappers.swift`, `Data/Local/Keychain/KeychainStore.swift`, `Core/Logging/DiagnosticRedactor.swift`, and `Core/Logging/PulseDiagnostics.swift`. Add tests under `FamilyTrackerTests/` without creating a target. Completion: decoded auth pair and absolute expiry, atomic Keychain replacement with checked OSStatus, legacy access-only read, no auth bodies in Pulse. Test DTO fixtures, migration, simulated Keychain failure and redaction; build, lint and relevant contract suites.
 
 ### G2 - Single-flight and API interception
 

@@ -1,91 +1,39 @@
-# Feature Spec: <name>
+# Đặc tả tính năng: <tên>
 
-Status: Draft
-Owner: AI Agent
-Last Updated: YYYY-MM-DD
+**Trạng thái**: Draft · **Ngày cập nhật**: YYYY-MM-DD
 
-## Objective
+## Ranh giới phạm vi
 
-What user or system outcome does this feature deliver?
+Mục tiêu, đối tượng, phần thuộc mobile, phụ thuộc bên ngoài và nội dung ngoài phạm vi.
 
-## Scope
+## Làm rõ
 
-In:
+Các quyết định đã được xác nhận; liệt kê riêng câu hỏi còn mở, không tự coi đề xuất là phê duyệt.
 
-- 
+## Kịch bản người dùng và kiểm thử
 
-Out:
+### Câu chuyện 1 — <tên> (ưu tiên: P1)
 
-- 
+Mô tả nhu cầu, lý do ưu tiên và cách kiểm thử độc lập.
 
-## Inputs / Outputs
+1. **Cho trước** <điều kiện>, **khi** <hành động>, **thì** <kết quả kiểm chứng>.
 
-Inputs:
+### Trường hợp biên
 
-- 
+Mất mạng, quyền hệ điều hành, lỗi backend, vòng đời, dữ liệu nhạy cảm và các trường hợp liên quan.
 
-Outputs:
+## Yêu cầu chức năng
 
-- 
+- **FR-001**: <yêu cầu có thể kiểm thử>.
 
-## Modeled State
+## Thực thể chính
 
-ViewModel state:
+Các đầu vào, đầu ra và trạng thái của Domain, UI và dữ liệu bền vững.
 
-- 
+## Tiêu chí hoàn thành
 
-Domain state:
+Các kết quả kiểm thử được; phân biệt mục tiêu với số đo thực tế.
 
-- 
+## Giả định và phụ thuộc
 
-Persistence/cache state:
-
-- 
-
-## Architecture Path
-
-```text
-View -> ViewModel -> Coordinator -> UseCase -> Repository Protocol -> Data/Core Service
-```
-
-Touched files expected:
-
-- 
-
-New files expected:
-
-- 
-
-## Edge Cases
-
-- Network unavailable or socket disconnected.
-- GPS permission denied.
-- GPS permission reduced accuracy.
-- Background app suspension.
-- Low Power Mode or low battery.
-- Empty server response.
-- Duplicate events or replayed realtime events.
-
-## Error Handling
-
-Typed errors:
-
-- 
-
-User-facing recovery:
-
-- 
-
-## Verification
-
-Static checks:
-
-- 
-
-Manual checks:
-
-- 
-
-Automated tests:
-
-- 
+Hợp đồng backend đã xác nhận hoặc đề xuất, quyền iOS, khóa phạm vi và các giới hạn cần kiểm chứng.

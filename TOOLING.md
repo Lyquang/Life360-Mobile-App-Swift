@@ -14,7 +14,11 @@ sed -n '1,220p' PROGRESS.md
 For a feature task, create a spec:
 
 ```bash
-cp .spec/templates/feature-spec.md .spec/<feature-name>.md
+feature_dir=.spec/013-example
+mkdir -p "$feature_dir/checklists"
+cp .spec/templates/feature-spec.md "$feature_dir/spec.md"
+cp .spec/templates/{plan,tasks,research,data-model,quickstart}.md "$feature_dir/"
+cp .spec/templates/requirements.md "$feature_dir/checklists/requirements.md"
 ```
 
 ## 2. Codebase Skeleton

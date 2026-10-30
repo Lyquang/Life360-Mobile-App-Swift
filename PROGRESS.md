@@ -10,6 +10,12 @@ Legend:
 
 ## Feature Status
 
+- `[x]` Spec organization: grouped FamilyTracker specifications under numbered
+  feature folders modeled on `.spec/001-message-notifications/`, preserved prior
+  detailed specs, added templates and updated agent/tooling references. This is a
+  documentation migration; feature implementation and device validation statuses
+  remain governed by the entries below.
+
 - `[x]` Engineering CI: unsigned Xcode 26.2 Simulator build, networking/localization
   contract tests, SwiftLint baseline, full-history Gitleaks scan and weekly Dependabot.
 
@@ -186,6 +192,8 @@ Legend:
   backend currently exposes only an account-wide switch with no expiring SOS lease.
   Review scoped SOS permission errors by incident and added tests for stale or
   malformed realtime timestamps; device and XCTest validation remain outstanding.
+  Backend contract request for confirmed temporary SOS location sharing is in
+  `study/sos-live-location-backend-request.md`; the proposed endpoints are not deployed APIs.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,
@@ -208,7 +216,7 @@ Legend:
   settings model. Update root SwiftUI locale without replacing coordinator/state
   identity. Use explicit localized bundles for non-View strings; keep user/server
   content verbatim. OS-owned dialogs follow the OS-selected language. See
-  `.spec/app-language.md` and `LOCALIZATION.md`.
+  `.spec/003-app-language/references/app-language.md` and `LOCALIZATION.md`.
 
 - 2026-10-12: Both Debug and Release default to deployed REST `/api/v1` and the
   deployed Socket.IO host. Localhost is available only through the explicit
@@ -218,7 +226,7 @@ Legend:
   DebugCoordinator owns console/export presentation. Release keeps NoopNetworkLogger.
   No automatic LLM transmission; export contains a prompt plus at most 100 events.
   Native Pulse sharing and manually enabled remote logging remain available.
-  See `.spec/pulse-debugger.md` and `TOOLING.md` section 7.
+  See `.spec/007-debugger/references/pulse-debugger.md` and `TOOLING.md` section 7.
 
 ### Pulse Verification
 
@@ -260,7 +268,7 @@ Legend:
 - Unsigned Debug build for generic iOS Simulator: PASS with Xcode 26.2.
   Initial sandbox build could not resolve packages; the authorized retry succeeded.
 - No production API mutations or live-account integration tests were performed.
-- Full endpoint inventory and continuation scope: `.spec/api-integration.md`.
+- Full endpoint inventory and continuation scope: `.spec/002-api-auth/references/api-integration.md`.
 
 ### Follow-up Findings For Phases 2 And 3
 
@@ -280,7 +288,7 @@ Legend:
   long `Retry-After` handling and lifecycle/account rules. Debug/Release unsigned
   Simulator builds, contract scripts, Swift parsing, targeted lint and diff check
   pass. XCTest source exists but the project has no `FamilyTrackerTests` target;
-  no project-file changes were made. See `.spec/location-offline-buffer.md` and
+  no project-file changes were made. See `.spec/005-location/references/location-offline-buffer.md` and
   `study/location/P7-offline-location-buffer.md`.
 
 - 2026-10-13: Completed approved P4B. Integrated `LocationSendPolicy` into the
@@ -294,17 +302,17 @@ Legend:
   returning reasoned send/hold/drop decisions and exposed `MotionState` through
   `DeviceLocationRepository`. No pending timer, app-state integration, diagnostics
   reason counters or send behavior migration was performed. See
-  `.spec/location-send-policy.md` and `study/location/P4-location-send-policy.md`.
+  `.spec/005-location/references/location-send-policy.md` and `study/location/P4-location-send-policy.md`.
 
 - 2026-10-13: Replaced the heartbeat's cancellation-swallowing `try?` with an
   injected sleeper and explicit pre/post-sleep cancellation exits. Added lifecycle
   regression source for pending sleep, wake/stop race, failed server logout, double
   start and stop/restart. Location authorization revocation routes to the same
-  `ShareLocationUseCase.stop()`. See `.spec/location-heartbeat-cancellation.md` and
+  `ShareLocationUseCase.stop()`. See `.spec/005-location/references/location-heartbeat-cancellation.md` and
   `study/location/P3-heartbeat-cancellation.md`.
 
 - 2026-10-13: Implemented approved P2 without changing GPS policy, send threshold,
-  socket payload, backend or UI. See `.spec/location-diagnostics.md` and
+  socket payload, backend or UI. See `.spec/005-location/references/location-diagnostics.md` and
   `study/location/P2-location-diagnostics.md` for counter definitions and the
   device baseline worksheet. SwiftLint is not installed and the saved Xcode
   project still lacks a runnable `FamilyTrackerTests` target.
@@ -313,7 +321,7 @@ Legend:
   repository fix stream, preserving the GeoPoint projection for other screens.
   Regression source covers CLLocation metadata (including negative speed/course),
   old send decisions, compatibility projection and `update_location` payload.
-  See `.spec/location-fix.md` and `study/location/P1-location-fix.md`.
+  See `.spec/005-location/references/location-fix.md` and `study/location/P1-location-fix.md`.
 
 - 2026-10-12: Implemented the approved Refresh Token Rotation plan in iOS 16/Combine.
   Added atomic token-pair Keychain updates with legacy JWT fallback, refresh error
@@ -323,7 +331,7 @@ Legend:
   localization contracts, unsigned Simulator build and SwiftLint passed. XCTest source
   was added under `FamilyTrackerTests`, but `xcodebuild test` reports the checked-in
   scheme is not configured for Test Action; no project target was created by the agent.
-  See `study/refresh-token-interview-notes.md` and `.spec/refresh-token-rotation.md`.
+  See `study/refresh-token-interview-notes.md` and `.spec/002-api-auth/references/refresh-token-rotation.md`.
 
 - 2026-10-12: Audited the new Refresh Token Rotation contract against the iOS session,
   networking, Socket.IO and Pulse code. Wrote the gap analysis and G1-G5 approval plan
