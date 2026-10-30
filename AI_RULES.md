@@ -9,6 +9,10 @@ This file is the source of truth for all AI agents working in this repository. E
 3. Create or update a short feature spec before adding new `.swift` files or changing a user-facing flow.
 4. Keep changes scoped to the current feature boundary. Do not rewrite unrelated layers.
 5. Update `PROGRESS.md` after every completed task or commit-equivalent change.
+6. For non-trivial code investigations, use the FamilyTracker Graphify index when
+   available and relevant; query it narrowly, check freshness and verify every
+   conclusion against source. If unavailable or stale, use `rg`/AST or rebuild as
+   documented in `TOOLING.md`. Never use the copied `graphify-out/` from another project.
 
 ## Architecture Boundaries
 
