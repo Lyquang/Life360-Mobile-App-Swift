@@ -104,7 +104,6 @@ Mỗi nhịp: build Debug/Release simulator không ký; `scripts/test_networking
 | T1c - REST/Socket | mới `Core/Monitoring/NetworkTaskMetricsDelegate.swift`, `NetworkPathObserver.swift`; sửa `APIClient.swift`, `TokenRefreshCoordinator.swift`, `SocketIOClientAdapter.swift`, `AppContainer.swift`; test mới `MobileNetworkMetricsTests.swift` | Task metrics mỗi transaction, socket estimate/connection, route/event whitelist, redirect/retry và mạng đổi, không log URL. Cần mở khóa Realtime. |
 | T1d - media/cache | sửa `MediaUploadService.swift`, `CachedMediaImage.swift`, `AppContainer.swift` nếu cần; test mới `MobileMediaMetricsTests.swift` | PUT metrics + tiến độ vẫn đúng, cache hit/miss và download; AVPlayer ghi coverage chưa đo, không bịa số. Cần mở khóa Presentation cho ảnh. |
 | T2 - MetricKit | mới `Core/Monitoring/MetricKitReceiver.swift`, `MetricKitSummary.swift`; sửa `AppContainer.swift`; test mới `MetricKitSummaryTests.swift` | Chỉ field iOS 16 typed, nil/mixed-version, crash/hang count, xóa khi logout/tắt; simulated payload chỉ kiểm callback. |
-
 | T3a - signpost | mới `Core/Monitoring/PerformanceSignposts.swift`; sửa tối đa 5 luồng ở `AppContainer`, `LiveMapUseCases`, `JourneyViewModel`, chat list, media service; test/check Instruments | Tên tĩnh, không metadata nhạy cảm, đo không đổi luồng. Cần mở khóa Presentation/Location. |
 | T3b - Debug UI | mới `Presentation/Scenes/Debug/MobileMonitoringView.swift`, view model, export document/test; sửa `DebugCoordinator.swift`, `en.lproj`/`vi.lproj` | Không card lồng, Dynamic Type, VoiceOver, empty/error/disabled/export; không để mở Debug ở Release. Cần mở khóa Presentation/i18n. |
 | T4 - tùy chọn, chờ BE contract/duyệt riêng | chia T4a consent local + T4b client/transport, mỗi nhịp <=8 file | Mặc định off, foreground+Wi-Fi, report size cap/idempotency, xóa và App Privacy; không làm trước endpoint và quyết định ẩn danh. |
@@ -117,6 +116,16 @@ Mỗi nhịp: build Debug/Release simulator không ký; `scripts/test_networking
 T1a có `AppContainer` nhưng không thay Presentation/Location; T1b/T1c/T1d/T3 chỉ bắt đầu sau xác nhận khóa. Không tự chạy `git commit`. Nếu file thực tế cần sửa vượt 8, dừng và tách nhịp nhỏ hơn.
 
 ## Rủi ro, rollback và điều cần quyết định
+
+### Phạm vi còn thiếu trước nghiệm thu đầy đủ
+
+- Chưa đo năng lượng/4G/overhead trên iPhone; chưa kiểm tra giao diện bằng VoiceOver/chữ lớn trên thiết bị.
+- M1 cần công tắc bật/tắt toàn bộ instrumentation; tắt riêng collector không tắt MetricKit, observer và signpost.
+- Màn Debug hiện hiển thị tổng và báo cáo MetricKit gần nhất; chưa có màn so sánh phiên bản, percentile latency hay xu hướng pin có cờ tin cậy. `WholeDeviceBatteryTrend` hiện chỉ là helper, chưa nối vào UI.
+- Chưa đo riêng traffic AVPlayer, full MapKit rendering hoặc launch tới frame đầu tiên. Các giới hạn này không được thay bằng số 0.
+- XCTest chưa chạy vì scheme thiếu Test action; T4 gửi backend/consent chưa triển khai.
+
+Hướng dẫn thao tác và điều kiện thí nghiệm: [mobile-energy-experiments.md](mobile-energy-experiments.md). Ghi chú ôn tập: [mobile-monitoring-interview-notes.md](mobile-monitoring-interview-notes.md).
 
 ### T3b: màn chẩn đoán cục bộ
 

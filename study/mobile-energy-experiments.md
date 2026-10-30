@@ -4,6 +4,17 @@ Trạng thái 23/10/2026: **quy trình, chưa có kết quả đo**. Không dùn
 
 ## Câu hỏi và chỉ số
 
+### Thao tác với bản Debug hiện tại
+
+1. Mở app, đăng nhập rồi mở bảng Pulse bằng nút Debug. Bấm biểu tượng biểu đồ để vào **Chẩn đoán ứng dụng**.
+2. Kéo để làm mới sau một lượt thử. Nút chia sẻ xuất `FamilyTracker-Metrics.json`; đây là report tổng hợp, khác với nút xuất log AI trong Pulse.
+3. JSON có hai phần `windows` và `metricKit`. `windows.start` dùng mặc định Codable Date của Swift: số giây từ 01/01/2001 UTC, không phải Unix epoch. Dictionary có khóa enum có thể encode thành mảng key/value xen kẽ; không giả định mọi dictionary đều là JSON object.
+4. Màn mạng hiện cộng tất cả loại mạng theo các cửa sổ còn lưu. Muốn phân tích riêng cellular, đọc nhãn network trong JSON. Không gọi tổng hiển thị là “4G mỗi giờ”. Một cửa sổ đầu/cuối có thể chỉ bao phủ một phần thí nghiệm, nên ghi rõ sai số thời gian.
+5. Report MetricKit chưa có là trạng thái bình thường; không thay bằng 0. Release hiện không thu collector/MetricKit và không có màn Debug. Thí nghiệm Release bằng Instruments/Settings là lượt riêng, không thể dùng nó để xác nhận đầy đủ đường xuất Debug.
+6. Trong Instruments, tìm subsystem `com.familytracker.app`, category `performance`; các mốc hiện có được giải thích trong [ghi chú phỏng vấn](mobile-monitoring-interview-notes.md). Chưa có marker “màn đầu đã vẽ xong”; không dùng `ComposeApp` làm launch-to-first-frame.
+
+**M1 chưa sẵn sàng end-to-end:** chưa có công tắc tắt toàn bộ instrumentation, gồm collector, MetricKit, observer và signpost. `MobileMetricsCollector.setEnabled(false)` chỉ tắt collector; không đủ làm đối chứng toàn hệ thống. Giữ hàng M1 ở trạng thái chưa đo cho tới khi có cấu hình bật/tắt thống nhất và được kiểm chứng. Chưa thực hiện đo trên iPhone trong phiên làm việc này.
+
 1. App đang chạy chia sẻ vị trí làm mức pin **toàn máy** thay đổi thế nào so với cùng máy không chia sẻ? Phân biệt foreground/background, stationary/walking/cycling/automotive, màn hình bật/tắt.
 2. GPS chạy bao lâu ở mỗi mức accuracy thực tế theo MetricKit, so với chế độ mà app nghĩ đang áp dụng? Có chuyển từ standard sang significant-change khi đứng yên không?
 3. Mỗi giờ/ngày, app dùng bao nhiêu Wi-Fi/cellular theo MetricKit? REST/Socket/media ước tính đóng góp bao nhiêu và coverage thiếu ở đâu?
