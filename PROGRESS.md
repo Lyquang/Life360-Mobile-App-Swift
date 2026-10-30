@@ -18,6 +18,8 @@ Legend:
 
 - `[x]` Engineering CI: unsigned Xcode 26.2 Simulator build, networking/localization
   contract tests, SwiftLint baseline, full-history Gitleaks scan and weekly Dependabot.
+  Pull requests targeting main run CI even when they only change documentation;
+  documentation-only pushes to main remain excluded by the existing path filters.
 
 - `[x]` Vietnamese / English localization: app picker, persisted preference,
   purpose strings and `L10n.tr` with safe missing-key fallback; localized Auth,
