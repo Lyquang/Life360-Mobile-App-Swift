@@ -21,6 +21,9 @@ cp .spec/templates/{plan,tasks,research,data-model,quickstart}.md "$feature_dir/
 cp .spec/templates/requirements.md "$feature_dir/checklists/requirements.md"
 ```
 
+Alternatively, use the Bash helpers in `.specify/README.md`. These helpers do
+not install Spec Kit CLI or agent integrations and do not create Git branches.
+
 ## 2. Codebase Skeleton
 
 Generate a compact architecture overview without implementation bodies:
