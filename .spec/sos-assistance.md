@@ -3,7 +3,14 @@
 Status: approved for implementation, 2026-10-29. S1 REST contract, S2 durable
 pending/retry runner, S3 REST recovery, S4 socket/lifecycle invalidations and chat
 metadata, and S5 independent one-shot GPS implemented. Shared read/write cooldown,
-secure REST write cutover, SOS UI and physical-device verification remain.
+REST write cutover, SOS detail/chat UI and local notification routing are implemented;
+physical-device and production integration verification remain.
+S6a wires the pending-intent runner to the authenticated session lifecycle;
+activation restores only, and session cleanup precedes a new activation.
+The user requested explicitly confirmed continuous sharing while SOS is active.
+The receiver can follow existing realtime positions; automatic sender-side
+activation/restoration is not implemented. The current backend's account-wide
+privacy switch has no SOS-scoped expiry or conditional restore contract.
 User requests reviewable batches of approximately 10–12 files or one coherent part.
 
 Canonical mobile execution plan: [study/sos-assistance-integration.md](../study/sos-assistance-integration.md).

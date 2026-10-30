@@ -37,6 +37,22 @@ struct LiveMapView: View {
 
             header
 
+            if viewModel.sosFollowActive {
+                VStack(spacing: 2) {
+                    if let date = viewModel.sosLocationUpdatedAt {
+                        Text(verbatim: L10n.tr("sos.live.updated", DisplayFormat.time(date)))
+                    } else {
+                        Text(verbatim: L10n.tr("sos.live.no_time"))
+                    }
+                    if !viewModel.isConnected { Text(verbatim: L10n.tr("sos.live.offline")) }
+                }
+                .font(FTFont.caption()).foregroundColor(FTColors.textPrimary)
+                .padding(FTSpacing.sm).background(FTColors.background).cornerRadius(FTRadius.md)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.top, 165)
+                .allowsHitTesting(false)
+            }
+
             if viewModel.trailUnavailable {
                 Button(action: viewModel.refreshTrail) {
                     Label(L10n.tr("trail.unavailable"), systemImage: "arrow.clockwise")

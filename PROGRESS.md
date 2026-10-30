@@ -157,27 +157,35 @@ Legend:
   pass; saved XCTest target and physical-device checks remain.
 - `[-]` Emergency SOS: SOS use cases, alert banner, coordinator-driven emergency flow.
   S1 adds typed SOS REST endpoints, DTOs, repository and mock contract coverage;
-  Debug/Release Simulator builds and networking/localization scripts pass. The
-  existing SOS UI still uses the legacy flow until a later cutover. XCTest remains
+  Debug/Release Simulator builds and networking/localization scripts pass. XCTest remains
   blocked by the scheme's missing Test action. User confirmed backend flags and
   transactions on 2026-10-29; production responses remain unverified.
   S2a adds owner/session-scoped durable pending intents and a deterministic retry
   policy. S2b adds a single-flight foreground runner with persist-before-send,
-  bounded retry and cooldown; it is not wired to UI or session lifecycle yet.
+  bounded retry and cooldown, now wired to UI and session lifecycle.
   S3 adds a session-scoped REST recovery controller with full incident pagination,
   revision fences, responder paging, 403/404 cleanup and read-side rate-limit
   cooldown. S4a connects authenticated lifecycle and deduplicated `sos_alert`/
-  `sos:updated` invalidations to detail recovery; shared read/write cooldown,
-  REST write cutover, chat SOS metadata and responder UI remain pending. The
-  legacy SOS banner is not yet deduplicated by sosId.
+  `sos:updated` invalidations to detail recovery.
   S4b retains backend `sos`/`eventId` metadata for REST and realtime chat,
-  bounds message/event deduplication and resets event IDs by session generation;
-  chat cards and navigation to incident detail remain pending.
+  bounds message/event deduplication and resets event IDs by session generation.
   SOS create/respond/close now require an expected auth session generation; the
-  runner retains and rechecks that generation across retries. Wiring to logout/UI remains pending.
+  runner retains and rechecks that generation across retries.
   S5 adds an independent, cancellable one-shot SOS location provider with an
-  eight-second fix timeout and no cached-location fallback. It is not yet wired
-  to the SOS UI; permission and actual GPS behavior require device testing.
+  eight-second fix timeout and no cached-location fallback, now wired to the SOS UI.
+  Permission and actual GPS behavior require device testing.
+  S6a wires the SOS intent runner to authenticated startup and session cleanup;
+  queued lifecycle operations prevent a previous logout from clearing a newer
+  session. Device/integration verification remains pending.
+  S6b/S7 add REST-only creation and assistance/closure, one-shot opt-in location,
+  detail/responder UI, SOS chat cards, incident-based notification routing and
+  legacy SOS queue filtering. Validation on two real devices and production is
+  still required; background delivery depends on the app actually running (no APNs).
+  SOS map routing can follow the sender's existing realtime updates with a measured
+  timestamp. Automatic SOS-scoped sharing after consent is not implemented: the
+  backend currently exposes only an account-wide switch with no expiring SOS lease.
+  Review scoped SOS permission errors by incident and added tests for stale or
+  malformed realtime timestamps; device and XCTest validation remain outstanding.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,

@@ -46,6 +46,7 @@ final class ChatHubCoordinator: NavigationCoordinator {
     let viewModel: ChatHubViewModel
     let circleViewModel: CircleListViewModel
     let currentUserId: String
+    var onShowSOS: ((String) -> Void)?
     var mediaImageLoader: MediaImageLoader { container.mediaImageLoader }
 
     private let container: AppContainer
@@ -263,7 +264,7 @@ struct ChatHubCoordinatorView: View {
                              imageLoader: coordinator.mediaImageLoader,
                              onShowGroupInfo: groupId == nil ? nil : {
                                  coordinator.showGroupInfo(conversationID: id)
-                             })
+                             }, onShowSOS: coordinator.onShowSOS)
                         .onAppear { coordinator.didOpen(id) }
                         .onDisappear { coordinator.didClose(id) }
                 }

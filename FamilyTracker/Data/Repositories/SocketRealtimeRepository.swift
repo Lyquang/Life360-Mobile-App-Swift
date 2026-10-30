@@ -1,6 +1,6 @@
 import Foundation
 
-/// Location delivery is owner-scoped; the generic offline queue retains SOS events.
+/// Location delivery is owner-scoped; SOS writes use REST only.
 final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRepository, SOSRepository {
     private let socket: SocketClient
     private let offlineQueue: OfflineQueue
@@ -94,32 +94,12 @@ final class SocketRealtimeRepository: RealtimeSessionRepository, LiveLocationRep
 
     func observeSOSAlerts() -> AsyncStream<SOSAlert> { sosAlerts.stream() }
 
-    func sendSOS(message: String, location: GeoPoint?, batteryLevel: Int?) {
-        var payload: [String: Any] = ["message": message]
-        if let location {
-            payload["latitude"] = location.latitude
-            payload["longitude"] = location.longitude
-        }
-        if let batteryLevel { payload["batteryLevel"] = batteryLevel }
-        emitOrQueue(SocketEvent.sosAlert, payload, coalesceKey: nil)
-    }
-
     // MARK: - Private
-
-    private func emitOrQueue(_ event: String, _ payload: [String: Any], coalesceKey: String?) {
-        if socket.status == .connected {
-            socket.emit(event, payload)
-            if event == SocketEvent.updateLocation { diagnostics?.recordEmit() }
-        } else {
-            offlineQueue.enqueue(event: event, payload: payload, coalesceKey: coalesceKey)
-            if event == SocketEvent.updateLocation { diagnostics?.recordOfflineEnqueue() }
-        }
-    }
 
     private func flushOfflineQueue() {
         for item in offlineQueue.drain() {
             // Older app versions persisted a coalesced fix without its GPS timestamp.
-            guard item.event != SocketEvent.updateLocation else { continue }
+            guard item.event != SocketEvent.updateLocation, item.event != SocketEvent.sosAlert else { continue }
             socket.emit(item.event, item.payload)
             if item.event == SocketEvent.updateLocation { diagnostics?.recordEmit() }
         }

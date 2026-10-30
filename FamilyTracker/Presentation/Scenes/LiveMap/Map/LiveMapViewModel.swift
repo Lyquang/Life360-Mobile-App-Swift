@@ -10,6 +10,8 @@ final class LiveMapViewModel: ObservableObject {
     @Published private(set) var trailDrawing = TrailDrawing.empty
     @Published private(set) var trailUnavailable = false
     @Published private(set) var selectedTrailUserId: String
+    @Published private(set) var sosFollowActive = false
+    @Published private(set) var sosLocationUpdatedAt: Date?
 
     let currentUserId: String
 
@@ -30,6 +32,8 @@ final class LiveMapViewModel: ObservableObject {
     private var watchedDate: String?
     private var lastTrailRefreshAt = Date.distantPast
     private var trailAccessClosed = false
+    private var followedSOSMemberId: String?
+    private var followedSOSLastTime: Date?
     private var watchMismatchCount = 0
     private var loadGeneration = 0
 
@@ -116,6 +120,8 @@ final class LiveMapViewModel: ObservableObject {
     }
 
     func centerOnUser() {
+        followedSOSMemberId = nil
+        sosFollowActive = false
         selectTrail(userId: currentUserId)
         guard let point = getCurrentLocation() else { return }
         isTrackingUser = true
@@ -123,29 +129,57 @@ final class LiveMapViewModel: ObservableObject {
     }
 
     func centerOnMember(_ member: MemberLocation) {
+        followedSOSMemberId = nil
+        sosFollowActive = false
         isTrackingUser = false
         center(on: member.point)
         selectTrail(userId: member.id)
     }
 
     func focus(on point: GeoPoint) {
+        followedSOSMemberId = nil
+        sosFollowActive = false
         isTrackingUser = false
         center(on: point)
     }
 
-    func userMovedMap() { isTrackingUser = false }
+    /// Follow live updates when available; the SOS fix is only a fallback snapshot.
+    func followSOSMember(_ userID: String, fallback: GeoPoint?, recordedAt: Date?) {
+        isTrackingUser = false
+        followedSOSMemberId = userID
+        followedSOSLastTime = recordedAt
+        sosFollowActive = true
+        sosLocationUpdatedAt = recordedAt
+        selectTrail(userId: userID)
+        if let member = memberLocations.first(where: { $0.id == userID }),
+           acceptSOSLocationTime(member.timestamp) {
+            center(on: member.point)
+        } else if let fallback { center(on: fallback) }
+    }
+
+    func userMovedMap() { isTrackingUser = false; followedSOSMemberId = nil; sosFollowActive = false }
 
     private func center(on point: GeoPoint) {
         mapRegion = MKCoordinateRegion(center: point.coordinate, delta: 0.01)
     }
 
     private func upsert(_ location: MemberLocation) {
+        let isFollowed = location.id == followedSOSMemberId
+        if isFollowed && !acceptSOSLocationTime(location.timestamp) { return }
         if let index = memberLocations.firstIndex(where: { $0.id == location.id }) {
             memberLocations[index] = location
         } else {
             memberLocations.append(location)
         }
+        if isFollowed { center(on: location.point) }
         if location.id == selectedTrailUserId { refreshMissingTrail() }
+    }
+
+    private func acceptSOSLocationTime(_ timestamp: String) -> Bool {
+        guard let date = SOSFollowTimestampPolicy.accepts(timestamp, after: followedSOSLastTime) else { return false }
+        followedSOSLastTime = date
+        sosLocationUpdatedAt = date
+        return true
     }
 
     private func refreshMissingTrail() {

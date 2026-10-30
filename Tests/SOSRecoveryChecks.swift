@@ -146,6 +146,8 @@ enum SOSRecoveryChecks {
         await repository.resume()
         await staleList.value
         try expect(controller.incidents[a] == nil && controller.details[a] == nil, "403 did not remove SOS")
+        try expect(controller.detailErrors[a] == .forbidden && controller.detailErrors[b] == nil,
+                   "SOS permission errors leaked across incidents")
         await repository.setPage(nil, .failure(.network))
         await controller.reconcile()
         try expect(controller.incidents[b] != nil, "Failed list removed a cached incident")

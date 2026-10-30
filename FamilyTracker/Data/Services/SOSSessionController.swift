@@ -7,6 +7,7 @@ final class SOSSessionController: ObservableObject {
     @Published private(set) var incidents: [String: SOSIncident] = [:]
     @Published private(set) var details: [String: SOSDetail] = [:]
     @Published private(set) var lastError: SOSFailure?
+    private(set) var detailErrors: [String: SOSFailure] = [:]
     @Published private(set) var isReconciling = false
     @Published private(set) var refreshing: Set<String> = []
     @Published private(set) var loadingResponders: Set<String> = []
@@ -58,6 +59,7 @@ final class SOSSessionController: ObservableObject {
         awaitingRefresh.removeAll()
         cooldownUntil = nil
         lastError = nil
+        detailErrors.removeAll()
         isReconciling = false
         clock = 0
     }
@@ -190,6 +192,7 @@ final class SOSSessionController: ObservableObject {
                     incidents[id] = detail.incident
                     details[id] = detail
                     awaitingRefresh.remove(id)
+                    detailErrors[id] = nil
                     seenResponderCursors[id] = []
                     markChanged(id)
                     lastError = nil
@@ -199,6 +202,7 @@ final class SOSSessionController: ObservableObject {
                 return
             } catch let error as SOSFailure {
                 guard current(expected) else { return }
+                detailErrors[id] = error
                 if error == .forbidden || error == .notFound {
                     removeIncident(id)
                 }
@@ -206,6 +210,7 @@ final class SOSSessionController: ObservableObject {
                 return
             } catch {
                 guard current(expected) else { return }
+                detailErrors[id] = .unexpected
                 lastError = .unexpected
                 return
             }
@@ -302,6 +307,19 @@ final class SOSSessionController: ObservableObject {
     private func mayRequest() -> Bool {
         guard let cooldownUntil, cooldownUntil > now() else { return true }
         return false
+    }
+
+    /// REST reads and incident actions share the server's per-account rate limit.
+    func mayPerformAction() -> Bool { generation != nil && mayRequest() }
+
+    func deferRequests(until deadline: Date) {
+        if deadline > (cooldownUntil ?? .distantPast) { cooldownUntil = deadline }
+    }
+
+    func noteActionFailure(_ error: SOSFailure, incidentID: String) {
+        if !incidentID.isEmpty { detailErrors[incidentID] = error }
+        if error == .forbidden || error == .notFound { removeIncident(incidentID) }
+        record(error)
     }
 
     private func record(_ error: SOSFailure) {
