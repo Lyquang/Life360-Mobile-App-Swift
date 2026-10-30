@@ -27,7 +27,7 @@ final class ChatHubViewModel: ObservableObject {
     private var refreshTask: Task<Void, Never>?
     private var loadTask: Task<Void, Never>?
     private var pendingPresence = [String: Bool]()
-    private var seenMessageIDs = Set<String>()
+    private var seenMessageIDs = RecentChatIDs()
 
     init(
         currentUserId: String,
@@ -102,6 +102,7 @@ final class ChatHubViewModel: ObservableObject {
         loadTask?.cancel()
         loadTask = nil
         pendingPresence.removeAll()
+        seenMessageIDs.clear()
     }
 
     func load() async {
@@ -214,12 +215,12 @@ final class ChatHubViewModel: ObservableObject {
     }
 
     private func receive(_ message: ChatMessage) {
-        guard seenMessageIDs.insert(message.id).inserted else { return }
-        if seenMessageIDs.count > 500 { seenMessageIDs.removeAll(keepingCapacity: true) }
+        guard seenMessageIDs.insert(message.id) else { return }
         guard let index = conversations.firstIndex(where: { $0.id == message.conversationId }) else {
             refreshInBackground()
             return
         }
+        guard conversations[index].lastMessage?.id != message.id else { return }
         if let previous = conversations[index].lastMessageAt, previous > message.createdAt { return }
         conversations[index].lastMessage = message
         conversations[index].lastMessageAt = message.createdAt

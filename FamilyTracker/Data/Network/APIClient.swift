@@ -16,6 +16,16 @@ extension AccessTokenProvider {
 protocol APIClient {
     func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T
     func sendWithMetadata<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> APIResult<T>
+    func sendWithMetadata<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
+                                        expectedSessionGeneration: Int) async throws -> APIResult<T>
+}
+
+extension APIClient {
+    /// A client without session fencing must fail closed, never silently send with another account.
+    func sendWithMetadata<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
+                                        expectedSessionGeneration: Int) async throws -> APIResult<T> {
+        throw CancellationError()
+    }
 }
 
 struct APIResult<T> {
@@ -52,10 +62,16 @@ final class URLSessionAPIClient: APIClient {
                           exposeRateLimit: true)
     }
 
+    func sendWithMetadata<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
+                                        expectedSessionGeneration: Int) async throws -> APIResult<T> {
+        try await perform(endpoint, as: type, mayRefresh: true, expectedGeneration: expectedSessionGeneration,
+                          exposeRateLimit: true)
+    }
+
     private func perform<T: Decodable>(_ endpoint: Endpoint, as type: T.Type,
                                        mayRefresh: Bool, expectedGeneration: Int?,
                                        exposeRateLimit: Bool) async throws -> APIResult<T> {
-        let (request, sentToken, sentGeneration) = try makeRequest(for: endpoint)
+        let (request, sentToken, sentGeneration) = try makeRequest(for: endpoint, expectedGeneration: expectedGeneration)
         if let expectedGeneration, sentGeneration != expectedGeneration { throw CancellationError() }
         let method = endpoint.method.rawValue
         let url = request.url?.absoluteString ?? endpoint.path
@@ -63,6 +79,11 @@ final class URLSessionAPIClient: APIClient {
         let startedAt = Date()
         let group = RESTMetricGroup.classify(endpoint.path)
         if let metrics { await metrics.record(.increment(.request)) }
+
+        if let expectedGeneration {
+            try Task.checkCancellation()
+            guard tokenProvider.sessionGeneration == expectedGeneration else { throw CancellationError() }
+        }
 
         // Request bodies can contain passwords or Google ID tokens.
         logger.logRequest(id: requestId, method: method, url: url, body: nil)
@@ -83,14 +104,26 @@ final class URLSessionAPIClient: APIClient {
             }
             logger.logHTTP(request: request, response: nil, data: nil, error: error,
                            duration: Date().timeIntervalSince(startedAt))
+            if let expectedGeneration, tokenProvider.sessionGeneration != expectedGeneration {
+                throw CancellationError()
+            }
             if Task.isCancelled || (error as? URLError)?.code == .cancelled { throw CancellationError() }
             logger.logError(id: requestId, method: method, url: url, message: error.localizedDescription,
                             duration: Date().timeIntervalSince(startedAt))
             throw APIError.networkError(error.localizedDescription)
         }
 
+        if let expectedGeneration {
+            try Task.checkCancellation()
+            guard tokenProvider.sessionGeneration == expectedGeneration else { throw CancellationError() }
+        }
+
         if let metrics {
             await metrics.record(.latency(group, milliseconds: Self.elapsedMilliseconds(since: startedAt)))
+        }
+        if let expectedGeneration {
+            try Task.checkCancellation()
+            guard tokenProvider.sessionGeneration == expectedGeneration else { throw CancellationError() }
         }
         guard let http = response as? HTTPURLResponse else {
             if let metrics { await metrics.record(.increment(.requestFailure)) }
@@ -159,7 +192,7 @@ final class URLSessionAPIClient: APIClient {
         Int(min(max(0, Date().timeIntervalSince(start) * 1_000), Double(Int.max)))
     }
 
-    private func makeRequest(for endpoint: Endpoint) throws -> (URLRequest, String?, Int) {
+    private func makeRequest(for endpoint: Endpoint, expectedGeneration: Int?) throws -> (URLRequest, String?, Int) {
         guard var components = URLComponents(
             url: baseURL.appendingPathComponent(endpoint.path), resolvingAgainstBaseURL: false
         ) else { throw APIError.invalidURL }
@@ -174,6 +207,7 @@ final class URLSessionAPIClient: APIClient {
         }
 
         let snapshot = tokenProvider.tokenSnapshot
+        if let expectedGeneration, snapshot.generation != expectedGeneration { throw CancellationError() }
         var token: String?
         if endpoint.requiresAuth {
             guard let accessToken = snapshot.token, !accessToken.isEmpty else { throw APIError.unauthorized }

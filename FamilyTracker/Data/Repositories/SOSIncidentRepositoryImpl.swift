@@ -5,8 +5,9 @@ final class SOSIncidentRepositoryImpl: SOSIncidentRepository {
 
     init(api: APIClient) { self.api = api }
 
-    func create(_ intent: SOSCreationIntent) async throws -> SOSCreated {
-        let dto: SOSCreatedDTO = try await request(SOSEndpoint.create(intent), statuses: [200, 201])
+    func create(_ intent: SOSCreationIntent, expectedSessionGeneration: Int) async throws -> SOSCreated {
+        let dto: SOSCreatedDTO = try await request(SOSEndpoint.create(intent), statuses: [200, 201],
+                                                  expectedSessionGeneration: expectedSessionGeneration)
         return SOSCreated(created: dto.created, incident: try dto.incident.toDomain())
     }
 
@@ -21,22 +22,31 @@ final class SOSIncidentRepositoryImpl: SOSIncidentRepository {
         return try dto.toDomain()
     }
 
-    func respond(id: String) async throws -> SOSAssistanceResult {
-        let dto: SOSAssistanceResultDTO = try await request(SOSEndpoint.respond(id: id), statuses: [200, 201])
+    func respond(id: String, expectedSessionGeneration: Int) async throws -> SOSAssistanceResult {
+        let dto: SOSAssistanceResultDTO = try await request(SOSEndpoint.respond(id: id), statuses: [200, 201],
+                                                            expectedSessionGeneration: expectedSessionGeneration)
         guard dto.revision >= 1, dto.sosId == id.lowercased() else { throw SOSFailure.invalidResponse }
         return SOSAssistanceResult(created: dto.created, sosId: dto.sosId,
                                    revision: dto.revision, response: dto.response.toDomain())
     }
 
-    func close(id: String, status: SOSClosure) async throws -> SOSClosed {
-        let dto: SOSClosedDTO = try await request(SOSEndpoint.close(id: id, status: status))
+    func close(id: String, status: SOSClosure, expectedSessionGeneration: Int) async throws -> SOSClosed {
+        let dto: SOSClosedDTO = try await request(SOSEndpoint.close(id: id, status: status),
+                                                  expectedSessionGeneration: expectedSessionGeneration)
         guard dto.incident.id == id.lowercased() else { throw SOSFailure.invalidResponse }
         return SOSClosed(changed: dto.changed, incident: try dto.incident.toDomain())
     }
 
-    private func request<T: Decodable>(_ endpoint: Endpoint, statuses: Set<Int> = [200]) async throws -> T {
+    private func request<T: Decodable>(_ endpoint: Endpoint, statuses: Set<Int> = [200],
+                                       expectedSessionGeneration: Int? = nil) async throws -> T {
         do {
-            let result = try await api.sendWithMetadata(endpoint, as: APIResponseDTO<T>.self)
+            let result: APIResult<APIResponseDTO<T>>
+            if let expectedSessionGeneration {
+                result = try await api.sendWithMetadata(endpoint, as: APIResponseDTO<T>.self,
+                                                        expectedSessionGeneration: expectedSessionGeneration)
+            } else {
+                result = try await api.sendWithMetadata(endpoint, as: APIResponseDTO<T>.self)
+            }
             guard statuses.contains(result.statusCode), result.value.success, let value = result.value.data else {
                 throw SOSFailure.invalidResponse
             }

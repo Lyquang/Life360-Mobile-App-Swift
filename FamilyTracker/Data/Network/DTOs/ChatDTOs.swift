@@ -17,6 +17,12 @@ struct ChatAttachmentDTO: Codable, Sendable {
     let blurhash: String?
 }
 
+struct ChatSOSMetadataDTO: Codable, Sendable {
+    let id: String
+    let kind: String
+    let responderId: String?
+}
+
 struct ChatMessageDTO: Codable, Sendable {
     let id: String
     let conversationId: String
@@ -30,6 +36,8 @@ struct ChatMessageDTO: Codable, Sendable {
     let fileSize: Int?
     let mimeType: String?
     let createdAt: Date
+    let sos: ChatSOSMetadataDTO?
+    let eventId: String?
 }
 
 struct ConversationDTO: Codable, Sendable {

@@ -171,7 +171,10 @@ final class AppContainer {
         locationSharingGate = LocationSharingGate()
         realtime = SocketRealtimeRepository(socket: socketClient, offlineQueue: offlineQueue,
                                             diagnostics: locationDiagnostics)
-        chatRepository = ChatRepositoryImpl(api: api, socket: socketClient)
+        chatRepository = ChatRepositoryImpl(api: api, socket: socketClient,
+                                            sessionGeneration: { [weak sessionStore] in
+                                                sessionStore?.sessionGeneration ?? -1
+                                            })
         mediaRepository = MediaRepositoryImpl(
             uploader: MediaUploadService(api: api, logger: logger, metrics: restMetrics)
         )
