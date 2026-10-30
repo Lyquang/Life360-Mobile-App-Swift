@@ -1,6 +1,6 @@
 # SOS và “Tôi sẽ đến ngay”: kế hoạch tích hợp iOS
 
-Ngày kiểm kê: 29/10/2026. Trạng thái: **đã duyệt triển khai; S1 REST xong**, chưa chuyển luồng SOS trên UI.
+Ngày kiểm kê: 29/10/2026. Trạng thái: **đã duyệt triển khai; S1–S5 từng phần đã thực hiện**, chưa chuyển luồng SOS trên UI.
 
 S2a: đã tạo store pending bền vững và policy retry thuần. Store yêu cầu `activate`
 cho mỗi phiên, dùng session UUID để chặn callback cũ khi đổi tài khoản, giữ payload
@@ -49,6 +49,15 @@ tin ở hai Circle vẫn được giữ vì dedupe theo message ID, không phả
 kiểm tra metadata và policy; chưa có chat card/điều hướng, chưa kiểm tra máy thật.
 Cache event đặt lại khi nhận event ở session generation mới; fencing transport cho
 callback socket cũ sau đổi tài khoản vẫn cần được kiểm tra trước khi nối UI SOS.
+
+S5: `SOSLocationService` tạo `CLLocationManager` riêng chỉ khi được gọi, xin quyền
+và yêu cầu một fix mới, độc lập với chia sẻ vị trí nền; không dùng vị trí cache,
+không tự gửi socket hoặc REST. Chỉ nhận tọa độ hợp lệ, accuracy không âm và fix
+có timestamp từ thời điểm yêu cầu. Timeout 8 giây bắt đầu **sau khi có quyền**;
+thời gian người dùng xem hộp thoại quyền không bị tính vào timeout. Có hủy task,
+chặn callback cũ và báo lỗi phân loại. Caller tương lai phải khởi chạy khi app
+foreground, hủy khi đóng màn hình/logout, và cho phép gửi không vị trí khi lỗi.
+Kiểm thử bằng driver giả; GPS, hộp thoại quyền và xử lý trên máy thật chưa xác nhận.
 
 S1 đã build Debug/Release Simulator; mock networking kiểm tra 5 endpoint, response
 create/replay/detail/assistance/close, lỗi và UUID giữ nguyên qua 401 → refresh.
