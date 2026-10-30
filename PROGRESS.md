@@ -10,6 +10,11 @@ Legend:
 
 ## Feature Status
 
+- `[x]` Graphify: generated a local code-only Swift index in
+  `.graphify-familytracker/graphify-out/` with Graphify 0.9.97; verified the
+  SOS repository query and scope. The copied `graphify-out/` belongs to another
+  project and is ignored. Graph output and local tool environment are not tracked.
+
 - `[x]` Adapted copied `.specify/` shell helpers and templates to Swift/iOS and
   `.spec/`; isolated tests cover numbering, safe plan setup and feature selection.
   Spec Kit CLI, agent integration and workflow engine were not validated.
