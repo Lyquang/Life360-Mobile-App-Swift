@@ -11,9 +11,10 @@ The user requested explicitly confirmed continuous sharing while SOS is active.
 The receiver can follow existing realtime positions; automatic sender-side
 activation/restoration is not implemented. The current backend's account-wide
 privacy switch has no SOS-scoped expiry or conditional restore contract.
+Backend request and proposed acceptance criteria: `study/sos-live-location-backend-request.md`.
 User requests reviewable batches of approximately 10–12 files or one coherent part.
 
-Canonical mobile execution plan: [study/sos-assistance-integration.md](../study/sos-assistance-integration.md).
+Canonical mobile execution plan: [study/sos-assistance-integration.md](../../../study/sos-assistance-integration.md).
 Backend contract: `/Users/lyq02/Desktop/Family Tracker Off/Backend/api-docs/SOS_ASSISTANCE_API_DOC.md`.
 
 ## Objective and boundaries

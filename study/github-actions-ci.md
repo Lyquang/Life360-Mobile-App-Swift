@@ -1,5 +1,10 @@
 # GitHub Actions CI Research - FamilyTracker iOS
 
+> Current configuration: all pull requests targeting `main` trigger iOS CI and
+> Code Quality, including documentation-only changes. Documentation-only pushes
+> to `main` still use the original `paths-ignore` filter. The original design
+> notes below describe the earlier configuration.
+
 Date: 2026-10-12
 
 ## 1. Repository inventory

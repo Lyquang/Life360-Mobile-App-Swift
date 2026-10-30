@@ -329,7 +329,7 @@ Files to update/create:
 
 - optimistic row/retry logic, media error mapping, repository reconciliation
 - `Tests/MediaUploadContractTests.swift`, URLProtocol/socket/audio mocks and runner
-- `.spec/media-upload.md`, `PROGRESS.md`, localization resources
+- `.spec/006-chat-media/references/media-upload.md`, `PROGRESS.md`, localization resources
 - final `study/media-upload-interview-notes.md`
 
 Gate: own realtime URL dedupe, uncertain ack history lookup, user-controlled resend,

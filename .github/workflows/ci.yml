@@ -9,10 +9,6 @@ on:
       - "api-docs/**"
   pull_request:
     branches: [main]
-    paths-ignore:
-      - "**/*.md"
-      - "study/**"
-      - "api-docs/**"
 
 permissions:
   contents: read

@@ -6,7 +6,7 @@ Tài liệu ôn phỏng vấn Swift Native, từ Fresher/Junior đến Mid. Đ�
 
 Phân tích ứng dụng iOS trong `FamilyTracker/`: SwiftUI Presentation, Domain, Data, Core và App composition. Không suy diễn implementation của backend từ tên event hoặc comment phía client.
 
-Đã đối chiếu [AI_RULES.md](AI_RULES.md), [CLAUDE.md](CLAUDE.md), [PROGRESS.md](PROGRESS.md), [spec API](.spec/api-integration.md) và [project.yml](project.yml). Quy chuẩn là mục tiêu kiến trúc; mã hiện tại mới là bằng chứng về mức độ triển khai. Deployment target trong project.yml là iOS 16; Swift language mode 5 không có nghĩa compiler chỉ là Swift 5 hay đã bật strict concurrency toàn bộ.
+Đã đối chiếu [AI_RULES.md](../AI_RULES.md), [CLAUDE.md](../CLAUDE.md), [PROGRESS.md](../PROGRESS.md), [spec API](../.spec/002-api-auth/references/api-integration.md) và [project.yml](../project.yml). Quy chuẩn là mục tiêu kiến trúc; mã hiện tại mới là bằng chứng về mức độ triển khai. Deployment target trong project.yml là iOS 16; Swift language mode 5 không có nghĩa compiler chỉ là Swift 5 hay đã bật strict concurrency toàn bộ.
 
 Các snippet là đoạn trích nguyên văn, có thể chỉ là một phần hàm/class nên không chạy độc lập. Các đề xuất cải tiến được ghi rõ; không có bản vá Swift trong tài liệu này. Không có phép đo FPS, pin hay leak mới được thực hiện.
 
