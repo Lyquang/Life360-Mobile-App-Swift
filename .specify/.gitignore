@@ -1,0 +1,2 @@
+# Active feature is local to each workspace, not shared across branches.
+feature.json

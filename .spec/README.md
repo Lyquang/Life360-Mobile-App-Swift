@@ -24,6 +24,8 @@ Các ô chưa đánh dấu trong `tasks.md` là **checklist cho lần xác minh 
 
 ## Tạo hoặc cập nhật đặc tả
 
+Helper Bash và cấu hình tóm tắt kiến trúc nằm tại [../.specify/README.md](../.specify/README.md); không mặc định CLI hoặc agent Spec Kit đã được cài.
+
 1. Tìm nhóm liên quan ở bảng trên; đọc `spec.md` và chỉ mở spec chi tiết cần thiết trong `references/`.
 2. Với tính năng mới, tạo `.spec/<số-thứ-tự>-<tên-kebab-case>/`; không dùng lại số đã có. Dùng các mẫu trong `templates/` và điền nội dung phù hợp, không sao chép dữ liệu từ `001-message-notifications/`.
 3. Ghi phạm vi, trạng thái, story, tiêu chí nghiệm thu, hợp đồng, edge case và các giả định chưa xác nhận. Với tính năng cần duyệt, không coi một spec draft là phê duyệt.

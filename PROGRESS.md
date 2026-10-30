@@ -10,6 +10,10 @@ Legend:
 
 ## Feature Status
 
+- `[x]` Adapted copied `.specify/` shell helpers and templates to Swift/iOS and
+  `.spec/`; isolated tests cover numbering, safe plan setup and feature selection.
+  Spec Kit CLI, agent integration and workflow engine were not validated.
+
 - `[x]` Spec organization: grouped FamilyTracker specifications under numbered
   feature folders modeled on `.spec/001-message-notifications/`, preserved prior
   detailed specs, added templates and updated agent/tooling references. This is a
