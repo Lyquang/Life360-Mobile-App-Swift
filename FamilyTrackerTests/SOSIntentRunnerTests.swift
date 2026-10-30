@@ -9,16 +9,20 @@ final class SOSIntentRunnerTests: XCTestCase {
         let store = try SOSPendingIntentStore(fileURL: directory.appendingPathComponent("pending.json"))
         let clock = RunnerClock()
         let sender = RunnerSender(failures: [.network, .server])
-        let runner = SOSIntentRunner(store: store, send: { try await sender.send($0) },
+        let runner = SOSIntentRunner(store: store, send: { intent, generation in
+            try await sender.send(intent, generation: generation)
+        }, currentSessionGeneration: { 1 },
                                      now: { clock.now() }, jitter: { 0 }, sleep: { clock.advance($0) })
-        _ = try await runner.startSession(ownerID: "owner-a")
+        _ = try await runner.startSession(ownerID: "owner-a", sessionGeneration: 1)
         let pending = try await runner.prepare(message: "Help", location: nil)
         let outcome = try await runner.sendPending()
         guard case .confirmed(_, let cleanup) = outcome else { return XCTFail("Expected confirmed SOS") }
         XCTAssertFalse(cleanup)
         let requests = await sender.requests
+        let generations = await sender.generations
         XCTAssertEqual(requests, Array(repeating: pending.intent, count: 3))
-        let restored = try await runner.startSession(ownerID: "owner-a")
+        XCTAssertEqual(generations, [1, 1, 1])
+        let restored = try await runner.startSession(ownerID: "owner-a", sessionGeneration: 1)
         XCTAssertNil(restored)
     }
 
@@ -28,13 +32,15 @@ final class SOSIntentRunnerTests: XCTestCase {
         let store = try SOSPendingIntentStore(fileURL: directory.appendingPathComponent("pending.json"))
         let clock = RunnerClock()
         let sender = RunnerSender(failures: [.rateLimited(retryAfter: "75")])
-        let runner = SOSIntentRunner(store: store, send: { try await sender.send($0) },
+        let runner = SOSIntentRunner(store: store, send: { intent, generation in
+            try await sender.send(intent, generation: generation)
+        }, currentSessionGeneration: { 1 },
                                      now: { clock.now() }, jitter: { 0 }, sleep: { clock.advance($0) })
-        _ = try await runner.startSession(ownerID: "owner-a")
+        _ = try await runner.startSession(ownerID: "owner-a", sessionGeneration: 1)
         let pending = try await runner.prepare(message: "Help", location: nil)
         guard case .waiting(let saved) = try await runner.sendPending() else { return XCTFail("Expected cooldown") }
         XCTAssertEqual(saved.notBefore, clock.now().addingTimeInterval(75))
-        let restored = try await runner.startSession(ownerID: "owner-a")
+        let restored = try await runner.startSession(ownerID: "owner-a", sessionGeneration: 1)
         XCTAssertEqual(restored?.intent, pending.intent)
         _ = try await runner.sendPending()
         let count = await sender.requests.count
@@ -53,10 +59,12 @@ private final class RunnerClock: @unchecked Sendable {
 
 private actor RunnerSender {
     private(set) var requests: [SOSCreationIntent] = []
+    private(set) var generations: [Int] = []
     private var failures: [SOSFailure]
     init(failures: [SOSFailure]) { self.failures = failures }
-    func send(_ intent: SOSCreationIntent) throws -> SOSCreated {
+    func send(_ intent: SOSCreationIntent, generation: Int) throws -> SOSCreated {
         requests.append(intent)
+        generations.append(generation)
         if !failures.isEmpty { throw failures.removeFirst() }
         return SOSCreated(created: true, incident: SOSSummary(
             id: "000000000000000000000001", ownerId: "000000000000000000000002", status: .active,

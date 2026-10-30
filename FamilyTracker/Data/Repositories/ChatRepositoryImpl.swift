@@ -7,14 +7,19 @@ final class ChatRepositoryImpl: ChatRepository {
     private let newMessages = AsyncBroadcaster<ChatMessage>()
     private let conversationUpdates = AsyncBroadcaster<String>()
     private let typing = AsyncBroadcaster<TypingEvent>()
+    private let sessionGeneration: () -> Int
+    private let eventLock = NSLock()
+    private var recentEvents = RecentChatEvents()
 
-    init(api: APIClient, socket: SocketClient) {
+    init(api: APIClient, socket: SocketClient, sessionGeneration: @escaping () -> Int = { 0 }) {
         self.api = api
         self.socket = socket
+        self.sessionGeneration = sessionGeneration
 
         socket.on(SocketEvent.chatNewMessage) { [weak self] payload in
-            guard let dto = JSONPayload.decode(ChatMessageDTO.self, from: payload) else { return }
-            self?.newMessages.send(dto.toDomain())
+            guard let self, let dto = JSONPayload.decode(ChatMessageDTO.self, from: payload),
+                  self.acceptEvent(dto.eventId) else { return }
+            self.newMessages.send(dto.toDomain())
         }
         socket.on(SocketEvent.chatTyping) { [weak self] payload in
             guard let dto = JSONPayload.decode(TypingDTO.self, from: payload) else { return }
@@ -111,6 +116,11 @@ final class ChatRepositoryImpl: ChatRepository {
     func observeNewMessages() -> AsyncStream<ChatMessage> { newMessages.stream() }
     func observeConversationUpdates() -> AsyncStream<String> { conversationUpdates.stream() }
     func observeTyping() -> AsyncStream<TypingEvent> { typing.stream() }
+
+    private func acceptEvent(_ eventID: String?) -> Bool {
+        eventLock.lock(); defer { eventLock.unlock() }
+        return recentEvents.accept(eventID, generation: sessionGeneration())
+    }
 
     func sendTyping(conversationId: String, isTyping: Bool) {
         guard socket.status == .connected else { return }

@@ -61,6 +61,34 @@ private final class PairStoreStub: TokenPairStore {
     func clear() { tokens = nil }
 }
 
+private final class SOSRaceTokenProvider: AccessTokenProvider {
+    private let lock = NSLock()
+    private var token = "account-a-token"
+    private var generation = 0
+    private let switchOnSnapshot: Bool
+
+    init(switchOnSnapshot: Bool = false) { self.switchOnSnapshot = switchOnSnapshot }
+    var accessToken: String? { lock.lock(); defer { lock.unlock() }; return token }
+    var sessionGeneration: Int { lock.lock(); defer { lock.unlock() }; return generation }
+    var tokenSnapshot: (token: String?, generation: Int) {
+        lock.lock(); defer { lock.unlock() }
+        let previous = (token: Optional(token), generation: generation)
+        if switchOnSnapshot && generation == 0 { token = "account-b-token"; generation = 1 }
+        return previous
+    }
+    func switchAccount() { lock.lock(); token = "account-b-token"; generation += 1; lock.unlock() }
+    func invalidate(token: String) {}
+}
+
+private final class UnfencedAPIStub: APIClient {
+    func send<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T {
+        throw CheckFailure(message: "Unfenced API must not be called")
+    }
+    func sendWithMetadata<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> APIResult<T> {
+        throw CheckFailure(message: "Unfenced API must not be called")
+    }
+}
+
 private actor ConfigurableRefreshStub: RefreshTokenTransport {
     private(set) var calls = 0
     let result: Result<AuthTokens, RefreshFailure>
@@ -106,6 +134,13 @@ private final class SOSRunnerClock: @unchecked Sendable {
     func advance(_ seconds: TimeInterval) { lock.lock(); value.addTimeInterval(seconds); lock.unlock() }
 }
 
+private final class SOSRunnerGeneration: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 41
+    func current() -> Int { lock.lock(); defer { lock.unlock() }; return value }
+    func set(_ next: Int) { lock.lock(); value = next; lock.unlock() }
+}
+
 private actor SOSRunnerSender {
     private(set) var requests: [SOSCreationIntent] = []
     private var failures: [SOSFailure]
@@ -142,9 +177,11 @@ enum NetworkingContractTests {
         try mediaContracts()
         try await locationBatchContract()
         try await sosContract()
+        try await sosGenerationFenceContract()
         try await sosPendingContract()
         try await sosRunnerContract()
         try await SOSRecoveryChecks.run()
+        try SOSChatChecks.run()
         try redaction()
         try liveTrailAssemblyAndGeometry()
         try socketLocationContract()
@@ -188,7 +225,7 @@ enum NetworkingContractTests {
             }
             return (201, Data("{\"success\":true,\"data\":{\"created\":true,\"incident\":\(summary)}}".utf8))
         }
-        let created = try await repository.create(intent)
+        let created = try await repository.create(intent, expectedSessionGeneration: 0)
         try check(created.created && created.incident.revision == 1, "SOS summary decode")
         let rotations = await refresh.calls
         try check(rotations == 1 && observedIDs == Array(repeating: intent.clientRequestId.uuidString.lowercased(), count: 2),
@@ -197,7 +234,7 @@ enum NetworkingContractTests {
         ProtocolStub.handler = { _ in
             (200, Data("{\"success\":true,\"data\":{\"created\":false,\"incident\":\(summary)}}".utf8))
         }
-        let replay = try await repository.create(intent)
+        let replay = try await repository.create(intent, expectedSessionGeneration: 0)
         try check(!replay.created && replay.incident.id == id, "SOS replay")
 
         ProtocolStub.handler = { request in
@@ -234,7 +271,7 @@ enum NetworkingContractTests {
             "status":"coming","respondedAt":"2026-10-29T10:01:00.000Z"}}}
             """.utf8))
         }
-        let assistance = try await repository.respond(id: id)
+        let assistance = try await repository.respond(id: id, expectedSessionGeneration: 0)
         try check(assistance.response.name == nil && assistance.created, "Write response has no profile")
 
         ProtocolStub.handler = { request in
@@ -242,7 +279,7 @@ enum NetworkingContractTests {
             let closed = summary.replacingOccurrences(of: "active", with: "resolved")
             return (200, Data("{\"success\":true,\"data\":{\"changed\":false,\"incident\":\(closed)}}".utf8))
         }
-        let closed = try await repository.close(id: id, status: .resolved)
+        let closed = try await repository.close(id: id, status: .resolved, expectedSessionGeneration: 0)
         try check(!closed.changed && closed.incident.status == .resolved, "SOS close replay")
 
         let cases: [(Int, SOSFailure)] = [(400, .invalidRequest), (403, .forbidden), (404, .notFound),
@@ -272,6 +309,63 @@ enum NetworkingContractTests {
             if count == 0 { return result }
             result.append(contentsOf: buffer.prefix(count))
         }
+    }
+
+    static func sosGenerationFenceContract() async throws {
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ProtocolStub.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); ProtocolStub.handler = nil; ProtocolStub.responseHeaders = [:] }
+        let intent = SOSCreationIntent(clientRequestId: UUID(), message: nil, location: nil)
+        let unfencedRepository = SOSIncidentRepositoryImpl(api: UnfencedAPIStub())
+        do {
+            _ = try await unfencedRepository.create(intent, expectedSessionGeneration: 0)
+            throw CheckFailure(message: "Client without session fencing accepted SOS")
+        } catch is CancellationError {}
+        let baseURL = URL(string: "https://example.test/api/v1")!
+        let switchedBeforeSend = SOSRaceTokenProvider(switchOnSnapshot: true)
+        let client = URLSessionAPIClient(baseURL: baseURL, session: session, tokenProvider: switchedBeforeSend,
+                                         logger: NoopNetworkLogger())
+        let repository = SOSIncidentRepositoryImpl(api: client)
+        var requests = 0
+        ProtocolStub.handler = { _ in requests += 1; return (500, Data()) }
+        do {
+            _ = try await repository.create(intent, expectedSessionGeneration: 0)
+            throw CheckFailure(message: "SOS was sent after account changed")
+        } catch is CancellationError {}
+        try check(requests == 0, "Old SOS reached the network after session change")
+
+        let switchedBeforeResponse = SOSRaceTokenProvider()
+        let secondClient = URLSessionAPIClient(baseURL: baseURL, session: session, tokenProvider: switchedBeforeResponse,
+                                               logger: NoopNetworkLogger())
+        let secondRepository = SOSIncidentRepositoryImpl(api: secondClient)
+        ProtocolStub.handler = { request in
+            try check(request.value(forHTTPHeaderField: "Authorization") == "Bearer account-a-token", "Wrong account token")
+            switchedBeforeResponse.switchAccount()
+            return (201, Data("""
+            {"success":true,"data":{"created":true,"incident":{"id":"000000000000000000000001",
+            "ownerId":"000000000000000000000002","status":"active","revision":1,"groupCount":1,
+            "recipientCount":1,"createdAt":"2026-10-29T10:00:00Z"}}}
+            """.utf8))
+        }
+        do {
+            _ = try await secondRepository.create(intent, expectedSessionGeneration: 0)
+            throw CheckFailure(message: "Old SOS response accepted after account changed")
+        } catch is CancellationError {}
+        try check(switchedBeforeResponse.accessToken == "account-b-token", "New account was invalidated")
+
+        var laterRequests = 0
+        ProtocolStub.handler = { _ in laterRequests += 1; return (500, Data()) }
+        let id = "000000000000000000000001"
+        do {
+            _ = try await secondRepository.respond(id: id, expectedSessionGeneration: 0)
+            throw CheckFailure(message: "Old assistance sent as new account")
+        } catch is CancellationError {}
+        do {
+            _ = try await secondRepository.close(id: id, status: .resolved, expectedSessionGeneration: 0)
+            throw CheckFailure(message: "Old closure sent as new account")
+        } catch is CancellationError {}
+        try check(laterRequests == 0, "Stale SOS write reached the network")
     }
 
     static func sosPendingContract() async throws {
@@ -333,13 +427,14 @@ enum NetworkingContractTests {
         let store = try SOSPendingIntentStore(fileURL: pendingURL)
         let sender = SOSRunnerSender(failures: [.network, .server])
         let clock = SOSRunnerClock()
-        let runner = SOSIntentRunner(store: store, send: { intent in
+        let runner = SOSIntentRunner(store: store, send: { intent, generation in
+            try check(generation == 41, "SOS runner lost the auth session generation")
             let saved = try JSONDecoder().decode(SOSPendingIntent.self, from: Data(contentsOf: pendingURL))
             try check(saved.state == .uncertain && saved.intent == intent, "SOS was not persisted before send")
             return try await sender.send(intent)
-        },
+        }, currentSessionGeneration: { 41 },
                                      now: { clock.now() }, jitter: { 0 }, sleep: { clock.advance($0) })
-        let initial = try await runner.startSession(ownerID: "owner-a")
+        let initial = try await runner.startSession(ownerID: "owner-a", sessionGeneration: 41)
         try check(initial == nil, "New SOS session should be empty")
         let pending = try await runner.prepare(message: "Help", location: nil)
         let result = try await runner.sendPending()
@@ -349,19 +444,20 @@ enum NetworkingContractTests {
         let requests = await sender.requests
         try check(created.created && !cleanup && requests.count == 3, "SOS retry count or cleanup")
         try check(requests.allSatisfy { $0 == pending.intent }, "SOS retry changed intent")
-        let empty = try await runner.startSession(ownerID: "owner-a")
+        let empty = try await runner.startSession(ownerID: "owner-a", sessionGeneration: 41)
         try check(empty == nil, "Committed SOS remained pending")
 
         let delayedSender = SOSRunnerSender(failures: [.rateLimited(retryAfter: "75")])
-        let delayed = SOSIntentRunner(store: store, send: { try await delayedSender.send($0) },
+        let delayed = SOSIntentRunner(store: store, send: { intent, _ in try await delayedSender.send(intent) },
+                                      currentSessionGeneration: { 41 },
                                       now: { clock.now() }, jitter: { 0 }, sleep: { clock.advance($0) })
-        _ = try await delayed.startSession(ownerID: "owner-a")
+        _ = try await delayed.startSession(ownerID: "owner-a", sessionGeneration: 41)
         let original = try await delayed.prepare(message: "Wait", location: nil)
         let waiting = try await delayed.sendPending()
         guard case .waiting(let saved) = waiting, let notBefore = saved.notBefore else {
             throw CheckFailure(message: "SOS 429 not deferred")
         }
-        let restored = try await delayed.startSession(ownerID: "owner-a")
+        let restored = try await delayed.startSession(ownerID: "owner-a", sessionGeneration: 41)
         try check(restored?.intent == original.intent && restored?.notBefore == notBefore,
                   "SOS deadline not restored")
         _ = try await delayed.sendPending()
@@ -373,8 +469,10 @@ enum NetworkingContractTests {
         }
 
         let blocker = SOSRunnerBlockingSender()
-        let blocked = SOSIntentRunner(store: store, send: { await blocker.send($0) })
-        _ = try await blocked.startSession(ownerID: "owner-a")
+        let authGeneration = SOSRunnerGeneration()
+        let blocked = SOSIntentRunner(store: store, send: { intent, _ in await blocker.send(intent) },
+                                      currentSessionGeneration: { authGeneration.current() })
+        _ = try await blocked.startSession(ownerID: "owner-a", sessionGeneration: 41)
         _ = try await blocked.prepare(message: "Blocked", location: nil)
         let sendTask = Task { try await blocked.sendPending() }
         for _ in 0..<1_000 {
@@ -395,8 +493,29 @@ enum NetworkingContractTests {
         do { _ = try await second.value; throw CheckFailure(message: "Logout accepted waiting response") }
         catch is CancellationError {}
         catch SOSIntentRunnerError.noSession {}
-        let afterLogout = try await blocked.startSession(ownerID: "owner-b")
+        authGeneration.set(42)
+        let afterLogout = try await blocked.startSession(ownerID: "owner-b", sessionGeneration: 42)
         try check(afterLogout == nil, "Logout leaked SOS into a new account")
+
+        let staleSender = SOSRunnerBlockingSender()
+        authGeneration.set(43)
+        let stale = SOSIntentRunner(store: store, send: { intent, _ in await staleSender.send(intent) },
+                                    currentSessionGeneration: { authGeneration.current() })
+        _ = try await stale.startSession(ownerID: "owner-a", sessionGeneration: 43)
+        _ = try await stale.prepare(message: "Pending", location: nil)
+        let staleTask = Task { try await stale.sendPending() }
+        for _ in 0..<1_000 {
+            if await staleSender.calls > 0 { break }
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        let staleStarted = await staleSender.calls
+        try check(staleStarted == 1, "Stale-session request did not start")
+        authGeneration.set(44)
+        await staleSender.release()
+        do { _ = try await staleTask.value; throw CheckFailure(message: "Stale SOS result was accepted") }
+        catch SOSIntentRunnerError.sessionChanged {}
+        let fresh = try await stale.startSession(ownerID: "owner-b", sessionGeneration: 44)
+        try check(fresh == nil, "Pending SOS crossed account generations")
     }
 
 

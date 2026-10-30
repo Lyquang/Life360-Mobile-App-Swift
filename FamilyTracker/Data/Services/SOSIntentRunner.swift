@@ -12,21 +12,24 @@ enum SOSIntentOutcome: Equatable, Sendable {
 
 /// Runs one foreground create operation at a time; the UI must explicitly resume after relaunch.
 actor SOSIntentRunner {
-    typealias Sender = @Sendable (SOSCreationIntent) async throws -> SOSCreated
+    typealias Sender = @Sendable (SOSCreationIntent, Int) async throws -> SOSCreated
     typealias Sleeper = @Sendable (TimeInterval) async throws -> Void
 
     private let store: SOSPendingIntentStore
     private let send: Sender
+    private let currentSessionGeneration: @Sendable () -> Int
     private let now: @Sendable () -> Date
     private let jitter: @Sendable () -> Double
     private let sleep: Sleeper
     private var session: SOSPendingSession?
+    private var sessionGeneration: Int?
     private var generation = UUID()
     private var flight: Task<SOSIntentOutcome, Error>?
     private var flightID: UUID?
     private var preparing = false
 
     init(store: SOSPendingIntentStore, send: @escaping Sender,
+         currentSessionGeneration: @escaping @Sendable () -> Int,
          now: @escaping @Sendable () -> Date = { Date() },
          jitter: @escaping @Sendable () -> Double = { Double.random(in: 0...1) },
          sleep: @escaping Sleeper = { delay in
@@ -34,23 +37,27 @@ actor SOSIntentRunner {
          }) {
         self.store = store
         self.send = send
+        self.currentSessionGeneration = currentSessionGeneration
         self.now = now
         self.jitter = jitter
         self.sleep = sleep
     }
 
     /// Activation never sends automatically; it only restores the prior pending intent.
-    func startSession(ownerID: String) async throws -> SOSPendingIntent? {
+    func startSession(ownerID: String, sessionGeneration: Int) async throws -> SOSPendingIntent? {
+        guard currentSessionGeneration() == sessionGeneration else { throw SOSIntentRunnerError.sessionChanged }
         cancelFlight()
         generation = UUID()
         let expected = generation
         session = nil
+        self.sessionGeneration = nil
         let activated = try await store.activate(ownerID: ownerID)
-        guard generation == expected else {
+        guard generation == expected, currentSessionGeneration() == sessionGeneration else {
             try? await store.endSession(activated)
             throw SOSIntentRunnerError.sessionChanged
         }
         session = activated
+        self.sessionGeneration = sessionGeneration
         // Cancelling screen startup must not erase an ambiguous SOS from disk.
         try Task.checkCancellation()
         let pending = try await store.current(session: activated)
@@ -59,7 +66,7 @@ actor SOSIntentRunner {
     }
 
     func prepare(message: String?, location: SOSLocation?) async throws -> SOSPendingIntent {
-        guard let session else { throw SOSIntentRunnerError.noSession }
+        guard let session, sessionGeneration != nil else { throw SOSIntentRunnerError.noSession }
         guard flight == nil, !preparing else { throw SOSIntentRunnerError.busy }
         preparing = true
         defer { preparing = false }
@@ -72,12 +79,13 @@ actor SOSIntentRunner {
 
     /// Concurrent callers await the same operation; no second POST is created.
     func sendPending() async throws -> SOSIntentOutcome {
-        guard let session else { throw SOSIntentRunnerError.noSession }
+        guard let session, let sessionGeneration else { throw SOSIntentRunnerError.noSession }
         guard !preparing else { throw SOSIntentRunnerError.busy }
         if let flight { return try await flight.value }
         let expected = generation
         let id = UUID()
-        let task = Task { try await self.performSend(session: session, generation: expected) }
+        let task = Task { try await self.performSend(session: session, generation: expected,
+                                                      sessionGeneration: sessionGeneration) }
         flight = task
         flightID = id
         do {
@@ -98,11 +106,13 @@ actor SOSIntentRunner {
         generation = UUID()
         let old = session
         session = nil
+        sessionGeneration = nil
         guard let old else { return }
         try await store.endSession(old)
     }
 
-    private func performSend(session: SOSPendingSession, generation expected: UUID) async throws -> SOSIntentOutcome {
+    private func performSend(session: SOSPendingSession, generation expected: UUID,
+                             sessionGeneration: Int) async throws -> SOSIntentOutcome {
         guard var pending = try await store.current(session: session) else { throw SOSIntentRunnerError.noPending }
         try ensureCurrent(expected, session: session)
         if let deadline = pending.notBefore, deadline > now() { return .waiting(pending) }
@@ -122,7 +132,7 @@ actor SOSIntentRunner {
             try ensureCurrent(expected, session: session)
             let result: SOSCreated
             do {
-                result = try await send(pending.intent)
+                result = try await send(pending.intent, sessionGeneration)
             } catch let error as SOSFailure {
                 try ensureCurrent(expected, session: session)
                 let decision = SOSRetryPolicy.decide(failure: error, attempts: attempts, now: now(), jitter: jitter())
@@ -171,7 +181,8 @@ actor SOSIntentRunner {
 
     private func ensureCurrent(_ expected: UUID, session expectedSession: SOSPendingSession) throws {
         try Task.checkCancellation()
-        guard generation == expected, session == expectedSession else { throw SOSIntentRunnerError.sessionChanged }
+        guard generation == expected, session == expectedSession, let sessionGeneration,
+              currentSessionGeneration() == sessionGeneration else { throw SOSIntentRunnerError.sessionChanged }
     }
 
     private func cancelFlight() {

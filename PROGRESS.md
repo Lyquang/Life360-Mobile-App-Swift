@@ -170,6 +170,11 @@ Legend:
   `sos:updated` invalidations to detail recovery; shared read/write cooldown,
   REST write cutover, chat SOS metadata and responder UI remain pending. The
   legacy SOS banner is not yet deduplicated by sosId.
+  S4b retains backend `sos`/`eventId` metadata for REST and realtime chat,
+  bounds message/event deduplication and resets event IDs by session generation;
+  chat cards and navigation to incident detail remain pending.
+  SOS create/respond/close now require an expected auth session generation; the
+  runner retains and rechecks that generation across retries. Wiring to logout/UI remains pending.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,

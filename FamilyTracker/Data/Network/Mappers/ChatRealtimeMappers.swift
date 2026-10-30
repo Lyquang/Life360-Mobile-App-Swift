@@ -17,7 +17,10 @@ extension ChatMessageDTO {
             duration: duration,
             fileSize: fileSize,
             mimeType: mimeType,
-            createdAt: createdAt
+            createdAt: createdAt,
+            sos: sos.map { ChatSOSMetadata(id: $0.id, kind: ChatSOSKind(rawValue: $0.kind) ?? .unknown,
+                                           responderId: $0.responderId) },
+            eventID: eventId
         )
     }
 }

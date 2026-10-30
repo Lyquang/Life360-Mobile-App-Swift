@@ -11,9 +11,16 @@ S2b: `SOSIntentRunner` lưu trạng thái chưa chắc chắn trước POST, chi
 giữa các caller, retry tối đa ba lần trong lượt foreground và lưu cooldown. Kết quả
 thành công chỉ xóa đúng UUID; lỗi xóa sau commit được báo riêng. Logout/cancel trên
 runner chặn áp dụng callback cũ, nhưng runner **chưa được nối** vào logout/UI thật.
-Trước S6 phải ràng buộc session generation của request REST ngay tại lần tạo request
-đầu tiên: fence trong runner không đảm bảo token không đổi giữa lúc gọi closure và
-`APIClient.makeRequest`. Không được nối runner vào UI trước khi có kiểm thử race này.
+
+Session fence: `APIClient` có overload yêu cầu expected session generation; ba
+thao tác ghi SOS bắt buộc truyền generation, runner giữ giá trị đó qua mọi retry.
+Runner còn đọc generation hiện tại trước/sau thao tác, kể cả khi callback logout
+chưa kịp chạy; closure kiểm tra phải lấy từ cùng Keychain session được inject.
+Test mock đổi tài khoản sau khi lấy token và trước khi nhận response; request cũ
+không dùng token tài khoản mới, response cũ bị hủy. Khi nối UI, phải lấy ownerId
+và generation cùng lúc từ `locationSessionIdentity`, không đọc độc lập. Request
+đã được gửi trước logout vẫn có thể đã commit ở server; cancellation không thể
+thu hồi nó, vì vậy tiếp tục dùng UUID idempotent và đối soát REST.
 
 S3: `SOSSessionController` khôi phục tất cả trang active trước khi áp dụng,
 đối soát incident đã cache qua detail, giới hạn một flight/detail, chặn revision cũ,
@@ -33,6 +40,15 @@ và foreground; stop hủy observer/xóa state. Mock kiểm tra event trùng, se
 403, revision và pagination. Đây chưa phải UI SOS mới: banner cũ vẫn nhận legacy
 event qua luồng cũ và chưa dedupe theo sosId; nút gửi cũ vẫn dùng Socket. Cần cutover
 an toàn và chat/responder UI ở các nhịp sau. Không hứa push khi app bị suspend/kill.
+
+S4b: `ChatMessageDTO`/Domain giữ `sos` và `eventId` tùy chọn cho cả REST history
+và `chat:new_message`. Loại SOS lạ map sang `unknown`, không suy luận bằng text.
+Event ID được lọc theo session generation tại ChatRepository; ChatHub giữ FIFO 500
+message ID thay vì xóa toàn bộ khi đầy, và chặn lặp lại lastMessage hiện tại. Hai
+tin ở hai Circle vẫn được giữ vì dedupe theo message ID, không phải sosId. Mock
+kiểm tra metadata và policy; chưa có chat card/điều hướng, chưa kiểm tra máy thật.
+Cache event đặt lại khi nhận event ở session generation mới; fencing transport cho
+callback socket cũ sau đổi tài khoản vẫn cần được kiểm tra trước khi nối UI SOS.
 
 S1 đã build Debug/Release Simulator; mock networking kiểm tra 5 endpoint, response
 create/replay/detail/assistance/close, lỗi và UUID giữ nguyên qua 401 → refresh.
