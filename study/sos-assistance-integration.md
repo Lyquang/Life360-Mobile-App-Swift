@@ -1,6 +1,6 @@
 # SOS và “Tôi sẽ đến ngay”: kế hoạch tích hợp iOS
 
-Ngày kiểm kê: 29/10/2026. Trạng thái: **đã duyệt triển khai; S1–S5 từng phần đã thực hiện**, chưa chuyển luồng SOS trên UI.
+Ngày kiểm kê: 29/10/2026. Trạng thái: đã nối giao diện và ghi SOS qua REST; các mô tả S1–S6 bên dưới lưu lịch sử thực hiện. Chưa xác nhận runtime production hoặc kiểm tra trên hai máy thật.
 
 S2a: đã tạo store pending bền vững và policy retry thuần. Store yêu cầu `activate`
 cho mỗi phiên, dùng session UUID để chặn callback cũ khi đổi tài khoản, giữ payload
@@ -58,6 +58,29 @@ thời gian người dùng xem hộp thoại quyền không bị tính vào time
 chặn callback cũ và báo lỗi phân loại. Caller tương lai phải khởi chạy khi app
 foreground, hủy khi đóng màn hình/logout, và cho phép gửi không vị trí khi lỗi.
 Kiểm thử bằng driver giả; GPS, hộp thoại quyền và xử lý trên máy thật chưa xác nhận.
+
+S6a: `SOSIntentLifecycle` nối runner vào phiên đã đăng nhập và xếp hàng các thao
+tác khởi tạo/dọn dẹp; phiên mới đợi dọn phiên cũ. Khôi phục chỉ đọc ý định chờ,
+không tự POST. Khi stop, hủy công việc và xóa ý định; lỗi xóa chặn khởi tạo tiếp
+trong cùng lifecycle. GPS một lần cũng được hủy. Việc hủy không thu hồi được POST
+đã tới server; UUID và đối soát REST vẫn cần thiết. UI tạo SOS, phục hồi ý định
+và xử lý lỗi dọn dẹp chưa được nối; chưa kiểm tra production hay thiết bị thật.
+
+S6b/S7: tạo SOS bằng REST với tùy chọn GPS một lần, khôi phục intent chưa xác nhận,
+nhận hỗ trợ/đóng qua REST, chi tiết người hỗ trợ và card chat mở SOS theo ID.
+Socket dùng nhận invalidation; SOS legacy trong hàng đợi socket bị loại khi flush.
+Thông báo local chỉ có thể được tạo nếu app đang chạy và nhận socket, không phải
+push APNs. Các luồng UI/notification, lỗi mạng và độ mượt chưa được xác nhận trên
+hai thiết bị thật; không coi build/mocks là nghiệm thu tính năng an toàn.
+
+Yêu cầu bổ sung: người dùng chọn bật chia sẻ liên tục khi SOS, khôi phục trạng thái
+trước đó sau khi kết thúc. Phía nhận hiện chọn owner trên bản đồ, dùng realtime
+hiện có và bỏ qua điểm cũ hơn fix SOS có timestamp, hiển thị thời gian đo/mất mạng.
+Phía gửi chưa tự bật: PATCH quyền riêng tư hiện là công tắc toàn tài khoản, không
+có lease theo SOS, không có phiên bản/điều kiện để khôi phục an toàn nếu người dùng
+đổi cài đặt ở thiết bị khác; app bị kill cũng không thể bảo đảm tự tắt. Cần hợp đồng
+backend cho quyền chia sẻ tạm có thời hạn, owner, phạm vi người nhận, hủy/đóng và
+đối soát nhiều thiết bị trước khi tự bật; tuyệt đối không vượt qua cờ pause cục bộ.
 
 S1 đã build Debug/Release Simulator; mock networking kiểm tra 5 endpoint, response
 create/replay/detail/assistance/close, lỗi và UUID giữ nguyên qua 401 → refresh.

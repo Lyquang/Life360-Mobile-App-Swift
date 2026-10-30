@@ -4,28 +4,18 @@ import UIKit
 /// (the in-app banners cover the foreground case).
 @MainActor
 final class RealtimeNotificationBridge {
-    private let observeSOS: ObserveSOSAlertsUseCase
     private let observeStayAlerts: ObserveStayAlertsUseCase
     private let push: PushNotificationService
     private var tasks: [Task<Void, Never>] = []
 
-    init(observeSOS: ObserveSOSAlertsUseCase, observeStayAlerts: ObserveStayAlertsUseCase, push: PushNotificationService) {
-        self.observeSOS = observeSOS
+    init(observeStayAlerts: ObserveStayAlertsUseCase, push: PushNotificationService) {
         self.observeStayAlerts = observeStayAlerts
         self.push = push
     }
 
     func start() {
         guard tasks.isEmpty else { return }
-        let sosStream = observeSOS()
         let stayStream = observeStayAlerts()
-
-        tasks.append(Task { [weak self] in
-            for await alert in sosStream {
-                self?.notify(title: L10n.tr("notification.sos.title", alert.name), body: alert.message,
-                             deeplink: .sos(userId: alert.userId))
-            }
-        })
         tasks.append(Task { [weak self] in
             for await alert in stayStream {
                 self?.notify(title: alert.name,

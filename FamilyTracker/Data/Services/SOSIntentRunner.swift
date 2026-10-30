@@ -107,8 +107,12 @@ actor SOSIntentRunner {
         let old = session
         session = nil
         sessionGeneration = nil
-        guard let old else { return }
-        try await store.endSession(old)
+        if let old {
+            try await store.endSession(old)
+        } else {
+            // Logout also clears a pending file when activation never completed.
+            try await store.clearAll()
+        }
     }
 
     private func performSend(session: SOSPendingSession, generation expected: UUID,

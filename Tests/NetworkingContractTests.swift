@@ -183,6 +183,8 @@ enum NetworkingContractTests {
         try await SOSRecoveryChecks.run()
         try SOSChatChecks.run()
         try await SOSLocationChecks.run()
+        try await SOSLifecycleChecks.run()
+        try await SOSPresentationChecks.run()
         try redaction()
         try liveTrailAssemblyAndGeometry()
         try socketLocationContract()

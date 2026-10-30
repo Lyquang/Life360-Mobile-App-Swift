@@ -4,6 +4,7 @@ import UserNotifications
 /// Where a tapped notification should take the user.
 enum NotificationDeeplink: Equatable {
     case sos(userId: String)
+    case sosIncident(id: String)
     case member(userId: String)
     case conversation(id: String)
 
@@ -11,6 +12,7 @@ enum NotificationDeeplink: Equatable {
         guard let kind = userInfo["kind"] as? String, let id = userInfo["id"] as? String else { return nil }
         switch kind {
         case "sos": self = .sos(userId: id)
+        case "sos_incident": self = .sosIncident(id: id)
         case "member": self = .member(userId: id)
         case "conversation": self = .conversation(id: id)
         default: return nil
@@ -20,6 +22,7 @@ enum NotificationDeeplink: Equatable {
     var userInfo: [String: String] {
         switch self {
         case .sos(let id): return ["kind": "sos", "id": id]
+        case .sosIncident(let id): return ["kind": "sos_incident", "id": id]
         case .member(let id): return ["kind": "member", "id": id]
         case .conversation(let id): return ["kind": "conversation", "id": id]
         }

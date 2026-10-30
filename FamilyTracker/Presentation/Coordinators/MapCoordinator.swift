@@ -47,6 +47,11 @@ final class MapCoordinator: NavigationCoordinator {
         }
     }
 
+    func followSOSMember(_ userID: String, fallback: GeoPoint?, recordedAt: Date?) {
+        popToRoot()
+        viewModel.followSOSMember(userID, fallback: fallback, recordedAt: recordedAt)
+    }
+
     func makeJourneyViewModel(userId: String, name: String) -> JourneyViewModel {
         JourneyViewModel(userId: userId, memberName: name,
                          fetchDayJourney: container.fetchDayJourney,

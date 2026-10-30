@@ -52,7 +52,9 @@ final class AppContainer {
     let realtime: SocketRealtimeRepository
     let sosRealtimeEvents: SOSRealtimeEventAdapter
     let sosSession: SOSSessionController
+    let sosRepository: SOSIncidentRepository
     let sosLocation: SOSLocationProviding
+    let sosIntentLifecycle: SOSIntentLifecycle?
     let chatRepository: ChatRepository
     let mediaRepository: MediaRepository
     let mediaImageLoader: MediaImageLoader
@@ -65,7 +67,6 @@ final class AppContainer {
     let shareLocation: ShareLocationUseCase
     private let locationDelivery: LocationDeliveryService
     private(set) lazy var notificationBridge = RealtimeNotificationBridge(
-        observeSOS: ObserveSOSAlertsUseCase(repository: realtime),
         observeStayAlerts: ObserveStayAlertsUseCase(repository: realtime),
         push: pushService
     )
@@ -162,8 +163,28 @@ final class AppContainer {
                                   logger: logger, refreshCoordinator: tokenRefreshCoordinator,
                                   metrics: restMetrics)
         sosRealtimeEvents = SOSRealtimeEventAdapter(socket: socketClient)
-        sosSession = SOSSessionController(repository: SOSIncidentRepositoryImpl(api: api))
+        let sosRepository = SOSIncidentRepositoryImpl(api: api)
+        self.sosRepository = sosRepository
+        let sosRecovery = SOSSessionController(repository: sosRepository)
+        sosSession = sosRecovery
         sosLocation = SOSLocationService(makeDriver: { SOSCoreLocationDriver() })
+        do {
+            let store = try SOSPendingIntentStore()
+            let runner = SOSIntentRunner(store: store, send: { intent, generation in
+                do {
+                    return try await sosRepository.create(intent, expectedSessionGeneration: generation)
+                } catch let failure as SOSFailure {
+                    if case .rateLimited = failure {
+                        await MainActor.run { sosRecovery.noteActionFailure(failure, incidentID: "") }
+                    }
+                    throw failure
+                }
+            }, currentSessionGeneration: { sessionStore.sessionGeneration })
+            sosIntentLifecycle = SOSIntentLifecycle(runner: runner)
+        } catch {
+            sosIntentLifecycle = nil
+            logger.logSocket(event: "sos_storage", payload: ["category": "initialization_failed"])
+        }
         authRepository = AuthRepositoryImpl(api: api)
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)
@@ -252,6 +273,9 @@ final class AppContainer {
     }
 
     func logout(allDevices: Bool = false) async -> Bool {
+        sosLocation.cancel()
+        if sosIntentLifecycle?.state != .inactive { sosIntentLifecycle?.stop() }
+        await sosIntentLifecycle?.waitForPendingLifecycleWork()
         shareLocation.stop()
         networkPathObserver?.stop()
         metricKitReceiver?.stop(clear: true)
@@ -370,7 +394,6 @@ extension AppContainer {
     var getCurrentLocation: GetCurrentLocationUseCase { GetCurrentLocationUseCase(repository: deviceLocation) }
 
     var observeSOSAlerts: ObserveSOSAlertsUseCase { ObserveSOSAlertsUseCase(repository: realtime) }
-    var sendSOS: SendSOSUseCase { SendSOSUseCase(repository: realtime, deviceLocation: deviceLocation, deviceStatus: deviceStatus) }
 
     var fetchLocationHistory: FetchLocationHistoryUseCase { FetchLocationHistoryUseCase(repository: historyRepository) }
     var fetchDayJourney: FetchDayJourneyUseCase { FetchDayJourneyUseCase(repository: historyRepository) }

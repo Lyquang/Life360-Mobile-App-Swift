@@ -6,13 +6,15 @@ struct ChatView: View {
     @State private var photoItem: PhotosPickerItem?
     private let imageLoader: MediaImageLoader
     private let onShowGroupInfo: (() -> Void)?
+    private let onShowSOS: ((String) -> Void)?
 
     init(viewModel: @autoclosure @escaping () -> ChatViewModel,
          imageLoader: MediaImageLoader,
-         onShowGroupInfo: (() -> Void)? = nil) {
+         onShowGroupInfo: (() -> Void)? = nil, onShowSOS: ((String) -> Void)? = nil) {
         _viewModel = StateObject(wrappedValue: viewModel())
         self.imageLoader = imageLoader
         self.onShowGroupInfo = onShowGroupInfo
+        self.onShowSOS = onShowSOS
     }
 
     var body: some View {
@@ -115,6 +117,7 @@ struct ChatView: View {
                     ForEach(viewModel.messages) { item in
                         MessageBubble(item: item, isMine: viewModel.isMine(item.message), playback: viewModel.playback,
                                       imageLoader: imageLoader,
+                                      onShowSOS: onShowSOS,
                                       onRetry: { viewModel.retry(id: item.id) },
                                       onCancel: { viewModel.cancelUpload(id: item.id) })
                             .id(item.id)
@@ -205,6 +208,7 @@ struct MessageBubble: View {
     let isMine: Bool
     @ObservedObject var playback: VoicePlaybackController
     let imageLoader: MediaImageLoader
+    var onShowSOS: ((String) -> Void)? = nil
     let onRetry: () -> Void
     let onCancel: () -> Void
 
@@ -231,7 +235,17 @@ struct MessageBubble: View {
 
     @ViewBuilder
     private var content: some View {
-        if message.type == .image {
+        if let sos = message.sos, let onShowSOS {
+            Button { onShowSOS(sos.id) } label: {
+                VStack(alignment: .leading, spacing: FTSpacing.xs) {
+                    Label(L10n.tr(sos.kind == .assistance ? "sos.new.chat_assistance" : "sos.new.detail_title"),
+                          systemImage: "exclamationmark.shield.fill").font(.headline)
+                    if !message.content.isEmpty { Text(message.content).font(.body) }
+                    Text(verbatim: L10n.tr("sos.new.chat_open")).font(.caption)
+                }.foregroundColor(.white).padding(FTSpacing.md)
+                    .background(FTColors.dangerGradient).cornerRadius(FTRadius.lg)
+            }.buttonStyle(.plain)
+        } else if message.type == .image {
             if let data = item.previewData, let image = UIImage(data: data) {
                 Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: 220).cornerRadius(FTRadius.md)
             } else if let attachment = message.attachment, let url = URL(string: attachment.url) {

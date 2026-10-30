@@ -40,10 +40,15 @@ final class MainTabCoordinator: ObservableObject {
         chatHub = ChatHubCoordinator(container: container, currentUser: currentUser)
         timeline = TimelineCoordinator(container: container, currentUser: currentUser)
         places = PlacesCoordinator(container: container)
-        emergency = EmergencyCoordinator(observeSOS: container.observeSOSAlerts, sendSOS: container.sendSOS)
+        emergency = EmergencyCoordinator(container: container, currentUser: currentUser)
 
         map.onRequestSOS = { [weak self] in self?.emergency.requestSOS() }
-        emergency.onShowLocation = { [weak self] alert in self?.showOnMap(alert.point) }
+        emergency.onShowLocation = { [weak self] userID, fallback, recordedAt in
+            guard let self else { return }
+            self.selectedTab = .map
+            self.map.followSOSMember(userID, fallback: fallback, recordedAt: recordedAt)
+        }
+        chatHub.onShowSOS = { [weak emergency] id in emergency?.open(id) }
         badgeCancellable = chatHub.viewModel.$totalUnread
             .removeDuplicates()
             .sink { [weak self] count in self?.chatUnreadBadge = count }
@@ -66,7 +71,6 @@ final class MainTabCoordinator: ObservableObject {
             }
         }
         container.notificationBridge.start()
-        emergency.start()
 
         container.pushService.$pendingDeeplink
             .compactMap { $0 }
@@ -80,6 +84,8 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func stop() {
+        container.sosLocation.cancel()
+        container.sosIntentLifecycle?.stop()
         sosEventsTask?.cancel()
         sosEventsTask = nil
         sosReadinessTask?.cancel()
@@ -99,21 +105,35 @@ final class MainTabCoordinator: ObservableObject {
 
     private func startSOSRecovery() {
         guard sosEventsTask == nil else { return }
+        if let identity = container.session.locationSessionIdentity {
+            container.sosIntentLifecycle?.start(ownerID: identity.ownerID, sessionGeneration: identity.generation)
+        }
         let controller = container.sosSession
         let source = container.sosRealtimeEvents
         let eventStream = source.observe()
         let readiness = container.realtime.observeSessionReadiness()
         controller.startSession()
         source.startSession()
-        sosEventsTask = Task { [weak controller, weak source] in
+        sosEventsTask = Task { [weak controller, weak source, weak emergency, weak self] in
             for await event in eventStream {
                 guard !Task.isCancelled, let controller, let source else { return }
                 guard source.isCurrent(event) else { continue }
                 await controller.refreshDetail(id: event.sosID, minimumRevision: event.revision)
+                guard !Task.isCancelled, source.isCurrent(event) else { return }
+                if event.kind == .alert, emergency?.presentIncoming(event.sosID) == true,
+                   UIApplication.shared.applicationState != .active {
+                    self?.container.pushService.scheduleLocal(title: L10n.tr("sos.new.detail_title"),
+                        body: L10n.tr("sos.new.alert"), deeplink: .sosIncident(id: event.sosID),
+                        identifier: "sos-\(event.sosID)")
+                }
             }
         }
-        sosReadinessTask = Task { [weak controller] in
+        sosReadinessTask = Task { [weak controller, weak emergency] in
             await controller?.reconcile()
+            if let controller, let emergency,
+               let incident = controller.incidents.values.first(where: {
+                   $0.ownerId != emergency.currentUserID && $0.status == .active
+               }) { emergency.presentIncoming(incident.id) }
             for await ready in readiness {
                 guard !Task.isCancelled, let controller else { return }
                 if ready { await controller.reconcile() }
@@ -122,6 +142,11 @@ final class MainTabCoordinator: ObservableObject {
         NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
             .sink { [weak controller] _ in
                 Task { @MainActor [weak controller] in await controller?.reconcile() }
+            }
+            .store(in: &cancellables)
+        NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)
+            .sink { [weak emergency] _ in
+                Task { @MainActor [weak emergency] in emergency?.viewModel.suspend() }
             }
             .store(in: &cancellables)
     }
@@ -150,6 +175,8 @@ final class MainTabCoordinator: ObservableObject {
 
     func handle(_ deeplink: NotificationDeeplink) {
         switch deeplink {
+        case .sosIncident(let id):
+            emergency.open(id)
         case .sos(let userId), .member(let userId):
             selectedTab = .map
             map.focus(onMember: userId)

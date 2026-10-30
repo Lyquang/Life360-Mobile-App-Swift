@@ -23,7 +23,6 @@ extension LiveLocationRepository {
 
 protocol SOSRepository: AnyObject {
     func observeSOSAlerts() -> AsyncStream<SOSAlert>
-    func sendSOS(message: String, location: GeoPoint?, batteryLevel: Int?)
 }
 
 protocol DeviceLocationRepository: AnyObject {
