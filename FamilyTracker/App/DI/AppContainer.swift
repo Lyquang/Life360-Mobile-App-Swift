@@ -50,6 +50,8 @@ final class AppContainer {
     let locationSharingRepository: LocationSharingRepository
     private let locationSharingGate: LocationSharingGate
     let realtime: SocketRealtimeRepository
+    let sosRealtimeEvents: SOSRealtimeEventAdapter
+    let sosSession: SOSSessionController
     let chatRepository: ChatRepository
     let mediaRepository: MediaRepository
     let mediaImageLoader: MediaImageLoader
@@ -158,6 +160,8 @@ final class AppContainer {
         api = URLSessionAPIClient(baseURL: environment.apiBaseURL, tokenProvider: session,
                                   logger: logger, refreshCoordinator: tokenRefreshCoordinator,
                                   metrics: restMetrics)
+        sosRealtimeEvents = SOSRealtimeEventAdapter(socket: socketClient)
+        sosSession = SOSSessionController(repository: SOSIncidentRepositoryImpl(api: api))
         authRepository = AuthRepositoryImpl(api: api)
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)

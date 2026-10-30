@@ -160,6 +160,20 @@ Legend:
   refresh, auth/logout flows and Socket.IO rotation integrated. Contract/build/lint
   pass; saved XCTest target and physical-device checks remain.
 - `[-]` Emergency SOS: SOS use cases, alert banner, coordinator-driven emergency flow.
+  S1 adds typed SOS REST endpoints, DTOs, repository and mock contract coverage;
+  Debug/Release Simulator builds and networking/localization scripts pass. The
+  existing SOS UI still uses the legacy flow until a later cutover. XCTest remains
+  blocked by the scheme's missing Test action. User confirmed backend flags and
+  transactions on 2026-10-29; production responses remain unverified.
+  S2a adds owner/session-scoped durable pending intents and a deterministic retry
+  policy. S2b adds a single-flight foreground runner with persist-before-send,
+  bounded retry and cooldown; it is not wired to UI or session lifecycle yet.
+  S3 adds a session-scoped REST recovery controller with full incident pagination,
+  revision fences, responder paging, 403/404 cleanup and read-side rate-limit
+  cooldown. S4a connects authenticated lifecycle and deduplicated `sos_alert`/
+  `sos:updated` invalidations to detail recovery; shared read/write cooldown,
+  REST write cutover, chat SOS metadata and responder UI remain pending. The
+  legacy SOS banner is not yet deduplicated by sosId.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,

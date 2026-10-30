@@ -99,6 +99,39 @@ private actor MediaRefreshStub: RefreshTokenTransport {
     }
 }
 
+private final class SOSRunnerClock: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = Date(timeIntervalSince1970: 1_000)
+    func now() -> Date { lock.lock(); defer { lock.unlock() }; return value }
+    func advance(_ seconds: TimeInterval) { lock.lock(); value.addTimeInterval(seconds); lock.unlock() }
+}
+
+private actor SOSRunnerSender {
+    private(set) var requests: [SOSCreationIntent] = []
+    private var failures: [SOSFailure]
+    init(failures: [SOSFailure]) { self.failures = failures }
+    func send(_ intent: SOSCreationIntent) throws -> SOSCreated {
+        requests.append(intent)
+        if !failures.isEmpty { throw failures.removeFirst() }
+        return SOSCreated(created: true, incident: SOSSummary(
+            id: "000000000000000000000001", ownerId: "000000000000000000000002", status: .active,
+            revision: 1, groupCount: 1, recipientCount: 1, createdAt: Date(timeIntervalSince1970: 1_000), closedAt: nil))
+    }
+}
+
+private actor SOSRunnerBlockingSender {
+    private(set) var calls = 0
+    private var continuation: CheckedContinuation<Void, Never>?
+    func send(_ intent: SOSCreationIntent) async -> SOSCreated {
+        calls += 1
+        await withCheckedContinuation { continuation = $0 }
+        return SOSCreated(created: true, incident: SOSSummary(
+            id: "000000000000000000000001", ownerId: "000000000000000000000002", status: .active,
+            revision: 1, groupCount: 1, recipientCount: 1, createdAt: Date(timeIntervalSince1970: 1_000), closedAt: nil))
+    }
+    func release() { continuation?.resume(); continuation = nil }
+}
+
 @main
 enum NetworkingContractTests {
     static func main() async throws {
@@ -108,6 +141,10 @@ enum NetworkingContractTests {
         try requests()
         try mediaContracts()
         try await locationBatchContract()
+        try await sosContract()
+        try await sosPendingContract()
+        try await sosRunnerContract()
+        try await SOSRecoveryChecks.run()
         try redaction()
         try liveTrailAssemblyAndGeometry()
         try socketLocationContract()
@@ -120,8 +157,248 @@ enum NetworkingContractTests {
         try await refreshTransportContract()
         try await retryUnauthorizedStops()
         try await lateRefreshCannotExpireNewSession()
-        print("PASS: REST contracts, auth refresh, media ticket/PUT retry, decoding and errors")
+        print("PASS: REST/SOS contracts, auth refresh, media ticket/PUT retry, decoding and errors")
     }
+
+    static func sosContract() async throws {
+        let id = "000000000000000000000001"
+        let intent = SOSCreationIntent(clientRequestId: UUID(), message: "Help", location: nil)
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [ProtocolStub.self]
+        let session = URLSession(configuration: config)
+        defer { session.invalidateAndCancel(); ProtocolStub.handler = nil; ProtocolStub.responseHeaders = [:] }
+        let store = PairStoreStub()
+        let refresh = RefreshStub()
+        let coordinator = TokenRefreshCoordinator(store: store, transport: refresh)
+        let client = URLSessionAPIClient(baseURL: URL(string: "https://example.test/api/v1")!, session: session,
+                                         tokenProvider: store, logger: NoopNetworkLogger(), refreshCoordinator: coordinator)
+        let repository = SOSIncidentRepositoryImpl(api: client)
+        let summary = """
+        {"id":"\(id)","ownerId":"000000000000000000000002","status":"active","revision":1,
+         "groupCount":2,"recipientCount":3,"createdAt":"2026-10-29T10:00:00.000Z"}
+        """
+        var observedIDs: [String] = []
+        ProtocolStub.handler = { request in
+            try check(request.url?.path == "/api/v1/sos" && request.httpMethod == "POST", "SOS create route")
+            let body = try JSONSerialization.jsonObject(with: sosRequestBody(request)) as! [String: Any]
+            try check(Set(body.keys) == ["clientRequestId", "message"], "SOS strict body")
+            observedIDs.append(body["clientRequestId"] as! String)
+            if request.value(forHTTPHeaderField: "Authorization") == "Bearer expired" {
+                return (401, Data(#"{"success":false,"code":"UNAUTHORIZED"}"#.utf8))
+            }
+            return (201, Data("{\"success\":true,\"data\":{\"created\":true,\"incident\":\(summary)}}".utf8))
+        }
+        let created = try await repository.create(intent)
+        try check(created.created && created.incident.revision == 1, "SOS summary decode")
+        let rotations = await refresh.calls
+        try check(rotations == 1 && observedIDs == Array(repeating: intent.clientRequestId.uuidString.lowercased(), count: 2),
+                  "SOS refresh must reuse request UUID")
+
+        ProtocolStub.handler = { _ in
+            (200, Data("{\"success\":true,\"data\":{\"created\":false,\"incident\":\(summary)}}".utf8))
+        }
+        let replay = try await repository.create(intent)
+        try check(!replay.created && replay.incident.id == id, "SOS replay")
+
+        ProtocolStub.handler = { request in
+            try check(request.url?.query?.contains("afterId=") == true, "Responder afterId missing")
+            try check(request.url?.query?.contains("cursor=") == false, "Incident cursor leaked into detail")
+            return (200, Data("""
+            {"success":true,"data":{"incident":{"id":"\(id)","ownerId":"000000000000000000000002",
+            "status":"active","revision":2,"message":"Help","location":null,"groupIds":[],
+            "createdAt":"2026-10-29T10:00:00.123Z","closedAt":null},"responders":[
+            {"id":"000000000000000000000004","responderId":"000000000000000000000005",
+            "name":null,"avatar":null,"status":"coming","respondedAt":"2026-10-29T10:01:00Z"}],
+            "hasMore":false,"nextAfterId":null}}
+            """.utf8))
+        }
+        let detail = try await repository.detail(id: id, afterId: id)
+        try check(detail.incident.location == nil && detail.responders.first?.name == nil, "SOS null fields")
+        try check(detail.incident.createdAt == ISO8601.date(from: "2026-10-29T10:00:00.123Z"), "SOS fractional date")
+
+        ProtocolStub.handler = { request in
+            try check(request.url?.query?.contains("cursor=") == true, "Incident cursor missing")
+            try check(request.url?.query?.contains("afterId=") == false, "Responder cursor leaked into list")
+            return (200, Data(#"{"success":true,"data":{"items":[],"hasMore":false,"nextCursor":null}}"#.utf8))
+        }
+        let page = try await repository.list(cursor: id)
+        try check(page.items.isEmpty && !page.hasMore, "SOS empty list")
+
+        ProtocolStub.handler = { request in
+            try check(request.url?.path == "/api/v1/sos/\(id)/responses", "SOS respond route")
+            let body = try JSONSerialization.jsonObject(with: sosRequestBody(request)) as! [String: String]
+            try check(body == ["status": "coming"], "SOS respond strict body")
+            return (201, Data("""
+            {"success":true,"data":{"created":true,"sosId":"\(id)","revision":2,"response":{
+            "id":"000000000000000000000004","responderId":"000000000000000000000005",
+            "status":"coming","respondedAt":"2026-10-29T10:01:00.000Z"}}}
+            """.utf8))
+        }
+        let assistance = try await repository.respond(id: id)
+        try check(assistance.response.name == nil && assistance.created, "Write response has no profile")
+
+        ProtocolStub.handler = { request in
+            try check(request.httpMethod == "PATCH", "SOS close method")
+            let closed = summary.replacingOccurrences(of: "active", with: "resolved")
+            return (200, Data("{\"success\":true,\"data\":{\"changed\":false,\"incident\":\(closed)}}".utf8))
+        }
+        let closed = try await repository.close(id: id, status: .resolved)
+        try check(!closed.changed && closed.incident.status == .resolved, "SOS close replay")
+
+        let cases: [(Int, SOSFailure)] = [(400, .invalidRequest), (403, .forbidden), (404, .notFound),
+            (409, .conflict), (413, .payloadTooLarge), (429, .rateLimited(retryAfter: "75")),
+            (503, .unavailable), (500, .server)]
+        ProtocolStub.responseHeaders = ["Retry-After": "75"]
+        for (status, expected) in cases {
+            ProtocolStub.handler = { _ in (status, Data(#"{"success":false,"message":"private"}"#.utf8)) }
+            do { _ = try await repository.list(); throw CheckFailure(message: "SOS error accepted as success") }
+            catch let error as SOSFailure { try check(error == expected, "SOS error mapping \(status)") }
+        }
+        ProtocolStub.handler = { _ in (200, Data(#"{"success":true,"data":null}"#.utf8)) }
+        do { _ = try await repository.list(); throw CheckFailure(message: "Missing data accepted") }
+        catch let error as SOSFailure { try check(error == .invalidResponse, "SOS invalid envelope") }
+    }
+
+    private static func sosRequestBody(_ request: URLRequest) throws -> Data {
+        if let body = request.httpBody { return body }
+        guard let stream = request.httpBodyStream else { throw CheckFailure(message: "Missing SOS request body") }
+        stream.open()
+        defer { stream.close() }
+        var result = Data()
+        var buffer = [UInt8](repeating: 0, count: 1_024)
+        while true {
+            let count = stream.read(&buffer, maxLength: buffer.count)
+            guard count >= 0 else { throw CheckFailure(message: "Cannot read SOS request body") }
+            if count == 0 { return result }
+            result.append(contentsOf: buffer.prefix(count))
+        }
+    }
+
+    static func sosPendingContract() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let url = directory.appendingPathComponent("pending.json")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = try SOSPendingIntentStore(fileURL: url)
+        let first = SOSCreationIntent(clientRequestId: UUID(), message: "Help", location: nil)
+        let next = SOSCreationIntent(clientRequestId: UUID(), message: "Changed", location: nil)
+        let session = try await store.activate(ownerID: "account-a")
+        let saved = try await store.prepare(session: session, intent: first)
+        let same = try await store.prepare(session: session, intent: next)
+        try check(saved.intent == first && same.intent == first, "SOS intent was replaced")
+        let now = Date(timeIntervalSince1970: 1_000)
+        let deadline = now.addingTimeInterval(75)
+        let updated = try await store.update(session: session, requestID: first.clientRequestId,
+                                             state: .uncertain, attemptCount: 1, notBefore: deadline)
+        try check(updated, "SOS pending update failed")
+        let restoredStore = try SOSPendingIntentStore(fileURL: url)
+        let restoredSession = try await restoredStore.activate(ownerID: "account-a")
+        let restored = try await restoredStore.current(session: restoredSession)
+        try check(restored?.intent == first && restored?.state == .uncertain && restored?.notBefore == deadline,
+                  "SOS pending did not survive restart")
+        let wrongID = try await restoredStore.clear(session: restoredSession, requestID: next.clientRequestId)
+        try check(!wrongID, "Wrong UUID cleared SOS pending")
+        let otherSession = try await restoredStore.activate(ownerID: "account-b")
+        let empty = try await restoredStore.current(session: otherSession)
+        try check(empty == nil, "Pending intent crossed accounts")
+        _ = try await restoredStore.prepare(session: otherSession, intent: next)
+        do {
+            _ = try await restoredStore.clear(session: restoredSession, requestID: first.clientRequestId)
+            throw CheckFailure(message: "Stale session cleared new account")
+        } catch SOSPendingStoreError.inactiveSession {}
+        let other = try await restoredStore.current(session: otherSession)
+        try check(other?.intent == next, "Stale callback changed new account")
+        try await restoredStore.endSession(otherSession)
+        try check(!FileManager.default.fileExists(atPath: url.path), "Logout did not clear SOS file")
+        try Data("corrupt".utf8).write(to: url, options: .atomic)
+        do {
+            _ = try await restoredStore.activate(ownerID: "account-b")
+            throw CheckFailure(message: "Corrupt pending data accepted")
+        } catch SOSPendingStoreError.corruptData {}
+        try check(FileManager.default.fileExists(atPath: url.path), "Corrupt intent silently deleted")
+        try await restoredStore.clearAll()
+        let decision = SOSRetryPolicy.decide(failure: .rateLimited(retryAfter: "75"), attempts: 1, now: now, jitter: 0)
+        try check(decision == .deferUntil(deadline), "Long Retry-After was not deferred")
+        let stopped = SOSRetryPolicy.decide(failure: .network, attempts: 3, now: now, jitter: 0)
+        try check(stopped == .stop(notBefore: now.addingTimeInterval(4)), "SOS retry limit")
+        let nonRetryable = SOSRetryPolicy.decide(failure: .forbidden, attempts: 1, now: now, jitter: 0)
+        try check(nonRetryable == .stop(notBefore: nil), "SOS 403 should not retry")
+        let jittered = SOSRetryPolicy.decide(failure: .rateLimited(retryAfter: "20"), attempts: 1, now: now, jitter: 1)
+        try check(jittered == .retry(delay: 21, notBefore: now.addingTimeInterval(21)), "SOS retry jitter")
+    }
+
+    static func sosRunnerContract() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pendingURL = directory.appendingPathComponent("pending.json")
+        let store = try SOSPendingIntentStore(fileURL: pendingURL)
+        let sender = SOSRunnerSender(failures: [.network, .server])
+        let clock = SOSRunnerClock()
+        let runner = SOSIntentRunner(store: store, send: { intent in
+            let saved = try JSONDecoder().decode(SOSPendingIntent.self, from: Data(contentsOf: pendingURL))
+            try check(saved.state == .uncertain && saved.intent == intent, "SOS was not persisted before send")
+            return try await sender.send(intent)
+        },
+                                     now: { clock.now() }, jitter: { 0 }, sleep: { clock.advance($0) })
+        let initial = try await runner.startSession(ownerID: "owner-a")
+        try check(initial == nil, "New SOS session should be empty")
+        let pending = try await runner.prepare(message: "Help", location: nil)
+        let result = try await runner.sendPending()
+        guard case .confirmed(let created, let cleanup) = result else {
+            throw CheckFailure(message: "SOS retry never confirmed")
+        }
+        let requests = await sender.requests
+        try check(created.created && !cleanup && requests.count == 3, "SOS retry count or cleanup")
+        try check(requests.allSatisfy { $0 == pending.intent }, "SOS retry changed intent")
+        let empty = try await runner.startSession(ownerID: "owner-a")
+        try check(empty == nil, "Committed SOS remained pending")
+
+        let delayedSender = SOSRunnerSender(failures: [.rateLimited(retryAfter: "75")])
+        let delayed = SOSIntentRunner(store: store, send: { try await delayedSender.send($0) },
+                                      now: { clock.now() }, jitter: { 0 }, sleep: { clock.advance($0) })
+        _ = try await delayed.startSession(ownerID: "owner-a")
+        let original = try await delayed.prepare(message: "Wait", location: nil)
+        let waiting = try await delayed.sendPending()
+        guard case .waiting(let saved) = waiting, let notBefore = saved.notBefore else {
+            throw CheckFailure(message: "SOS 429 not deferred")
+        }
+        let restored = try await delayed.startSession(ownerID: "owner-a")
+        try check(restored?.intent == original.intent && restored?.notBefore == notBefore,
+                  "SOS deadline not restored")
+        _ = try await delayed.sendPending()
+        let delayedCount = await delayedSender.requests.count
+        try check(delayedCount == 1, "SOS retried before Retry-After")
+        clock.advance(75)
+        guard case .confirmed = try await delayed.sendPending() else {
+            throw CheckFailure(message: "SOS retry after deadline failed")
+        }
+
+        let blocker = SOSRunnerBlockingSender()
+        let blocked = SOSIntentRunner(store: store, send: { await blocker.send($0) })
+        _ = try await blocked.startSession(ownerID: "owner-a")
+        _ = try await blocked.prepare(message: "Blocked", location: nil)
+        let sendTask = Task { try await blocked.sendPending() }
+        for _ in 0..<1_000 {
+            if await blocker.calls > 0 { break }
+            try await Task.sleep(nanoseconds: 1_000_000)
+        }
+        let startedCount = await blocker.calls
+        try check(startedCount == 1, "SOS request did not start")
+        await blocked.cancelPendingWork()
+        let second = Task { try await blocked.sendPending() }
+        try await Task.sleep(nanoseconds: 5_000_000)
+        let concurrentCount = await blocker.calls
+        try check(concurrentCount == 1, "Concurrent SOS requests were not single-flight")
+        try await blocked.endSession()
+        await blocker.release()
+        do { _ = try await sendTask.value; throw CheckFailure(message: "Logout accepted old response") }
+        catch is CancellationError {}
+        do { _ = try await second.value; throw CheckFailure(message: "Logout accepted waiting response") }
+        catch is CancellationError {}
+        catch SOSIntentRunnerError.noSession {}
+        let afterLogout = try await blocked.startSession(ownerID: "owner-b")
+        try check(afterLogout == nil, "Logout leaked SOS into a new account")
+    }
+
 
     static func locationBatchContract() async throws {
         let fix = LocationFix(latitude: 10.7, longitude: 106.7,
