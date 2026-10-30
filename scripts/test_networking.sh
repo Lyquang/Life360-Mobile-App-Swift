@@ -17,6 +17,8 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Domain/UseCases/SOS/SOSRetryPolicy.swift \
   FamilyTracker/Data/Local/SOS/SOSPendingIntentStore.swift \
   FamilyTracker/Data/Services/SOSIntentRunner.swift \
+  FamilyTracker/Data/Services/SOSSessionController.swift \
+  FamilyTracker/Data/Services/SOSRealtimeEventAdapter.swift \
   FamilyTracker/Domain/Entities/GeoPoint.swift \
   FamilyTracker/Domain/Entities/LiveTrail.swift \
   FamilyTracker/Domain/Entities/LiveTrailAssembler.swift \
@@ -28,6 +30,9 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/App/DI/AppEnvironment.swift \
   FamilyTracker/Core/Logging/NetworkLogger.swift \
   FamilyTracker/Core/Logging/DiagnosticRedactor.swift \
+  FamilyTracker/Core/Concurrency/AsyncBroadcaster.swift \
+  FamilyTracker/Core/Realtime/SocketClient.swift \
+  FamilyTracker/Core/Realtime/SocketEvent.swift \
   FamilyTracker/Core/Monitoring/MobileMetricsRecording.swift \
   FamilyTracker/Core/Monitoring/PerformanceSignposts.swift \
   FamilyTracker/Core/Monitoring/NetworkTaskMetricsDelegate.swift \
@@ -41,6 +46,8 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Data/Services/MediaUploadService.swift \
   FamilyTracker/Data/Repositories/LocationBatchRepositoryImpl.swift \
   FamilyTracker/Data/Network/DTOs/*.swift \
+  FamilyTracker/Data/Network/DTOs/Realtime/RealtimeDTOs.swift \
+  Tests/SOSRecoveryChecks.swift \
   Tests/NetworkingContractTests.swift \
   -o "$TEST_BUILD_DIR/networking-tests"
 "$TEST_BUILD_DIR/networking-tests"

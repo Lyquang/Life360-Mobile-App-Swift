@@ -26,6 +26,8 @@ final class MainTabCoordinator: ObservableObject {
     private var badgeCancellable: AnyCancellable?
     private var sharingStartupTask: Task<Void, Never>?
     private var privacyRetryTask: Task<Void, Never>?
+    private var sosEventsTask: Task<Void, Never>?
+    private var sosReadinessTask: Task<Void, Never>?
 
     init(container: AppContainer, currentUser: User, onLogout: @escaping () -> Void,
          onLogoutAll: @escaping () -> Void) {
@@ -48,6 +50,7 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func start() {
+        startSOSRecovery()
         chatHub.viewModel.start()
         chatHub.viewModel.refreshInBackground()
         sharingStartupTask = Task { [weak self] in
@@ -77,6 +80,12 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func stop() {
+        sosEventsTask?.cancel()
+        sosEventsTask = nil
+        sosReadinessTask?.cancel()
+        sosReadinessTask = nil
+        container.sosRealtimeEvents.stopSession()
+        container.sosSession.stop()
         sharingStartupTask?.cancel()
         sharingStartupTask = nil
         privacyRetryTask?.cancel()
@@ -86,6 +95,35 @@ final class MainTabCoordinator: ObservableObject {
         emergency.stop()
         container.notificationBridge.stop()
         cancellables.removeAll()
+    }
+
+    private func startSOSRecovery() {
+        guard sosEventsTask == nil else { return }
+        let controller = container.sosSession
+        let source = container.sosRealtimeEvents
+        let eventStream = source.observe()
+        let readiness = container.realtime.observeSessionReadiness()
+        controller.startSession()
+        source.startSession()
+        sosEventsTask = Task { [weak controller, weak source] in
+            for await event in eventStream {
+                guard !Task.isCancelled, let controller, let source else { return }
+                guard source.isCurrent(event) else { continue }
+                await controller.refreshDetail(id: event.sosID, minimumRevision: event.revision)
+            }
+        }
+        sosReadinessTask = Task { [weak controller] in
+            await controller?.reconcile()
+            for await ready in readiness {
+                guard !Task.isCancelled, let controller else { return }
+                if ready { await controller.reconcile() }
+            }
+        }
+        NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)
+            .sink { [weak controller] _ in
+                Task { @MainActor [weak controller] in await controller?.reconcile() }
+            }
+            .store(in: &cancellables)
     }
 
     func logout() {

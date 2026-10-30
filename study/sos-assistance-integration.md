@@ -15,6 +15,25 @@ Trước S6 phải ràng buộc session generation của request REST ngay tại
 đầu tiên: fence trong runner không đảm bảo token không đổi giữa lúc gọi closure và
 `APIClient.makeRequest`. Không được nối runner vào UI trước khi có kiểm thử race này.
 
+S3: `SOSSessionController` khôi phục tất cả trang active trước khi áp dụng,
+đối soát incident đã cache qua detail, giới hạn một flight/detail, chặn revision cũ,
+giữ cooldown read khi 429 và xóa dữ liệu khi 403/404. Test mock có response trễ,
+logout, pagination và permission change. Chưa nối UI; cooldown đọc
+chưa chia sẻ với thao tác ghi. Backend không cung cấp snapshot token xuyên các trang:
+kiểm tra revision/groupIds và thay thế responder khi refresh giảm rủi ro nhưng
+không chứng minh quyền bất biến nếu membership thay đổi giữa các request. Phải
+refresh lại theo lifecycle và kiểm chứng quyền phía server, không hứa snapshot mạnh.
+State `awaitingRefresh` đánh dấu incident chỉ có list hoặc nhận revision mới chưa
+được detail xác minh; UI tương lai phải khóa các action cho tới khi cờ được xóa.
+
+S4a: `SOSRealtimeEventAdapter` đăng ký socket handler một lần, chỉ chuyển `eventId`,
+`sosId`, revision sang recovery, dedupe event theo session và bỏ event legacy thiếu ID.
+`MainTabCoordinator` bắt đầu/đóng session, đối soát REST khi mở app, `session:ready`
+và foreground; stop hủy observer/xóa state. Mock kiểm tra event trùng, session cũ,
+403, revision và pagination. Đây chưa phải UI SOS mới: banner cũ vẫn nhận legacy
+event qua luồng cũ và chưa dedupe theo sosId; nút gửi cũ vẫn dùng Socket. Cần cutover
+an toàn và chat/responder UI ở các nhịp sau. Không hứa push khi app bị suspend/kill.
+
 S1 đã build Debug/Release Simulator; mock networking kiểm tra 5 endpoint, response
 create/replay/detail/assistance/close, lỗi và UUID giữ nguyên qua 401 → refresh.
 Localization và SwiftLint qua với cảnh báo cũ; `xcodebuild test` chưa chạy vì scheme

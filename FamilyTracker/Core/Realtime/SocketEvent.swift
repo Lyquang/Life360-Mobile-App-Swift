@@ -13,6 +13,7 @@ enum SocketEvent {
     static let sessionReady        = "session:ready"
     static let locationUpdate      = "location_update"
     static let sosAlertReceive     = "sos_alert"
+    static let sosUpdated          = "sos:updated"
     static let sosConfirmed        = "sos_confirmed"
     static let memberOnline        = "member_online"
     static let memberOffline       = "member_offline"
