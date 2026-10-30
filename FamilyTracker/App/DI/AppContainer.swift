@@ -52,6 +52,7 @@ final class AppContainer {
     let realtime: SocketRealtimeRepository
     let sosRealtimeEvents: SOSRealtimeEventAdapter
     let sosSession: SOSSessionController
+    let sosLocation: SOSLocationProviding
     let chatRepository: ChatRepository
     let mediaRepository: MediaRepository
     let mediaImageLoader: MediaImageLoader
@@ -162,6 +163,7 @@ final class AppContainer {
                                   metrics: restMetrics)
         sosRealtimeEvents = SOSRealtimeEventAdapter(socket: socketClient)
         sosSession = SOSSessionController(repository: SOSIncidentRepositoryImpl(api: api))
+        sosLocation = SOSLocationService(makeDriver: { SOSCoreLocationDriver() })
         authRepository = AuthRepositoryImpl(api: api)
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)

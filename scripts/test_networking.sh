@@ -13,6 +13,8 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Domain/Entities/MediaUpload.swift \
   FamilyTracker/Domain/Entities/AuthTokens.swift \
   FamilyTracker/Domain/Entities/SOSIncident.swift \
+  FamilyTracker/Domain/Repositories/SOSLocationProviding.swift \
+  FamilyTracker/Core/Location/SOSLocationService.swift \
   FamilyTracker/Domain/Entities/Chat.swift \
   FamilyTracker/Domain/Entities/Alerts.swift \
   FamilyTracker/Domain/Entities/LocationModels.swift \
@@ -53,6 +55,7 @@ xcrun swiftc -swift-version 5 -module-cache-path "$TEST_BUILD_DIR/module-cache" 
   FamilyTracker/Data/Network/Mappers/ChatRealtimeMappers.swift \
   Tests/SOSChatChecks.swift \
   Tests/SOSRecoveryChecks.swift \
+  Tests/SOSLocationChecks.swift \
   Tests/NetworkingContractTests.swift \
   -o "$TEST_BUILD_DIR/networking-tests"
 "$TEST_BUILD_DIR/networking-tests"

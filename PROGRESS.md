@@ -175,6 +175,9 @@ Legend:
   chat cards and navigation to incident detail remain pending.
   SOS create/respond/close now require an expected auth session generation; the
   runner retains and rechecks that generation across retries. Wiring to logout/UI remains pending.
+  S5 adds an independent, cancellable one-shot SOS location provider with an
+  eight-second fix timeout and no cached-location fallback. It is not yet wired
+  to the SOS UI; permission and actual GPS behavior require device testing.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,
