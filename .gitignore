@@ -38,3 +38,9 @@ __pycache__/
 **/GoogleService-Info.plist
 **/Secrets.xcconfig
 *.local.xcconfig
+
+# Local Graphify output generated for this repository (sample remains untouched).
+.graphify-familytracker/
+.graphify-venv/
+# The supplied graph belongs to another project and must not be used as repo context.
+graphify-out/

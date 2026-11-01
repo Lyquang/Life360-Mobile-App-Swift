@@ -62,7 +62,9 @@ ast-grep --lang swift -p 'try? $EXPR' FamilyTracker
 
 ## 4. Graphtify
 
-Install or expose the `graphtify` CLI according to your local toolchain, then run from repo root:
+The existing `graphtify.yml` is a separate, previously authored configuration.
+The Graphtify CLI was not verified as part of the Graphify setup; confirm the
+tool and its supported options before relying on this command:
 
 ```bash
 graphtify --config graphtify.yml
@@ -73,6 +75,40 @@ Expected investigation path:
 ```text
 View -> ViewModel -> Coordinator -> UseCase -> Repository Protocol -> Data Repository -> Core Service
 ```
+
+### Graphify: local Swift index
+
+Graphify is distinct from the `graphtify.yml` configuration above. The supplied
+`graphify-out/` belongs to another project and is intentionally ignored; do not
+query it or run `graphify update .`, which targets that default output directory.
+The FamilyTracker graph is generated separately under the gitignored
+`.graphify-familytracker/graphify-out/` directory. Graph and virtual environment
+are local artifacts, so a fresh checkout needs to install and rebuild them:
+
+```bash
+python3 -m venv .graphify-venv
+.graphify-venv/bin/python -m pip install 'graphifyy==0.9.97'
+bash scripts/build_graphify.sh
+```
+
+The helper uses local code-only AST extraction, `GRAPHIFY_BACKEND=none`, and
+disables query logging; it produces `graph.json`, `GRAPH_REPORT.md` and
+`graph.html` without changing the supplied sample or installing Git hooks. The
+initial extraction was verified with Graphify 0.9.97; dependencies and Python
+compatibility may differ on another machine. Use a narrow query, for example:
+
+```bash
+GRAPHIFY_QUERY_LOG_DISABLE=1 .graphify-venv/bin/graphify query 'SOSIncidentRepository' \
+  --graph .graphify-familytracker/graphify-out/graph.json --budget 400
+```
+
+Open `.graphify-familytracker/graphify-out/graph.html` locally for the visual
+graph. Re-run the helper after Swift changes. The report's commit hash does not
+detect uncommitted edits, and graph edges can be inferred or miss dynamic Swift
+behavior; verify paths and claims in the actual code. The index excludes docs,
+tests, generated files and known sensitive file patterns, but cannot guarantee
+that source code itself contains no sensitive text. It is not a complete map of
+every dependency or backend contract; review artifacts before sharing them.
 
 ## 5. Memory MCP
 
