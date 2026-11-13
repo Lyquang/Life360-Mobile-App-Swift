@@ -10,12 +10,20 @@ Legend:
 
 ## Feature Status
 
-- `[x]` Native place search/history: MapKit autocomplete/text/nearby, coordinator-owned
-  search sheet and selected-place pin/card on LiveMap; account-scoped on-device query
-  cache 20 entries/30 days, delete/clear and session teardown. 21 executable feature
-  tests, 550-key vi/en localization checks, scoped lint and unsigned Simulator build
-  pass. Public-landmark native adapter smoke passed; physical-device/interactive UI
-  QA and country coverage remain manual. See `.spec/013-place-search/quickstart.md`.
+- `[x]` Graphify: generated a local code-only Swift index in
+  `.graphify-familytracker/graphify-out/` with Graphify 0.9.97; verified the
+  SOS repository query and scope. The copied `graphify-out/` belongs to another
+  project and is ignored. Graph output and local tool environment are not tracked.
+
+- `[x]` Adapted copied `.specify/` shell helpers and templates to Swift/iOS and
+  `.spec/`; isolated tests cover numbering, safe plan setup and feature selection.
+  Spec Kit CLI, agent integration and workflow engine were not validated.
+
+- `[x]` Spec organization: grouped FamilyTracker specifications under numbered
+  feature folders modeled on `.spec/001-message-notifications/`, preserved prior
+  detailed specs, added templates and updated agent/tooling references. This is a
+  documentation migration; feature implementation and device validation statuses
+  remain governed by the entries below.
 
 - `[x]` Engineering CI: unsigned Xcode 26.2 Simulator build, networking/localization
   contract tests, SwiftLint baseline, full-history Gitleaks scan and weekly Dependabot.
