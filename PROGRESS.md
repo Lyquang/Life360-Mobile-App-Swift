@@ -268,6 +268,15 @@ Legend:
 
 ## Current Agent Notes
 
+- 2026-11-13: Fixed the Code Quality job's SwiftLint startup failure by pinning
+  its runner to ubuntu-24.04. SwiftLint 0.65.1's dynamic Linux release requires
+  libxml2.so.2, which is unavailable on Ubuntu 26.04 (upstream issue #6966).
+  Kept the existing tool versions, archive checksums and lint/secret-scan commands.
+  Verified workflow YAML and all embedded Bash syntax; in an isolated Ubuntu 24.04
+  amd64 container with runtime packages, the exact pinned archive passed SHA-256,
+  `swiftlint version` returned 0.65.1 and `swiftlint lint --help` succeeded.
+  The hosted GitHub Actions job and full lint run were not executed locally.
+
 - 2026-11-13: Completed the explicitly approved Spec Kit workflow setup only.
   Installed official specify-cli 1.4.0 from tag v1.4.0, Codex integration (nine
   native skills), the FamilyTracker mobile preset and bundled SDD workflow with
