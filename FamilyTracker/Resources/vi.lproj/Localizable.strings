@@ -528,3 +528,25 @@
 "sos.live.updated" = "Vị trí đo lúc %@";
 "sos.live.no_time" = "Chưa có thời gian cập nhật vị trí";
 "sos.live.offline" = "Mất kết nối — vị trí có thể đã cũ";
+
+// Place search
+"search.field.placeholder" = "Tìm địa điểm";
+"search.title" = "Tìm địa điểm";
+"search.section.recent" = "Tìm kiếm gần đây";
+"search.section.suggestions" = "Gợi ý";
+"search.section.results" = "Kết quả";
+"search.action.clear_all" = "Xóa lịch sử";
+"search.action.delete" = "Xóa";
+"search.action.retry" = "Thử lại";
+"search.action.close" = "Đóng tìm kiếm";
+"search.action.clear_query" = "Xóa nội dung tìm kiếm";
+"search.action.clear_place" = "Bỏ chọn địa điểm";
+"search.state.loading" = "Đang tìm kiếm…";
+"search.state.empty" = "Không tìm thấy địa điểm";
+"search.state.hint" = "Nhập tên địa điểm hoặc tìm quán cà phê, nhà hàng quanh vùng bản đồ.";
+"search.error.unavailable" = "Chưa thể tìm địa điểm. Vui lòng thử lại.";
+"search.error.throttled" = "Có quá nhiều yêu cầu tìm kiếm. Vui lòng thử lại sau.";
+"search.error.history" = "Chưa thể cập nhật lịch sử tìm kiếm trên thiết bị.";
+"search.error.query" = "Nhập từ 2 đến 200 ký tự để tìm kiếm.";
+"search.nearby.cafe" = "Quán cà phê";
+"search.nearby.restaurant" = "Nhà hàng";

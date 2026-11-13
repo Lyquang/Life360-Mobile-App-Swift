@@ -6,10 +6,11 @@ import MapKit
 
 struct LiveMapView: View {
     @ObservedObject var viewModel: LiveMapViewModel
-    let coordinator: MapCoordinator
+    @ObservedObject var coordinator: MapCoordinator
 
     @State private var showMemberList = false
     @State private var selectedMember: MemberLocation?
+    @State private var visibleSearchRegion: PlaceSearchRegion?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -20,14 +21,22 @@ struct LiveMapView: View {
                 currentUserId: viewModel.currentUserId,
                 members: viewModel.memberLocations,
                 drawing: viewModel.trailDrawing,
-                bottomInset: 0,
+                selectedPlace: coordinator.selectedPlace,
+                bottomInset: coordinator.selectedPlace == nil ? 0 : 180,
                 onSelectMember: { member in
                     withAnimation(.spring()) {
+                        coordinator.clearSelectedPlace()
                         selectedMember = member
                         viewModel.centerOnMember(member)
                     }
                 },
-                onUserMoved: viewModel.userMovedMap
+                onUserMoved: viewModel.userMovedMap,
+                onRegionChanged: { region in
+                    let next = PlaceSearchRegion(
+                        center: GeoPoint(latitude: region.center.latitude, longitude: region.center.longitude),
+                        latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta)
+                    if visibleSearchRegion != next { visibleSearchRegion = next }
+                }
             )
             .ignoresSafeArea()
 
@@ -49,7 +58,7 @@ struct LiveMapView: View {
                 .font(FTFont.caption()).foregroundColor(FTColors.textPrimary)
                 .padding(FTSpacing.sm).background(FTColors.background).cornerRadius(FTRadius.md)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.top, 165)
+                .padding(.top, 225)
                 .allowsHitTesting(false)
             }
 
@@ -63,7 +72,7 @@ struct LiveMapView: View {
                         .background(FTColors.background)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 115)
+                .padding(.top, 175)
                 .padding(.horizontal, FTSpacing.md)
             }
             if viewModel.trailDrawing.lines.contains(where: { $0.style == .gps }) {
@@ -73,7 +82,7 @@ struct LiveMapView: View {
                     .padding(FTSpacing.sm)
                     .background(FTColors.background)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.top, viewModel.trailUnavailable ? 172 : 115)
+                    .padding(.top, viewModel.trailUnavailable ? 232 : 175)
                     .padding(.leading, FTSpacing.md)
                     .allowsHitTesting(false)
             }
@@ -94,6 +103,33 @@ struct LiveMapView: View {
                 }
             }
 
+            if let place = coordinator.selectedPlace {
+                VStack {
+                    Spacer()
+                    HStack(alignment: .top, spacing: FTSpacing.sm) {
+                        Image(systemName: "mappin.circle.fill")
+                            .foregroundColor(FTColors.primary).accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(verbatim: place.name).font(FTFont.headline())
+                            if !place.address.isEmpty {
+                                Text(verbatim: place.address).font(FTFont.caption()).lineLimit(3)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Button(action: coordinator.clearSelectedPlace) {
+                            Image(systemName: "xmark").frame(minWidth: 44, minHeight: 44)
+                        }
+                        .accessibilityLabel(L10n.tr("search.action.clear_place"))
+                    }
+                    .padding(FTSpacing.md)
+                    .background(FTColors.background)
+                    .cornerRadius(FTRadius.lg)
+                    .padding(.horizontal, FTSpacing.md)
+                    .padding(.bottom, 80)
+                    .accessibilityIdentifier("search.selected_place")
+                }
+            }
+
             if showMemberList {
                 memberList
             }
@@ -109,38 +145,53 @@ struct LiveMapView: View {
     // MARK: - Header
 
     private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("FamilyTracker")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+        VStack(spacing: FTSpacing.sm) {
+            HStack(alignment: .center) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("FamilyTracker")
+                        .font(.system(size: 20, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                    HStack(spacing: 4) {
+                        Circle()
+                            .fill(viewModel.isConnected ? FTColors.accent : FTColors.danger)
+                            .frame(width: 6, height: 6)
+                        AppLocalizedText(viewModel.isConnected ? "Đang kết nối" : "Offline")
+                            .font(FTFont.caption()).foregroundColor(.white.opacity(0.7))
+                    }
+                }
+                Spacer()
+                Button {
+                    withAnimation(.spring()) { showMemberList.toggle() }
+                } label: {
+                    HStack(spacing: FTSpacing.xs) {
+                        Image(systemName: "person.2.fill")
+                        Text(verbatim: viewModel.memberLocations.count.formatted(.number.locale(L10n.language.locale)))
+                            .font(FTFont.subheadline())
+                    }
                     .foregroundColor(.white)
-
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(viewModel.isConnected ? FTColors.accent : FTColors.danger)
-                        .frame(width: 6, height: 6)
-                    AppLocalizedText(viewModel.isConnected ? "Đang kết nối" : "Offline")
-                        .font(FTFont.caption())
-                        .foregroundColor(.white.opacity(0.7))
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .background(.ultraThinMaterial).cornerRadius(FTRadius.full)
                 }
             }
-
-            Spacer()
-
             Button {
-                withAnimation(.spring()) { showMemberList.toggle() }
+                selectedMember = nil
+                let region = viewModel.mapRegion
+                coordinator.openSearch(in: visibleSearchRegion ?? PlaceSearchRegion(
+                    center: GeoPoint(latitude: region.center.latitude, longitude: region.center.longitude),
+                    latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta))
             } label: {
-                HStack(spacing: FTSpacing.xs) {
-                    Image(systemName: "person.2.fill")
-                    Text("\(viewModel.memberLocations.count)")
-                        .font(FTFont.subheadline())
+                HStack(spacing: FTSpacing.sm) {
+                    Image(systemName: "magnifyingglass")
+                    Text(verbatim: L10n.tr("search.field.placeholder"))
+                    Spacer()
                 }
-                .foregroundColor(.white)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(.ultraThinMaterial)
-                .cornerRadius(FTRadius.full)
+                .foregroundColor(FTColors.textPrimary)
+                .padding(.horizontal, FTSpacing.md)
+                .frame(minHeight: 48)
+                .background(FTColors.background)
+                .cornerRadius(FTRadius.lg)
             }
+            .accessibilityIdentifier("map.search")
         }
         .padding(.horizontal, FTSpacing.md)
         .padding(.top, 55)
@@ -155,7 +206,7 @@ struct LiveMapView: View {
             mapControlButton(
                 icon: viewModel.isTrackingUser ? "location.fill" : "location",
                 color: viewModel.isTrackingUser ? FTColors.primary : FTColors.textSecondary,
-                action: viewModel.centerOnUser
+                action: { coordinator.clearSelectedPlace(); viewModel.centerOnUser() }
             )
 
             mapControlButton(icon: "sos", color: FTColors.danger, action: coordinator.requestSOS)

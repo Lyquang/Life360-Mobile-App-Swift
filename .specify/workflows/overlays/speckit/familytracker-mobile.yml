@@ -1,0 +1,42 @@
+id: familytracker-mobile
+extends: speckit
+priority: 10
+enabled: true
+edits:
+- insert_before: implement
+  step:
+    id: mobile-analysis
+    type: command
+    command: speckit.analyze
+    integration: '{{ inputs.integration }}'
+    input:
+      args: '{{ inputs.spec }}'
+- insert_before: implement
+  step:
+    id: mobile-approval
+    type: gate
+    message: 'AWAITING_APPROVAL: Review spec/interview/plan/tasks/API analysis, reuse,
+      states, refactor scope, risks and tests. Only the human may approve implementation.'
+    options:
+    - approve
+    - reject
+    on_reject: abort
+- insert_after: implement
+  step:
+    id: mobile-verification-documentation
+    type: prompt
+    integration: '{{ inputs.integration }}'
+    prompt: Follow AGENTS.md and the approved feature scope. Refactor only within
+      that scope, run actual applicable verification, record passed/failed/skipped/unverified
+      evidence in verification.md, write substantive study.md in Vietnamese with real
+      source links, and update tasks.md, feature progress.md and root PROGRESS.md
+      without duplicate checklists. Do not expand scope or claim unperformed device/performance
+      checks.
+- insert_after: implement
+  step:
+    id: mobile-convergence
+    type: command
+    command: speckit.converge
+    integration: '{{ inputs.integration }}'
+    input:
+      args: '{{ inputs.spec }}'

@@ -4,25 +4,22 @@ This repo is configured for token-efficient AI work on a Swift/iOS codebase.
 
 ## 1. Required First Reads
 
-For every coding task, read:
+Start with [AGENTS.md](AGENTS.md), then read the relevant rules and feature context.
+The installed **Spec Kit 1.4.0 / Codex** workflow is documented in
+[.specify/README.md](.specify/README.md). Use SMALL for trivial fixes and STANDARD
+(default) or COMPLEX for features; do not create sample feature folders manually.
 
 ```bash
-sed -n '1,220p' AI_RULES.md
-sed -n '1,220p' PROGRESS.md
+source .specify/env.sh
+specify version
+specify integration list
+bash scripts/test_specify.sh
 ```
 
-For a feature task, create a spec:
-
-```bash
-feature_dir=.spec/013-example
-mkdir -p "$feature_dir/checklists"
-cp .spec/templates/feature-spec.md "$feature_dir/spec.md"
-cp .spec/templates/{plan,tasks,research,data-model,quickstart}.md "$feature_dir/"
-cp .spec/templates/requirements.md "$feature_dir/checklists/requirements.md"
-```
-
-Alternatively, use the Bash helpers in `.specify/README.md`. These helpers do
-not install Spec Kit CLI or agent integrations and do not create Git branches.
+Codex chat skills are `$speckit-specify`, `$speckit-clarify`, `$speckit-plan`,
+`$speckit-tasks`, `$speckit-analyze`, `$speckit-implement`, `$speckit-converge`,
+`$speckit-checklist`, and `$speckit-constitution`. Feature implementation requires
+explicit scope approval. This setup does not authorize application changes.
 
 ## 2. Codebase Skeleton
 
@@ -62,7 +59,7 @@ ast-grep --lang swift -p 'try? $EXPR' FamilyTracker
 
 ## 4. Graphtify
 
-Install or expose the `graphtify` CLI according to your local toolchain, then run from repo root:
+Optional: install or expose the `graphtify` CLI according to your local toolchain, then run from repo root. Generated graphs and Python venvs were removed; neither is required for Spec Kit or app builds:
 
 ```bash
 graphtify --config graphtify.yml

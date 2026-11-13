@@ -27,6 +27,8 @@ final class AppContainer {
     let languageSettings: LanguageSettingsViewModel
     let sessionEvents = SessionExpiryEvents()
 
+    let searchHistory: SearchHistoryRepository = SearchHistoryCache()
+
     // MARK: Core
     let logger: NetworkLogger
     let batteryMonitor: BatteryMonitor
@@ -260,6 +262,12 @@ final class AppContainer {
             guard status == .denied || status == .restricted else { return }
             Task { @MainActor in locationSharing.stop() }
         }
+    }
+
+    func makePlaceSearchViewModel(accountID: String) -> PlaceSearchViewModel {
+        let repository = MapKitPlaceSearchRepository(service: MapKitPlaceSearchService())
+        return PlaceSearchViewModel(search: PlaceSearchUseCases(repository: repository),
+                                    history: SearchHistoryUseCases(repository: searchHistory, accountID: accountID))
     }
 
     // MARK: - Session lifecycle

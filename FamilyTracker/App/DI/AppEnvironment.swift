@@ -8,8 +8,8 @@ struct AppEnvironment {
 
     static let production = AppEnvironment(
         name: "Production",
-        apiBaseURL: URL(string: "https://life360-backend-6v9n.onrender.com/api/v1")!,
-        socketURL: URL(string: "https://life360-backend-6v9n.onrender.com")!
+        apiBaseURL: URL(string: "https://life360-backend-version2-0.onrender.com/api/v1")!,
+        socketURL: URL(string: "https://life360-backend-version2-0.onrender.com")!
     )
 
     static func local(host: String = "localhost") -> AppEnvironment {
