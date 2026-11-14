@@ -10,6 +10,7 @@ struct FTErrorView: View {
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: 40))
                 .foregroundColor(FTColors.warning)
+                .accessibilityHidden(true)
 
             AppLocalizedText(message)
                 .font(FTFont.body())
@@ -21,6 +22,7 @@ struct FTErrorView: View {
                     Text(verbatim: L10n.tr("Thử lại"))
                         .font(FTFont.subheadline())
                         .foregroundColor(FTColors.primary)
+                        .frame(minWidth: FTControl.minimumTarget, minHeight: FTControl.minimumTarget)
                 }
             }
         }
@@ -42,6 +44,7 @@ struct FTEmptyView: View {
                 .font(.system(size: 60))
                 .foregroundColor(FTColors.textTertiary)
                 .padding(.bottom, FTSpacing.sm)
+                .accessibilityHidden(true)
 
             AppLocalizedText(title)
                 .font(FTFont.title3())
@@ -57,8 +60,11 @@ struct FTEmptyView: View {
                     AppLocalizedText(actionTitle)
                         .font(FTFont.headline())
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(minHeight: FTControl.minimumTarget)
                         .padding(.horizontal, FTSpacing.xl)
-                        .padding(.vertical, FTSpacing.sm)
+                        .padding(.vertical, FTSpacing.xs)
                         .background(FTColors.primary)
                         .cornerRadius(FTRadius.full)
                 }
@@ -128,7 +134,7 @@ struct FTToast: View {
             AppLocalizedText(message)
                 .font(FTFont.subheadline())
                 .foregroundColor(FTColors.textPrimary)
-                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(FTSpacing.md)
         .background(FTColors.card)

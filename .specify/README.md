@@ -38,7 +38,7 @@ Không tự nâng phiên bản: preset yêu cầu đúng 1.4.0, cần review khi
 
 - `.specify/scripts/bash/` và template core: bản chính thức, có manifest provenance.
 - `.agents/skills/speckit-*/SKILL.md`: 9 skills do CLI chính thức sinh; không sửa tay.
-- `.specify/mobile-preset/`: nguồn chuẩn của 3 template addenda và 5 command preambles.
+- `.specify/mobile-preset/`: nguồn chuẩn của 3 template addenda và 6 command preambles.
   Preset `familytracker-mobile` dùng native append/prepend, giữ nội dung core.
 - `.specify/presets/familytracker-mobile/`: bản đã cài; sửa nguồn rồi refresh bằng CLI.
 - `.specify/templates/overrides/scripts/create-new-feature.sh`: bản upstream 1.4.0
@@ -216,3 +216,13 @@ visual accessibility và performance phải ghi Unverified nếu chưa thực hi
 
 Tài liệu web có thể đi trước bản pinned: ưu tiên `specify <command> --help` và source
 của 1.4.0 khi syntax khác nhau. Kết quả khảo sát/setup: [setup-report.md](setup-report.md).
+
+## UI/UX design extension
+
+[Design workflow](design-workflow.md) extends the installed plan skill using the
+existing preset (1.1.0), with conditional research/review for UI Impact. Both design
+skills are project-local. Constitution/native core and approval gates are unchanged.
+For UI: specify → clarify → design requirements → UI UX Pro Max → Mobile Design →
+Apple HIG → reuse → plan → tasks → analyze → approval → implement → scoped UI
+refactor → screenshots/accessibility → verification/study/progress → converge.
+Non-UI skips design, SMALL uses a focused check. See the feature audit for evidence.

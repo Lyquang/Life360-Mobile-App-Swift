@@ -13,3 +13,7 @@ requirement/task references, their blocking impact and a focused next action.
 Before implementation the review package and actual user approval must cover the
 current scope. If approval is absent, report AWAITING_APPROVAL; findings or completed
 analysis never authorize implementation. Scope changes require renewed approval.
+
+For substantive UI, also check the Design Review required by .specify/design-workflow.md
+against approved requirements and tasks. Separate source findings from screenshot
+evidence; absent visual/device/authenticated-state verification must stay visible.

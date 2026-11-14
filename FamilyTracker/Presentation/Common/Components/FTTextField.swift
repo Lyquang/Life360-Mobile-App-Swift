@@ -11,6 +11,8 @@ import SwiftUI
 
 // MARK: - FTTextField (Single-line)
 struct FTTextField: View {
+    @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let title: String          // Label phía trên
     let placeholder: String    // Placeholder text
     let icon: String           // SF Symbol name
@@ -23,28 +25,38 @@ struct FTTextField: View {
             // Label
             AppLocalizedText(title)
                 .font(FTFont.caption())
-                .foregroundColor(FTColors.textSecondary)
+                .foregroundColor(FTColors.fieldHint)
                 .textCase(.uppercase)
                 .tracking(0.5) // Letter spacing
+                .accessibilityHidden(true)
             
             // Input field
             HStack(spacing: FTSpacing.sm) {
                 // Icon bên trái
                 Image(systemName: icon)
+                    .font(.system(size: 18))
                     .foregroundColor(text.isEmpty ? FTColors.textTertiary : FTColors.primary)
                     .frame(width: 20)
-                    .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
+                    .accessibilityHidden(true)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: text.isEmpty)
                 
                 // TextField
                 TextField(text: $text) {
                     Text(verbatim: L10n.tr(placeholder))
+                        .foregroundColor(FTColors.fieldHint)
                 }
                     .font(FTFont.body())
                     .keyboardType(keyboardType)
+                    .textContentType(keyboardType == .emailAddress ? .username : nil)
+                    .accessibilityLabel(Text(verbatim: L10n.tr(title, language: AppLanguage(locale: locale))))
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        .clipped()
                     .textInputAutocapitalization(autocapitalization)
                     .autocorrectionDisabled()
             }
-            .padding(FTSpacing.md)
+            .frame(minHeight: FTControl.minimumTarget)
+            .padding(.horizontal, FTSpacing.md)
+            .padding(.vertical, FTSpacing.xs)
             .background(FTColors.surface)
             .cornerRadius(FTRadius.md)
             .overlay(
@@ -53,7 +65,7 @@ struct FTTextField: View {
                         text.isEmpty ? Color.clear : FTColors.primary.opacity(0.5),
                         lineWidth: 1.5
                     )
-                    .animation(.easeInOut(duration: 0.2), value: text.isEmpty)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: text.isEmpty)
             )
         }
     }
@@ -61,47 +73,73 @@ struct FTTextField: View {
 
 // MARK: - FTSecureField (Password)
 struct FTSecureField: View {
+    @Environment(\.locale) private var locale
     let title: String
     let placeholder: String
     let icon: String
     @Binding var text: String
+    var contentType: UITextContentType = .password
     @State private var isVisible: Bool = false // Toggle hiển thị mật khẩu
     
     var body: some View {
         VStack(alignment: .leading, spacing: FTSpacing.xs) {
             AppLocalizedText(title)
                 .font(FTFont.caption())
-                .foregroundColor(FTColors.textSecondary)
+                .foregroundColor(FTColors.fieldHint)
                 .textCase(.uppercase)
                 .tracking(0.5)
+                .accessibilityHidden(true)
             
             HStack(spacing: FTSpacing.sm) {
                 Image(systemName: icon)
+                    .font(.system(size: 18))
                     .foregroundColor(text.isEmpty ? FTColors.textTertiary : FTColors.primary)
                     .frame(width: 20)
+                    .accessibilityHidden(true)
                 
                 // Hiển thị SecureField hoặc TextField tùy trạng thái
                 if isVisible {
                     TextField(text: $text) {
                         Text(verbatim: L10n.tr(placeholder))
+                        .foregroundColor(FTColors.fieldHint)
                     }
                         .font(FTFont.body())
                         .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .textContentType(contentType)
+                        .accessibilityLabel(Text(verbatim: L10n.tr(title, language: AppLanguage(locale: locale))))
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        .clipped()
                 } else {
                     SecureField(text: $text) {
                         Text(verbatim: L10n.tr(placeholder))
+                        .foregroundColor(FTColors.fieldHint)
                     }
                         .font(FTFont.body())
+                        .textContentType(contentType)
+                        .accessibilityLabel(Text(verbatim: L10n.tr(title, language: AppLanguage(locale: locale))))
+                        .frame(minWidth: 0, maxWidth: .infinity)
+                        .clipped()
                 }
                 
                 // Nút toggle hiển thị mật khẩu
                 Button(action: { isVisible.toggle() }) {
                     Image(systemName: isVisible ? "eye.slash.fill" : "eye.fill")
-                        .foregroundColor(FTColors.textTertiary)
-                        .font(.system(size: 14))
+                        .foregroundColor(FTColors.fieldHint)
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(verbatim: L10n.tr(isVisible
+                    ? "common.accessibility.hide_password" : "common.accessibility.show_password", language: AppLanguage(locale: locale))))
+                .accessibilityValue(Text(verbatim: L10n.tr(isVisible
+                    ? "common.accessibility.password_visible" : "common.accessibility.password_hidden", language: AppLanguage(locale: locale))))
+                .accessibilityIdentifier("password.visibility")
             }
-            .padding(FTSpacing.md)
+            .frame(minHeight: FTControl.minimumTarget)
+            .padding(.horizontal, FTSpacing.md)
+            .padding(.vertical, FTSpacing.xs)
             .background(FTColors.surface)
             .cornerRadius(FTRadius.md)
             .overlay(
@@ -117,6 +155,7 @@ struct FTSecureField: View {
 
 // MARK: - FTButton (Primary Action Button)
 struct FTButton: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let title: String
     let isLoading: Bool
     let action: () -> Void
@@ -135,14 +174,17 @@ struct FTButton: View {
                 if isLoading {
                     // Loading spinner
                     ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        .progressViewStyle(CircularProgressViewStyle(tint: foregroundColor))
                         .scaleEffect(0.8)
+                        .accessibilityHidden(true)
                 }
                 AppLocalizedText(isLoading ? "Đang xử lý..." : title)
                     .font(FTFont.headline())
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
+            .frame(maxWidth: .infinity, minHeight: FTControl.minimumTarget)
+            .padding(.vertical, FTSpacing.sm)
             .background(backgroundView)
             .foregroundColor(foregroundColor)
             .cornerRadius(FTRadius.lg)
@@ -159,8 +201,8 @@ struct FTButton: View {
             )
         }
         .disabled(isLoading)
-        .scaleEffect(isLoading ? 0.98 : 1.0)
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isLoading)
+        .scaleEffect(isLoading && !reduceMotion ? 0.98 : 1.0)
+        .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.7), value: isLoading)
     }
     
     @ViewBuilder

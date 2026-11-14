@@ -2,9 +2,9 @@
   "schema_version": "1.0",
   "presets": {
     "familytracker-mobile": {
-      "version": "1.0.0",
+      "version": "1.1.0",
       "source": "local",
-      "manifest_hash": "sha256:2c71564704310843cf64c25c3641485624621a085bc7fcb7a421c579cec9350c",
+      "manifest_hash": "sha256:37ef807a2269aa9659f4ee44ca2293d8a4ed7f70b6898c695954d630574c34ec",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -13,7 +13,8 @@
           "speckit.clarify",
           "speckit.implement",
           "speckit.specify",
-          "speckit.analyze"
+          "speckit.analyze",
+          "speckit.plan"
         ]
       },
       "registered_skills": {
@@ -22,10 +23,11 @@
           "speckit-clarify",
           "speckit-implement",
           "speckit-specify",
-          "speckit-analyze"
+          "speckit-analyze",
+          "speckit-plan"
         ]
       },
-      "installed_at": "2026-11-13T02:55:25.287939+00:00"
+      "installed_at": "2026-11-14T01:48:05.591174+00:00"
     }
   }
 }

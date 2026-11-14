@@ -2,7 +2,7 @@ schema_version: "1.0"
 preset:
   id: "familytracker-mobile"
   name: "FamilyTracker Mobile Engineering"
-  version: "1.0.0"
+  version: "1.1.0"
   description: "iOS MVVM-C, API contracts, approval, reuse, verification and study"
 requires:
   speckit_version: "==1.4.0"
@@ -39,4 +39,8 @@ provides:
     - type: "command"
       name: "speckit.analyze"
       file: "commands/speckit.analyze.md"
+      strategy: "prepend"
+    - type: "command"
+      name: "speckit.plan"
+      file: "commands/speckit.plan.md"
       strategy: "prepend"

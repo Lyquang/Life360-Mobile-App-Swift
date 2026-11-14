@@ -80,11 +80,12 @@ struct PlacesView: View {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
+                        .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
                         .background(FTColors.primaryGradient)
                         .clipShape(Circle())
                         .shadow(color: FTColors.primary.opacity(0.4), radius: 8)
                 }
+                .accessibilityLabel(Text(verbatim: L10n.tr("places.form.add_title")))
             }
         }
         .padding(.horizontal, FTSpacing.md)

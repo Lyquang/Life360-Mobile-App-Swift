@@ -224,6 +224,16 @@ skipped and unverified checks. Files under FamilyTrackerTests are not evidence o
 execution: the current app scheme has no testable target. Keep known limitations
 visible; do not add arbitrary coverage or timing thresholds.
 
+## iOS Design Workflow
+
+For UI work, follow `.specify/design-workflow.md` using the installed design skills
+before plan. Record UI Impact NONE/SMALL/SUBSTANTIVE/MAJOR. Non-UI work skips design;
+SMALL gets proportional checks. Keep existing tokens/identity and native iOS16
+patterns. Substantive design decisions, UI states, reuse, accessibility and visual
+QA belong in the same feature artifacts. Design skills do not override privacy,
+safety, contracts or the existing approval gate. User-authorized low-risk visual
+batches may proceed after audit/plan; material redesigns still need explicit approval.
+
 ## Forbidden Shortcuts
 
 - No network/database/keychain/background-location calls from SwiftUI Views.

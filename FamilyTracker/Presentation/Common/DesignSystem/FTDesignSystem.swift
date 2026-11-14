@@ -32,7 +32,17 @@ struct FTColors {
     static let textPrimary = Color(UIColor.label)
     static let textSecondary = Color(UIColor.secondaryLabel)
     static let textTertiary  = Color(UIColor.tertiaryLabel)
+    static let fieldHint = textPrimary.opacity(0.7)
     
+    static let separator = Color(UIColor.separator)
+
+    // Shared authentication backdrop; preserves the existing palette.
+    static let authBackground = LinearGradient(
+        colors: [Color(red: 0.05, green: 0.05, blue: 0.15), Color(red: 0.10, green: 0.05, blue: 0.25)],
+        startPoint: .top,
+        endPoint: .bottom
+    )
+
     // Gradient chính (dùng cho header, button)
     static let primaryGradient = LinearGradient(
         colors: [Color(red: 0.38, green: 0.30, blue: 0.95), Color(red: 0.55, green: 0.20, blue: 0.95)],
@@ -51,34 +61,39 @@ struct FTColors {
 // MARK: - Typography
 struct FTFont {
     // Sử dụng Dynamic Type của Apple (tự điều chỉnh kích thước theo accessibility)
-    static func largeTitle()  -> Font { .system(size: 34, weight: .bold, design: .rounded) }
-    static func title()       -> Font { .system(size: 28, weight: .bold, design: .rounded) }
-    static func title2()      -> Font { .system(size: 22, weight: .semibold, design: .rounded) }
-    static func title3()      -> Font { .system(size: 20, weight: .semibold, design: .rounded) }
-    static func headline()    -> Font { .system(size: 17, weight: .semibold, design: .rounded) }
-    static func body()        -> Font { .system(size: 17, weight: .regular, design: .rounded) }
-    static func callout()     -> Font { .system(size: 16, weight: .regular, design: .rounded) }
-    static func subheadline() -> Font { .system(size: 15, weight: .medium, design: .rounded) }
-    static func footnote()    -> Font { .system(size: 13, weight: .regular, design: .rounded) }
-    static func caption()     -> Font { .system(size: 12, weight: .regular, design: .rounded) }
+    static func largeTitle()  -> Font { .system(.largeTitle, design: .rounded).weight(.bold) }
+    static func title()       -> Font { .system(.title, design: .rounded).weight(.bold) }
+    static func title2()      -> Font { .system(.title2, design: .rounded).weight(.semibold) }
+    static func title3()      -> Font { .system(.title3, design: .rounded).weight(.semibold) }
+    static func headline()    -> Font { .system(.headline, design: .rounded).weight(.semibold) }
+    static func body()        -> Font { .system(.body, design: .rounded).weight(.regular) }
+    static func callout()     -> Font { .system(.callout, design: .rounded).weight(.regular) }
+    static func subheadline() -> Font { .system(.subheadline, design: .rounded).weight(.medium) }
+    static func footnote()    -> Font { .system(.footnote, design: .rounded).weight(.regular) }
+    static func caption()     -> Font { .system(.caption, design: .rounded).weight(.regular) }
+}
+
+// MARK: - Controls
+struct FTControl {
+    static let minimumTarget: CGFloat = 44
 }
 
 // MARK: - Spacing
 struct FTSpacing {
-    static let xs:  CGFloat = 4
-    static let sm:  CGFloat = 8
-    static let md:  CGFloat = 16
-    static let lg:  CGFloat = 24
-    static let xl:  CGFloat = 32
+    static let xs: CGFloat = 4
+    static let sm: CGFloat = 8
+    static let md: CGFloat = 16
+    static let lg: CGFloat = 24
+    static let xl: CGFloat = 32
     static let xxl: CGFloat = 48
 }
 
 // MARK: - Corner Radius
 struct FTRadius {
-    static let sm:  CGFloat = 8
-    static let md:  CGFloat = 12
-    static let lg:  CGFloat = 16
-    static let xl:  CGFloat = 24
+    static let sm: CGFloat = 8
+    static let md: CGFloat = 12
+    static let lg: CGFloat = 16
+    static let xl: CGFloat = 24
     static let full: CGFloat = 9999 // Circle/Pill shape
 }
 
@@ -93,10 +108,11 @@ struct FTShadow {
 // MARK: - Custom ViewModifiers
 // ViewModifier: tái sử dụng style phức tạp dưới dạng .modifier(...)
 struct CardModifier: ViewModifier {
+    var cornerRadius: CGFloat = FTRadius.lg
     func body(content: Content) -> some View {
         content
             .background(FTColors.card)
-            .cornerRadius(FTRadius.lg)
+            .cornerRadius(cornerRadius)
             .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: 4)
     }
 }
@@ -119,8 +135,8 @@ struct PrimaryButtonModifier: ViewModifier {
 // MARK: - View Extensions
 // Extension giúp gọi modifier gọn hơn: .ftCard() thay vì .modifier(CardModifier())
 extension View {
-    func ftCard() -> some View {
-        self.modifier(CardModifier())
+    func ftCard(cornerRadius: CGFloat = FTRadius.lg) -> some View {
+        self.modifier(CardModifier(cornerRadius: cornerRadius))
     }
     
     func ftPrimaryButton(isLoading: Bool = false) -> some View {
