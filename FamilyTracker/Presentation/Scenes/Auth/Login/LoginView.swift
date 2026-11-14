@@ -5,6 +5,7 @@ import SwiftUI
 
 struct LoginView: View {
     
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ObservedObject var viewModel: LoginViewModel
     let onRegister: () -> Void
     
@@ -13,14 +14,7 @@ struct LoginView: View {
         NavigationStack {
             ZStack {
                 // Background gradient
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.05, green: 0.05, blue: 0.15),
-                        Color(red: 0.10, green: 0.05, blue: 0.25)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                FTColors.authBackground
                 .ignoresSafeArea()
                 
                 // Decorative circles (glassmorphism effect)
@@ -65,7 +59,7 @@ struct LoginView: View {
                                 .tint(.white)
                                 .padding(.vertical, FTSpacing.xs)
 
-                            Text(verbatim: L10n.tr("Kết nối gia đình, mọi lúc mọi nơi"))
+                            AppLocalizedText("Kết nối gia đình, mọi lúc mọi nơi")
                                 .font(FTFont.subheadline())
                                 .foregroundColor(.white.opacity(0.6))
                         }
@@ -75,7 +69,7 @@ struct LoginView: View {
                         VStack(spacing: FTSpacing.md) {
                             // Form title
                             HStack {
-                                Text(verbatim: L10n.tr("Đăng nhập"))
+                                AppLocalizedText("Đăng nhập")
                                     .font(FTFont.title2())
                                     .foregroundColor(FTColors.textPrimary)
                                 Spacer()
@@ -106,7 +100,9 @@ struct LoginView: View {
                             if let error = viewModel.errorMessage {
                                 HStack(spacing: FTSpacing.xs) {
                                     Image(systemName: "exclamationmark.circle.fill")
-                                    AppLocalizedText(error)
+                                        .font(.system(size: 18))
+                                        .accessibilityHidden(true)
+                                    Text(verbatim: error)
                                         .font(FTFont.caption())
                                 }
                                 .foregroundColor(FTColors.danger)
@@ -123,6 +119,7 @@ struct LoginView: View {
                                 Task { await viewModel.submit() }
                             }
                             .padding(.top, FTSpacing.xs)
+                            .accessibilityIdentifier("auth.login.submit")
 
                             // MARK: Google Sign-In
                             OrDivider()
@@ -133,22 +130,23 @@ struct LoginView: View {
                             }
                         }
                         .padding(FTSpacing.lg)
-                        .background(.ultraThinMaterial) // Glassmorphism blur background
-                        .cornerRadius(FTRadius.xl)
-                        .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+                        .ftCard(cornerRadius: FTRadius.xl)
                         .padding(.horizontal, FTSpacing.md)
                         
                         // MARK: Register Link
-                        HStack(spacing: FTSpacing.xs) {
-                            Text(verbatim: L10n.tr("Chưa có tài khoản?"))
+                        accountLayout {
+                            AppLocalizedText("Chưa có tài khoản?")
                                 .font(FTFont.subheadline())
                                 .foregroundColor(.white.opacity(0.6))
                             
                             Button(action: onRegister) {
-                                Text(verbatim: L10n.tr("Đăng ký ngay"))
-                                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                                AppLocalizedText("Đăng ký ngay")
+                                    .font(FTFont.subheadline().weight(.semibold))
+                                    .multilineTextAlignment(.center)
                                     .foregroundColor(FTColors.accent)
+                                    .frame(minHeight: FTControl.minimumTarget)
                             }
+                            .accessibilityIdentifier("auth.register.open")
                         }
                         .padding(.top, FTSpacing.lg)
                         .padding(.bottom, FTSpacing.xxl)
@@ -158,4 +156,10 @@ struct LoginView: View {
         }
         .hideKeyboardOnTap()
     }
+    private var accountLayout: AnyLayout {
+        dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(spacing: FTSpacing.sm))
+            : AnyLayout(HStackLayout(spacing: FTSpacing.xs))
+    }
+
 }

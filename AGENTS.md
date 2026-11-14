@@ -25,3 +25,9 @@
 - Check actual changes when resuming. `tasks.md` owns task completion; feature
   `progress.md` owns phase/approval/contract status; root `PROGRESS.md` is a summary.
   Report real verification results and limitations. Study explanations use Vietnamese.
+
+- For UI work, follow `.specify/design-workflow.md`. Substantive UI features run
+  ui-ux-pro-max → mobile-design → Apple HIG → component reuse before plan;
+  SMALL uses a focused review, non-UI work skips it. Use the existing approval gate.
+  Verify substantive changes with real screenshots/accessibility checks and label
+  unavailable authenticated/device states honestly.

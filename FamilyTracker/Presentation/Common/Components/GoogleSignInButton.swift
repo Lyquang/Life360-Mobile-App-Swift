@@ -5,6 +5,8 @@
 import SwiftUI
 
 struct GoogleSignInButton: View {
+    @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isLoading: Bool
     let action: () -> Void
 
@@ -15,17 +17,21 @@ struct GoogleSignInButton: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: Color(red: 0.26, green: 0.52, blue: 0.96)))
                         .frame(width: 20, height: 20)
+                        .accessibilityHidden(true)
                 } else {
                     GoogleLogoView()
                         .frame(width: 20, height: 20)
+                        .accessibilityHidden(true)
                 }
 
-                Text(verbatim: L10n.tr(isLoading ? "Đang xác thực..." : "Tiếp tục với Google"))
-                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                Text(verbatim: L10n.tr(isLoading ? "auth.google.loading" : "auth.google.continue", language: AppLanguage(locale: locale)))
+                    .font(FTFont.subheadline().weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundColor(Color(red: 0.20, green: 0.20, blue: 0.20))
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .frame(maxWidth: .infinity, minHeight: FTControl.minimumTarget)
+            .padding(.vertical, FTSpacing.sm)
             .background(Color.white)
             .cornerRadius(FTRadius.lg)
             .shadow(color: Color.black.opacity(0.12), radius: 6, x: 0, y: 2)
@@ -36,7 +42,7 @@ struct GoogleSignInButton: View {
         }
         .disabled(isLoading)
         .opacity(isLoading ? 0.85 : 1.0)
-        .animation(.easeInOut(duration: 0.2), value: isLoading)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: isLoading)
     }
 }
 
@@ -53,10 +59,10 @@ private struct GoogleLogoView: View {
 
             // Vẽ 4 cung tròn màu Google
             let segments: [(start: Double, end: Double, color: Color)] = [
-                (  -15,  90, Color(red: 0.26, green: 0.52, blue: 0.96)), // Blue
-                (   90, 180, Color(red: 0.92, green: 0.26, blue: 0.21)), // Red (bottom-left)
-                (  180, 255, Color(red: 0.99, green: 0.73, blue: 0.01)), // Yellow
-                (  255, 345, Color(red: 0.20, green: 0.66, blue: 0.33))  // Green
+                (-15, 90, Color(red: 0.26, green: 0.52, blue: 0.96)), // Blue
+                (90, 180, Color(red: 0.92, green: 0.26, blue: 0.21)), // Red (bottom-left)
+                (180, 255, Color(red: 0.99, green: 0.73, blue: 0.01)), // Yellow
+                (255, 345, Color(red: 0.20, green: 0.66, blue: 0.33))  // Green
             ]
             for seg in segments {
                 var path = Path()
@@ -84,14 +90,14 @@ struct OrDivider: View {
     var body: some View {
         HStack(spacing: FTSpacing.sm) {
             Rectangle()
-                .fill(Color.white.opacity(0.15))
+                .fill(FTColors.separator)
                 .frame(height: 1)
             Text(verbatim: L10n.tr("common.separator.or"))
                 .font(FTFont.caption())
-                .foregroundColor(.white.opacity(0.45))
+                .foregroundColor(FTColors.textSecondary)
                 .fixedSize()
             Rectangle()
-                .fill(Color.white.opacity(0.15))
+                .fill(FTColors.separator)
                 .frame(height: 1)
         }
     }

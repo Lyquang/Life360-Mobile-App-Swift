@@ -43,7 +43,9 @@ struct GroupDetailView: View {
                                     } label: {
                                         Image(systemName: "doc.on.doc.fill")
                                             .foregroundColor(FTColors.primary)
+                                            .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
                                     }
+                                    .accessibilityLabel(Text(verbatim: L10n.tr("chat.hub.action.copy_invite")))
                                 }
                                 .padding(FTSpacing.md)
                                 .background(FTColors.primary.opacity(0.08))

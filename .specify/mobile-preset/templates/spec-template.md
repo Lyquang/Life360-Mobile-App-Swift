@@ -33,3 +33,8 @@ Chuỗi dài nhất cần kiểm tra clipping: [chuỗi / N/A].
 Ghi câu trả lời đã xác nhận trong Clarifications native; dùng interview.md khi cần
 nhiều vòng, không hỏi lại câu đã có đáp án. Acceptance criteria phải truy vết tới
 FR/user story, API và verification. Không coi spec draft là quyền implementation.
+
+### UI Impact
+
+NONE / SMALL / SUBSTANTIVE / MAJOR, với lý do. Nếu có UI đáng kể, theo
+.specify/design-workflow.md trước plan; non-UI bỏ qua, SMALL review nhẹ.

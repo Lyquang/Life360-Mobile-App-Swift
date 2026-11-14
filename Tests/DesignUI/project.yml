@@ -1,0 +1,24 @@
+name: FamilyTrackerDesignChecks
+options:
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  DesignUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: ../DesignUITests.swift
+      - path: ../../FamilyTracker/Presentation/Common/DesignSystem/FTDesignSystem.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lyq02.familytracker.design-uitests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+schemes:
+  DesignUITests:
+    build:
+      targets:
+        DesignUITests: [test]
+    test:
+      targets: [DesignUITests]

@@ -65,10 +65,11 @@ struct HistoryView: View {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundColor(FTColors.primary)
-                    .frame(width: 36, height: 36)
+                    .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
                     .background(FTColors.primary.opacity(0.1))
                     .clipShape(Circle())
             }
+            .accessibilityLabel(Text(verbatim: L10n.tr("common.action.back")))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(verbatim: L10n.tr("history.title"))

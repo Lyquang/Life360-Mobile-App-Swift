@@ -153,13 +153,16 @@ struct ChatView: View {
                 Image(systemName: "photo")
                     .font(.system(size: 20))
                     .foregroundColor(FTColors.primary)
+                    .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
             }
+            .accessibilityLabel(Text(verbatim: L10n.tr("chat.action.attach_photo")))
             .disabled(viewModel.isSending)
 
             Button(action: viewModel.toggleRecording) {
                 Image(systemName: viewModel.isRecording ? "stop.circle.fill" : "mic.fill")
                     .font(.system(size: 20))
                     .foregroundColor(viewModel.isRecording ? .red : FTColors.primary)
+                    .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
             }
             .accessibilityLabel(L10n.tr(viewModel.isRecording ? "voice.action.stop_recording" : "voice.action.record"))
 
@@ -167,7 +170,10 @@ struct ChatView: View {
                 Text(verbatim: L10n.tr("voice.recording.duration", duration(viewModel.recordingDuration)))
                     .font(FTFont.body())
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button(action: viewModel.cancelRecording) { Image(systemName: "xmark.circle") }
+                Button(action: viewModel.cancelRecording) {
+                    Image(systemName: "xmark.circle")
+                        .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
+                }
                     .accessibilityLabel(L10n.tr("voice.action.cancel_recording"))
             } else {
                 TextField(text: $viewModel.draft, axis: .vertical) {
@@ -186,12 +192,15 @@ struct ChatView: View {
             } label: {
                 if viewModel.isSending {
                     ProgressView()
+                        .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
                 } else {
                     Image(systemName: "paperplane.fill")
                         .font(.system(size: 18))
                         .foregroundColor(FTColors.primary)
+                        .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
                 }
             }
+            .accessibilityLabel(Text(verbatim: L10n.tr(viewModel.isSending ? "chat.action.sending" : "chat.action.send")))
             .disabled(viewModel.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || viewModel.isSending)
         }
         .padding(FTSpacing.sm)

@@ -29,3 +29,10 @@ Liệt kê file tạo/sửa, navigation, refactor scope, rollback, rủi ro và 
 Chọn lệnh thực tế trong .specify/README.md; ghi giới hạn XCTest, Simulator/device và
 benchmark. Feature progress giữ AWAITING_APPROVAL cho tới khi người dùng duyệt rõ
 phạm vi/plan; thay đổi material phải quay lại duyệt. Không tự tạo trạng thái APPROVED.
+
+## Design Review (conditional)
+
+UI Impact và mức review: [NONE/SMALL/SUBSTANTIVE/MAJOR + lý do]. Với substantive UI:
+requirement → flow/state → reused token/component → visual/native decision → HIG
+reference → accessibility/localization → screenshot/interaction QA. Dùng cả hai
+design skills theo .specify/design-workflow.md; giữ approval hiện có. NONE ghi N/A.

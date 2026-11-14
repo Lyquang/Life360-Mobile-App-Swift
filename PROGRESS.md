@@ -10,6 +10,14 @@ Legend:
 
 ## Feature Status
 
+- `[x]` 2026-11-14 — [iOS design workflow và accessibility](.spec/014-ios-design-quality/progress.md):
+  tích hợp UI UX Pro Max/Mobile Design/HIG vào preset hiện có, giữ Spec Kit core và
+  approval gate. Source inventory24 entry/14findings; sửa shared typography/control,
+  auth surfaces/live locale và name/44pt cho bốn màn authenticated. Native checks,
+  localization560keys, strict lint10files, Debug/Release arm64 Simulator và17 UI test
+  executions đạt. Có27raw PNG; authenticated visual QA/VoiceOver/device performance
+  còn giới hạn trong [verification](.spec/014-ios-design-quality/verification.md).
+
 - `[x]` Graphify: generated a local code-only Swift index in
   `.graphify-familytracker/graphify-out/` with Graphify 0.9.97; verified the
   SOS repository query and scope. The copied `graphify-out/` belongs to another

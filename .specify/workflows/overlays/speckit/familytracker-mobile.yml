@@ -30,8 +30,9 @@ edits:
       that scope, run actual applicable verification, record passed/failed/skipped/unverified
       evidence in verification.md, write substantive study.md in Vietnamese with real
       source links, and update tasks.md, feature progress.md and root PROGRESS.md
-      without duplicate checklists. Do not expand scope or claim unperformed device/performance
-      checks.
+      without duplicate checklists. For substantive UI follow .specify/design-workflow.md for screenshot-based visual
+      QA, accessibility and interaction review. Skip design QA for non-UI work. Do not
+      expand scope or claim unperformed device/performance checks.
 - insert_after: implement
   step:
     id: mobile-convergence

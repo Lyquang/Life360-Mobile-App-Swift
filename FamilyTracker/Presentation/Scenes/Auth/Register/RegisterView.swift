@@ -12,14 +12,7 @@ struct RegisterView: View {
         NavigationStack {
             ZStack {
                 // Background
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.05, green: 0.05, blue: 0.15),
-                        Color(red: 0.10, green: 0.05, blue: 0.25)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+                FTColors.authBackground
                 .ignoresSafeArea()
                 
                 ScrollView(showsIndicators: false) {
@@ -38,11 +31,11 @@ struct RegisterView: View {
                             }
                             .padding(.top, 30)
                             
-                            Text(verbatim: L10n.tr("Tạo tài khoản"))
+                            AppLocalizedText("Tạo tài khoản")
                                 .font(FTFont.title())
                                 .foregroundColor(.white)
                             
-                            Text(verbatim: L10n.tr("Bắt đầu hành trình cùng gia đình"))
+                            AppLocalizedText("Bắt đầu hành trình cùng gia đình")
                                 .font(FTFont.subheadline())
                                 .foregroundColor(.white.opacity(0.6))
                         }
@@ -75,7 +68,8 @@ struct RegisterView: View {
                                 title: "Mật khẩu",
                                 placeholder: "Tối thiểu 6 ký tự",
                                 icon: "lock.fill",
-                                text: $viewModel.password
+                                text: $viewModel.password,
+                                contentType: .newPassword
                             )
                             .onChange(of: viewModel.password) { _ in viewModel.clearError() }
                             
@@ -84,14 +78,17 @@ struct RegisterView: View {
                                 title: "Xác nhận mật khẩu",
                                 placeholder: "Nhập lại mật khẩu",
                                 icon: "lock.rotation",
-                                text: $viewModel.confirmPassword
+                                text: $viewModel.confirmPassword,
+                                contentType: .newPassword
                             )
                             .onChange(of: viewModel.confirmPassword) { _ in viewModel.clearError() }
                             
                             if let error = viewModel.errorMessage {
                                 HStack(spacing: FTSpacing.xs) {
                                     Image(systemName: "exclamationmark.circle.fill")
-                                    AppLocalizedText(error)
+                                        .font(.system(size: 18))
+                                        .accessibilityHidden(true)
+                                    Text(verbatim: error)
                                         .font(FTFont.caption())
                                 }
                                 .foregroundColor(FTColors.danger)
@@ -112,6 +109,7 @@ struct RegisterView: View {
                                 Task { await viewModel.submit() }
                             }
                             .padding(.top, FTSpacing.sm)
+                            .accessibilityIdentifier("auth.register.submit")
 
                             // MARK: Google Sign-In
                             OrDivider()
@@ -122,22 +120,20 @@ struct RegisterView: View {
                             }
 
                             // Terms text
-                            Text(verbatim: L10n.tr("Bằng cách đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi."))
+                            AppLocalizedText("Bằng cách đăng ký, bạn đồng ý với Điều khoản sử dụng và Chính sách bảo mật của chúng tôi.")
                                 .font(FTFont.caption())
-                                .foregroundColor(.white.opacity(0.4))
+                                .foregroundColor(FTColors.textSecondary)
                                 .multilineTextAlignment(.center)
                         }
                         .padding(FTSpacing.lg)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(FTRadius.xl)
-                        .shadow(color: Color.black.opacity(0.2), radius: 20, x: 0, y: 10)
+                        .ftCard(cornerRadius: FTRadius.xl)
                         .padding(.horizontal, FTSpacing.md)
                         
                         // Back to login
                         Button {
                             dismiss()
                         } label: {
-                            Text(verbatim: L10n.tr("Đã có tài khoản? Đăng nhập"))
+                            AppLocalizedText("Đã có tài khoản? Đăng nhập")
                                 .font(FTFont.subheadline())
                                 .foregroundColor(FTColors.accent)
                         }
@@ -188,7 +184,7 @@ struct PasswordStrengthView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: FTSpacing.xs) {
             HStack {
-                Text(verbatim: L10n.tr("Độ mạnh:"))
+                AppLocalizedText("Độ mạnh:")
                     .font(FTFont.caption())
                     .foregroundColor(FTColors.textSecondary)
                 AppLocalizedText(strengthText)

@@ -550,3 +550,17 @@
 "search.error.query" = "Nhập từ 2 đến 200 ký tự để tìm kiếm.";
 "search.nearby.cafe" = "Quán cà phê";
 "search.nearby.restaurant" = "Nhà hàng";
+
+// Shared password control accessibility
+"common.accessibility.show_password" = "Hiện mật khẩu";
+"common.accessibility.hide_password" = "Ẩn mật khẩu";
+"common.accessibility.password_visible" = "Đang hiển thị";
+"common.accessibility.password_hidden" = "Đang ẩn";
+"auth.google.loading" = "Đang xác thực…";
+"auth.google.continue" = "Tiếp tục với Google";
+
+// Named presentation controls
+"common.action.back" = "Quay lại";
+"chat.action.attach_photo" = "Đính kèm ảnh";
+"chat.action.send" = "Gửi tin nhắn";
+"chat.action.sending" = "Đang gửi tin nhắn";

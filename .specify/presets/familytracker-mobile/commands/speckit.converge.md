@@ -11,3 +11,7 @@ Keep tasks.md as the sole task checklist; progress.md contains phase, approval a
 contract status, evidence references and remaining task IDs, not a duplicate checklist.
 Convergence must not authorize new scope: append necessary gaps to tasks, and request
 renewed approval for material behavior, architecture, API or refactor changes.
+
+For UI scope follow .specify/design-workflow.md: review real screenshots, text scaling,
+appearance, accessibility and safe areas. Report inaccessible authenticated states
+without fabricating status/locations or marking visual QA complete.

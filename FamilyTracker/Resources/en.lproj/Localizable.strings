@@ -550,3 +550,17 @@
 "search.error.query" = "Enter between 2 and 200 characters to search.";
 "search.nearby.cafe" = "Cafés";
 "search.nearby.restaurant" = "Restaurants";
+
+// Shared password control accessibility
+"common.accessibility.show_password" = "Show password";
+"common.accessibility.hide_password" = "Hide password";
+"common.accessibility.password_visible" = "Visible";
+"common.accessibility.password_hidden" = "Hidden";
+"auth.google.loading" = "Signing in…";
+"auth.google.continue" = "Continue with Google";
+
+// Named presentation controls
+"common.action.back" = "Back";
+"chat.action.attach_photo" = "Attach a photo";
+"chat.action.send" = "Send message";
+"chat.action.sending" = "Sending message";
