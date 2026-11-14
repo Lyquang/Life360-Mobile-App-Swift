@@ -268,6 +268,17 @@ Legend:
 
 ## Current Agent Notes
 
+- 2026-11-14: Fixed the networking contract CI harness compilation failure by
+  restoring 23 omitted SOS production/support/check source entries to the
+  explicit swiftc input list in scripts/test_networking.sh. The existing tests
+  already reference SOSIntentRunner, its error types and five SOS check groups.
+  Updated the two deployed-host expectations to the version2-0 backend already
+  configured in AppEnvironment; application behavior/configuration is unchanged.
+  Verification: bash syntax, git diff --check and the actual networking script
+  pass with Xcode 26.2; 26 documented REST examples decoded/round-tripped and the
+  REST/SOS, auth refresh, media retry, decoding/error checks completed. No hosted
+  Actions run, commit or push was performed.
+
 - 2026-11-13: Fixed the Code Quality job's SwiftLint startup failure by pinning
   its runner to ubuntu-24.04. SwiftLint 0.65.1's dynamic Linux release requires
   libxml2.so.2, which is unavailable on Ubuntu 26.04 (upstream issue #6966).
