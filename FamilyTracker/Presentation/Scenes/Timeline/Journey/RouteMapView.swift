@@ -7,6 +7,7 @@ struct RouteCameraRequest: Equatable {
 }
 
 struct RouteMapView: UIViewRepresentable {
+    @Environment(\.colorScheme) private var colorScheme
     let model: RouteOverlayModel
     let cameraRequest: RouteCameraRequest
     let edgePadding: UIEdgeInsets
@@ -25,6 +26,7 @@ struct RouteMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ mapView: MKMapView, context: Context) {
+        mapView.overrideUserInterfaceStyle = colorScheme == .dark ? .dark : .light
         context.coordinator.update(
             model: model, cameraRequest: cameraRequest, edgePadding: edgePadding,
             onSelectEntry: onSelectEntry, onUserMovedMap: onUserMovedMap

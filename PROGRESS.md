@@ -10,6 +10,13 @@ Legend:
 
 ## Feature Status
 
+- `[x]` 2026-11-14 — [Map-first M01–M06 v1](.spec/015-map-first-design-review/progress.md):
+  đã được user duyệt và hiện thực: safe-area map/search/member panels, persisted
+  System/Light/Dark, adaptive tokens/MapKit traits, Pulse Developer entry và local
+  realtime warning. Debug cuối/lint33/localization585/persistence/search21/native8
+  đạt; auth4 đạt trước refinements màu cuối. Giảm repeat device QA theo yêu cầu;
+  final Release/E2E/manual còn SKIPPED/UNVERIFIED trong [verification](.spec/015-map-first-design-review/verification.md).
+
 - `[x]` 2026-11-14 — [iOS design workflow và accessibility](.spec/014-ios-design-quality/progress.md):
   tích hợp UI UX Pro Max/Mobile Design/HIG vào preset hiện có, giữ Spec Kit core và
   approval gate. Source inventory24 entry/14findings; sửa shared typography/control,

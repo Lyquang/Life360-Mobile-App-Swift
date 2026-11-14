@@ -1,0 +1,61 @@
+name: MapDesignQA
+options:
+  deploymentTarget:
+    iOS: "16.0"
+targets:
+  MapDesignQA:
+    type: application
+    platform: iOS
+    sources:
+      - path: PreviewApp.swift
+      - path: ../../FamilyTracker/Presentation/Common/DesignSystem/FTDesignSystem.swift
+      - path: ../../FamilyTracker/Presentation/Common/Components/FTTextField.swift
+      - path: ../../FamilyTracker/Presentation/Common/Components/MemberAvatarView.swift
+      - path: ../../FamilyTracker/Presentation/Common/Components/Triangle.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/Settings/AppearanceSettings.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/Settings/AppearanceSettingsView.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/Settings/LanguagePicker.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/Settings/LanguageSettingsViewModel.swift
+      - path: ../../FamilyTracker/Core/Localization/L10n.swift
+      - path: ../../FamilyTracker/Domain/Common/ISO8601.swift
+      - path: ../../FamilyTracker/Domain/Entities/AppLanguage.swift
+      - path: ../../FamilyTracker/Domain/Entities/GeoPoint.swift
+      - path: ../../FamilyTracker/Domain/Entities/LocationModels.swift
+      - path: ../../FamilyTracker/Domain/Entities/PlaceSearch.swift
+      - path: ../../FamilyTracker/Domain/Repositories/PlaceSearchRepository.swift
+      - path: ../../FamilyTracker/Domain/UseCases/Places/PlaceSearchUseCases.swift
+      - path: ../../FamilyTracker/Data/Local/Preferences/UserDefaultsLanguagePreferences.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/Places/Search/PlaceSearchView.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/Places/Search/PlaceSearchViewModel.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/LiveMap/Components/MemberInfoCard.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/LiveMap/Components/MapMemberPin.swift
+      - path: ../../FamilyTracker/Presentation/Scenes/LiveMap/Components/MapPresentationViews.swift
+      - path: ../../FamilyTracker/Resources/en.lproj/Localizable.strings
+        buildPhase: resources
+      - path: ../../FamilyTracker/Resources/vi.lproj/Localizable.strings
+        buildPhase: resources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lyq02.familytracker.map-design-qa
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        SWIFT_VERSION: "5.0"
+  MapDesignQATests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PreviewTests.swift
+    dependencies:
+      - target: MapDesignQA
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  MapDesignQA:
+    build:
+      targets:
+        MapDesignQA: [all]
+        MapDesignQATests: [test]
+    test:
+      targets: [MapDesignQATests]

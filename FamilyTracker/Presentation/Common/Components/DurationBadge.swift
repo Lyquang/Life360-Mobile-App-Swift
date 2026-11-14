@@ -30,7 +30,7 @@ struct DurationBadge: View {
                 .font(.system(size: 10, weight: .semibold))
                 .lineLimit(1)
         }
-        .foregroundColor(.white)
+        .foregroundColor(FTColors.onPrimary)
         .padding(.horizontal, 6)
         .padding(.vertical, 3)
         .background(
@@ -111,7 +111,7 @@ struct MemberAvatarWithDuration: View {
 
                     Text(location.initials)
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                 }
 
                 // Duration badge (hiển thị khi isStaying)

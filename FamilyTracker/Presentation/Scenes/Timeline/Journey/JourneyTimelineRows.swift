@@ -17,13 +17,13 @@ struct StayPointMapMarker: View {
                     .shadow(color: FTColors.primary.opacity(0.4), radius: isSelected ? 8 : 4)
                 Image(systemName: "mappin.fill")
                     .font(.system(size: isSelected ? 16 : 12, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(FTColors.onPrimary)
             }
             .animation(.spring(), value: isSelected)
 
             LocalizedDurationText(minutes: stayPoint.durationMinutes)
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(.white)
+                .foregroundColor(FTColors.onPrimary)
                 .padding(.horizontal, 5)
                 .padding(.vertical, 2)
                 .background(Capsule().fill(FTColors.primary.opacity(0.85)))
@@ -61,7 +61,7 @@ struct StayPointRow: View {
                         .shadow(color: FTColors.accent.opacity(0.4), radius: 4)
                     Image(systemName: "mappin.fill")
                         .font(.system(size: isSelected ? 8 : 6))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                 }
                 .animation(.spring(), value: isSelected)
 
@@ -82,7 +82,7 @@ struct StayPointRow: View {
                     Spacer()
                     LocalizedDurationText(minutes: stayPoint.durationMinutes)
                         .font(FTFont.caption())
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
                         .background(FTColors.accent)

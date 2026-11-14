@@ -76,7 +76,7 @@ final class DesignUITests: XCTestCase {
                     let composed = zip(front.prefix(3), back.prefix(3)).map { $0 * front[3] + $1 * (1 - front[3]) }
                     XCTAssertGreaterThanOrEqual(contrast(composed, Array(back.prefix(3))), 4.5)
                 }
-                XCTAssertGreaterThanOrEqual(contrast([1, 1, 1], Array(rgba(UIColor(FTColors.primary)).prefix(3))), 4.5)
+                XCTAssertGreaterThanOrEqual(contrast(Array(rgba(UIColor(FTColors.onPrimary)).prefix(3)), Array(rgba(UIColor(FTColors.primary)).prefix(3))), 4.5)
             }
         }
     }

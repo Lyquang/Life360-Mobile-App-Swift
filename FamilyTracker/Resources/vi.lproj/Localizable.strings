@@ -564,3 +564,30 @@
 "chat.action.attach_photo" = "Đính kèm ảnh";
 "chat.action.send" = "Gửi tin nhắn";
 "chat.action.sending" = "Đang gửi tin nhắn";
+
+/* Approved map-first design v1 */
+"appearance.title" = "Giao diện";
+"appearance.option.system" = "Theo hệ thống";
+"appearance.option.light" = "Sáng";
+"appearance.option.dark" = "Tối";
+"appearance.description.system" = "Tự đổi theo cài đặt iPhone";
+"appearance.description.light" = "Luôn dùng giao diện sáng";
+"appearance.description.dark" = "Luôn dùng giao diện tối";
+"appearance.footer.device" = "Lựa chọn được lưu trên thiết bị và áp dụng cho màn hình, bản đồ và hộp thoại.";
+"map.member.unknown_time" = "Chưa rõ thời điểm cập nhật";
+"map.member.recorded_position" = "Vị trí trên bản đồ";
+"map.member.recorded_hint" = "Đây là vị trí ghi nhận gần nhất.";
+"map.member.coordinates" = "Xem tọa độ";
+"map.action.view_position" = "Xem vị trí";
+"map.action.journey" = "Lộ trình";
+"map.action.recenter" = "Về vị trí của tôi";
+"map.action.members" = "Xem danh sách thành viên";
+"map.action.all_members" = "Xem tất cả";
+"map.action.collapse_members" = "Thu gọn";
+"map.members.title" = "Thành viên";
+"map.connection.disconnected" = "Mất kết nối realtime";
+"map.connection.last_known" = "Vị trí có thể chưa được cập nhật.";
+"map.tracking.following" = "Đang theo dõi vị trí của tôi";
+"map.tracking.browsing" = "Đang xem bản đồ";
+"map.members.empty" = "Chưa có vị trí thành viên";
+"map.action.request_sos" = "Yêu cầu SOS";

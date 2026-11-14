@@ -90,7 +90,7 @@ struct ChatHubRow: View {
                 Circle().fill(FTColors.primary).frame(width: 48, height: 48)
                 Image(systemName: "person.3.fill")
                     .font(.system(size: 19, weight: .semibold))
-                    .foregroundColor(.white)
+                    .foregroundColor(FTColors.onPrimary)
             }
             .accessibilityHidden(true)
         } else {
@@ -114,7 +114,7 @@ struct ChatHubRow: View {
         if item.unreadCount > 0 {
             Text(verbatim: item.unreadCount > 99 ? "99+" : "\(item.unreadCount)")
                 .font(.caption)
-                .foregroundColor(.white)
+                .foregroundColor(FTColors.onPrimary)
                 .frame(minWidth: 22, minHeight: 22)
                 .background(FTColors.danger, in: Capsule())
                 .accessibilityHidden(true)

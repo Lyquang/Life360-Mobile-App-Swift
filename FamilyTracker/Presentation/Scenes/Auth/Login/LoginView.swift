@@ -46,22 +46,22 @@ struct LoginView: View {
                                 
                                 Image(systemName: "location.fill.viewfinder")
                                     .font(.system(size: 40))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(FTColors.onPrimary)
                             }
                             .padding(.top, 60)
                             .padding(.bottom, FTSpacing.sm)
                             
                             Text("FamilyTracker")
                                 .font(.system(size: 32, weight: .bold, design: .rounded))
-                                .foregroundColor(.white)
+                                .foregroundColor(FTColors.textPrimary)
                             
                             LanguagePicker()
-                                .tint(.white)
+                                .tint(FTColors.primary)
                                 .padding(.vertical, FTSpacing.xs)
 
                             AppLocalizedText("Kết nối gia đình, mọi lúc mọi nơi")
                                 .font(FTFont.subheadline())
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(FTColors.textSecondary)
                         }
                         .padding(.bottom, FTSpacing.xl)
                         
@@ -137,7 +137,7 @@ struct LoginView: View {
                         accountLayout {
                             AppLocalizedText("Chưa có tài khoản?")
                                 .font(FTFont.subheadline())
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(FTColors.textSecondary)
                             
                             Button(action: onRegister) {
                                 AppLocalizedText("Đăng ký ngay")

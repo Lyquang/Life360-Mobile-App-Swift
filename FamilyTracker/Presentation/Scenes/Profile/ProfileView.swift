@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @EnvironmentObject private var appearance: AppearanceSettings
     @StateObject private var viewModel: ProfileViewModel
     @State private var showLogoutConfirm = false
     @State private var showLogoutAllConfirm = false
@@ -36,6 +37,20 @@ struct ProfileView: View {
 
                 Section(L10n.tr("profile.section.settings")) {
                     LanguagePicker()
+                    NavigationLink {
+                        AppearanceSettingsView()
+                    } label: {
+                        Label {
+                            VStack(alignment: .leading, spacing: FTSpacing.xs) {
+                                AppLocalizedText("appearance.title")
+                                AppLocalizedText(appearance.selection.key)
+                                    .font(FTFont.footnote()).foregroundColor(FTColors.textSecondary)
+                            }
+                        } icon: {
+                            Image(systemName: "circle.lefthalf.filled")
+                        }
+                    }
+                    .accessibilityIdentifier("settings.appearance")
                 }
 
                 Section(L10n.tr("privacy.sharing.section")) {

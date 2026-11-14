@@ -28,7 +28,7 @@ struct StayAlertBanner: View {
 
                     Image(systemName: iconName)
                         .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                         .rotationEffect(.degrees(iconRotation))
                         .animation(
                             .easeInOut(duration: 2).repeatForever(autoreverses: true),
@@ -39,11 +39,11 @@ struct StayAlertBanner: View {
                 VStack(alignment: .leading, spacing: 3) {
                     AppLocalizedText(alertTitle)
                         .font(FTFont.headline())
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
 
                     Text(alert.message)
                         .font(FTFont.subheadline())
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor(FTColors.onPrimary.opacity(0.9))
                         .lineLimit(2)
 
                     if let groupName = alert.groupName {
@@ -53,7 +53,7 @@ struct StayAlertBanner: View {
                             Text(groupName)
                                 .font(FTFont.caption())
                         }
-                        .foregroundColor(.white.opacity(0.7))
+                        .foregroundColor(FTColors.onPrimary.opacity(0.7))
                     }
                 }
 
@@ -70,7 +70,7 @@ struct StayAlertBanner: View {
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                         .padding(7)
                         .background(Color.white.opacity(0.2))
                         .clipShape(Circle())
@@ -87,7 +87,7 @@ struct StayAlertBanner: View {
                     .font(.system(size: 13, weight: .semibold))
                 Spacer()
             }
-            .foregroundColor(.white)
+            .foregroundColor(FTColors.onPrimary)
             .padding(.horizontal, FTSpacing.md)
             .padding(.vertical, 7)
             .background(Color.white.opacity(0.12))
@@ -100,7 +100,7 @@ struct StayAlertBanner: View {
                         Text(verbatim: L10n.tr("stay.action.view_map", language: AppLanguage(locale: locale)))
                             .font(FTFont.subheadline())
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(FTColors.onPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                 }

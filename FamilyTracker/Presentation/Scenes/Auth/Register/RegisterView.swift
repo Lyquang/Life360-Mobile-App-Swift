@@ -27,17 +27,17 @@ struct RegisterView: View {
                                 
                                 Image(systemName: "person.fill.badge.plus")
                                     .font(.system(size: 30))
-                                    .foregroundColor(.white)
+                                    .foregroundColor(FTColors.onPrimary)
                             }
                             .padding(.top, 30)
                             
                             AppLocalizedText("Tạo tài khoản")
                                 .font(FTFont.title())
-                                .foregroundColor(.white)
+                                .foregroundColor(FTColors.textPrimary)
                             
                             AppLocalizedText("Bắt đầu hành trình cùng gia đình")
                                 .font(FTFont.subheadline())
-                                .foregroundColor(.white.opacity(0.6))
+                                .foregroundColor(FTColors.textSecondary)
                         }
                         .padding(.bottom, FTSpacing.xl)
                         

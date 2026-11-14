@@ -48,7 +48,7 @@ struct MemberAvatarView: View {
 
     let name: String
     let size: AvatarSize
-    let isOnline: Bool
+    let isOnline: Bool?
     let batteryLevel: Int?
     
     // Màu avatar được tạo ra từ tên (mỗi người có màu khác nhau)
@@ -62,7 +62,7 @@ struct MemberAvatarView: View {
             Color(red: 0.14, green: 0.60, blue: 0.98), // Blue
         ]
         // Hash tên để chọn màu nhất quán cho mỗi người
-        let index = abs(name.hashValue) % colors.count
+        let index = name.unicodeScalars.reduce(0) { ($0 * 31 + Int($1.value)) % colors.count }
         return colors[index]
     }
     
@@ -80,50 +80,45 @@ struct MemberAvatarView: View {
             // Avatar circle với initials
             ZStack {
                 Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [avatarColor, avatarColor.opacity(0.7)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
+                    .fill(avatarColor.opacity(0.18))
                     .frame(width: size.dimension, height: size.dimension)
                 
                 Text(initials)
                     .font(.system(size: size.fontSize, weight: .bold, design: .rounded))
-                    .foregroundColor(.white)
+                    .foregroundColor(FTColors.textPrimary)
             }
-            .shadow(color: avatarColor.opacity(0.3), radius: 4, x: 0, y: 2)
             
             // Online/Offline indicator dot
-            ZStack {
-                // Border trắng để tạo viền
-                Circle()
-                    .fill(Color.white)
-                    .frame(
-                        width: size.onlineDotSize + 2,
-                        height: size.onlineDotSize + 2
-                    )
-                
-                // Dot màu
-                Circle()
-                    .fill(isOnline ? FTColors.accent : FTColors.textTertiary)
-                    .frame(width: size.onlineDotSize, height: size.onlineDotSize)
-                    .overlay {
-                        if isOnline && !reduceMotion {
-                            Circle()
-                                .fill(FTColors.accent.opacity(0.3))
-                                .frame(width: size.onlineDotSize)
-                                .scaleEffect(1.5)
-                                .opacity(0)
-                                .animation(
-                                    .easeInOut(duration: 1.5).repeatForever(autoreverses: true),
-                                    value: isOnline
-                                )
+            if let isOnline {
+                ZStack {
+                    // Border trắng để tạo viền
+                    Circle()
+                        .fill(FTColors.background)
+                        .frame(
+                            width: size.onlineDotSize + 2,
+                            height: size.onlineDotSize + 2
+                        )
+
+                    // Dot màu
+                    Circle()
+                        .fill(isOnline ? FTColors.accent : FTColors.textTertiary)
+                        .frame(width: size.onlineDotSize, height: size.onlineDotSize)
+                        .overlay {
+                            if isOnline && !reduceMotion {
+                                Circle()
+                                    .fill(FTColors.accent.opacity(0.3))
+                                    .frame(width: size.onlineDotSize)
+                                    .scaleEffect(1.5)
+                                    .opacity(0)
+                                    .animation(
+                                        .easeInOut(duration: 1.5).repeatForever(autoreverses: true),
+                                        value: isOnline
+                                    )
+                            }
                         }
-                    }
+                }
+                .offset(x: 2, y: 2)
             }
-            .offset(x: 2, y: 2)
         }
     }
 }

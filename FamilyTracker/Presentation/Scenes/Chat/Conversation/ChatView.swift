@@ -251,7 +251,7 @@ struct MessageBubble: View {
                           systemImage: "exclamationmark.shield.fill").font(.headline)
                     if !message.content.isEmpty { Text(message.content).font(.body) }
                     Text(verbatim: L10n.tr("sos.new.chat_open")).font(.caption)
-                }.foregroundColor(.white).padding(FTSpacing.md)
+                }.foregroundColor(FTColors.onPrimary).padding(FTSpacing.md)
                     .background(FTColors.dangerGradient).cornerRadius(FTRadius.lg)
             }.buttonStyle(.plain)
         } else if message.type == .image {
@@ -322,7 +322,7 @@ struct MessageBubble: View {
     private var textBubble: some View {
         Text(message.content)
             .font(FTFont.body())
-            .foregroundColor(isMine ? .white : FTColors.textPrimary)
+            .foregroundColor(isMine ? FTColors.onPrimary : FTColors.textPrimary)
             .padding(.horizontal, FTSpacing.md)
             .padding(.vertical, FTSpacing.sm)
             .background(isMine ? FTColors.primary : FTColors.surface)
