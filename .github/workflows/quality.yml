@@ -20,7 +20,8 @@ concurrency:
 jobs:
   quality:
     name: SwiftLint & Secret Scan
-    runs-on: ubuntu-latest
+    # SwiftLint 0.65.1 requires libxml2.so.2, unavailable on Ubuntu 26.04.
+    runs-on: ubuntu-24.04
     timeout-minutes: 6
     env:
       SWIFTLINT_VERSION: 0.65.1

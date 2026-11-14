@@ -26,6 +26,9 @@ Build/
 *.dSYM/
 
 # Local generated context
+/graphify-out/
+/.graphify-familytracker/
+/.graphify-venv/
 codebase-skeleton.txt
 repomix-output.*
 __pycache__/

@@ -1,4 +1,13 @@
 {
   "schema_version": "1.0",
-  "workflows": {}
+  "workflows": {
+    "speckit": {
+      "name": "Full SDD Cycle",
+      "version": "1.0.1",
+      "description": "Runs specify \u2192 plan \u2192 tasks \u2192 implement with review gates",
+      "source": "/Users/lyq02/.local/share/uv/tools/specify-cli/lib/python3.14/site-packages/specify_cli/core_pack/workflows/speckit",
+      "installed_at": "2026-11-13T01:13:58.983141+00:00",
+      "updated_at": "2026-11-13T01:19:23.622413+00:00"
+    }
+  }
 }

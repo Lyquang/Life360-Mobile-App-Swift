@@ -5,8 +5,8 @@ This file is the source of truth for all AI agents working in this repository. E
 ## Agent Operating Contract
 
 1. Read this file, `PROGRESS.md`, and any relevant `.spec/` document before editing Swift code.
-2. Use token-efficient discovery first: `rg`, `ast-grep`, `graphtify`, and `scripts/codebase_skeleton.sh` before opening broad source trees.
-3. Create or update a short feature spec before adding new `.swift` files or changing a user-facing flow.
+2. Use scoped `rg` searches and `scripts/codebase_skeleton.sh` before opening broad source trees. AST/graph tools are optional when installed; do not require rebuilding deleted graph caches for routine work.
+3. Use the mode policy below: substantive feature work needs approved feature artifacts; SMALL fixes need only proportional context, verification and documentation.
 4. Keep changes scoped to the current feature boundary. Do not rewrite unrelated layers.
 5. Update `PROGRESS.md` after every completed task or commit-equivalent change.
 6. For non-trivial code investigations, use the FamilyTracker Graphify index when
@@ -145,14 +145,84 @@ If the existing code uses `DomainError`, bridge or extend it deliberately rather
 
 ## Required Feature Workflow
 
-Before writing Swift for a feature:
+The installed native commands are Codex `$speckit-*` skills. See `.specify/README.md`
+for setup, commands, artifact templates and actual verification tools. Core assets
+are managed by Spec Kit; project customization belongs in local overrides.
 
-1. Update the relevant `.spec/<number>-<feature>/spec.md`, or create a new numbered feature folder using `.spec/templates/` and the workflow in `.spec/README.md`.
-2. Define objective, input/output, modeled state, architecture path, edge cases, and test plan.
-3. Use `scripts/codebase_skeleton.sh` and AST/code graph tools to identify touched files.
-4. Implement by layer: Domain contracts, UseCases, Core/Data services, ViewModel, View, Coordinator.
-5. Verify with the narrowest useful build/test/static checks.
-6. Update `PROGRESS.md`.
+- SMALL: trivial UI corrections or bounded bug fixes without material behavior,
+  architecture or API changes. Read relevant context, clarify if needed, fix,
+  verify and update relevant docs. The user's direct fix request authorizes this
+  bounded work; do not force a full interview or artificial approval loop.
+- STANDARD (default): context/API discovery → specify → clarify as needed → plan →
+  tasks → analyze → explicit human approval → implement → scoped refactor → verify
+  → documentation/study → converge.
+- COMPLEX: add discovery, API/interview, requirements and architecture reviews,
+  then the STANDARD gates and milestone delivery. Material changes need renewed
+  approval. No automatic branch creation or commit/push.
+
+Before feature implementation or significant refactoring, present requirements,
+API sources/endpoints/status, UI states/screens, reused/new components and logic,
+state ownership, architecture, files, refactor/optimization scope, tasks, risks and
+verification plan. Record AWAITING_APPROVAL until the user approves the current
+scope. User approval from this session persists; never manufacture it or ask again
+for unchanged approved work. Setup approval is not approval of any app feature.
+
+Read only relevant source/designs and API docs before planning. Resolve material
+conflicts across spec/interview/plan/tasks/API/source/constitution before approval.
+Keep native spec.md/plan.md/tasks.md/research.md/data-model.md/quickstart.md/contracts/
+when relevant. Interview answers stay consistent with native spec Clarifications.
+Use interview.md for substantive rounds, verification.md for evidence, study.md
+in Vietnamese for substantive features, and feature progress.md for phase/approval/
+API/refactor/docs status. Supporting templates are in the local overrides folder.
+`tasks.md` alone owns task completion; root PROGRESS.md summarizes feature progress.
+On resume, inspect actual changes and remaining task IDs before proceeding.
+
+## Clean Code, Reuse and Scoped Refactoring
+
+Prefer readable names, cohesive small responsibilities and simple control flow.
+Apply DRY/KISS/YAGNI without extracting misleading shared abstractions. Search
+Presentation/Common, Presentation/Components, the design system and similar scenes
+before introducing UI. Search UseCases, repositories, APIClient, cache, formatting,
+validation and DTO mappers before new logic. Prefer composition and small APIs;
+justify new abstractions and check shared consumers. Preserve existing state tools
+and distinguish local UI, shared/session, server, derived and persistent state.
+
+Every significant plan must contain `Reusability & Optimization Analysis`: reused
+components/services/utilities, new abstractions with reasons, scoped duplication
+removal, render/network/state risks and proportional performance checks. Before
+refactoring, understand behavior, tests, interfaces and consumers. Preserve
+behavior unless approved, and verify consumers/navigation/API afterward. Propose
+broader architectural cleanup separately; findings do not authorize rewrites.
+
+## Backend API Documentation Policy
+
+Discover relevant documents in api-docs/, feature contracts and explicitly supplied
+OpenAPI/Swagger/Markdown attachments. Authority is: approved feature contract/version
+→ provided Backend documentation → existing Mobile client/types → authorized test
+environment observations. Record source/revision when supplied, never invent it.
+For each relevant HTTP endpoint/socket event, map method/path, params/headers/auth,
+body/response, success/error/validation codes, pagination/filter/sort/upload,
+dates/nullability/optional/enums/versioning to DTO/mapper/repository/UI/tests.
+Reference documents rather than copying whole specs. Mark Verified/Pending/Conflict/
+N/A. Report conflicts and ask whether Backend or Mobile changes; block dependent
+work until material missing details are resolved. Mock behavior requires approval,
+isolation and a migration path. Never fabricate production behavior or send unsafe
+requests to production. Document API changes and compatibility impacts before
+implementation; request renewed approval for material changes. Do not edit Backend
+source from this repo; create a change request with endpoint/current/needed behavior,
+reason, compatibility and affected Mobile feature.
+
+## Performance and Verification Evidence
+
+Consider render/list identity, map overlays, image sizes/decoding/cache, navigation,
+startup/app size, async cleanup, duplicate/stale requests, cancellation/pagination,
+offline storage and battery according to feature risk. No speculative caching,
+polling, memoization or dependencies. Significant optimization claims need an
+original symptom/baseline, change, measurement, result and trade-off. Label unmeasured
+reasoning honestly. Use the configured build/lint/contract/UI tools; report failed,
+skipped and unverified checks. Files under FamilyTrackerTests are not evidence of
+execution: the current app scheme has no testable target. Keep known limitations
+visible; do not add arbitrary coverage or timing thresholds.
 
 ## Forbidden Shortcuts
 

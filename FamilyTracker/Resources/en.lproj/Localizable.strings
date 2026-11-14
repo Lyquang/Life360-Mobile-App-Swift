@@ -528,3 +528,25 @@
 "sos.live.updated" = "Location measured at %@";
 "sos.live.no_time" = "Location update time unavailable";
 "sos.live.offline" = "Disconnected — location may be outdated";
+
+// Place search
+"search.field.placeholder" = "Search places";
+"search.title" = "Find a place";
+"search.section.recent" = "Recent searches";
+"search.section.suggestions" = "Suggestions";
+"search.section.results" = "Results";
+"search.action.clear_all" = "Clear history";
+"search.action.delete" = "Delete";
+"search.action.retry" = "Retry";
+"search.action.close" = "Close search";
+"search.action.clear_query" = "Clear search text";
+"search.action.clear_place" = "Clear selected place";
+"search.state.loading" = "Searching…";
+"search.state.empty" = "No places found";
+"search.state.hint" = "Enter a place name or search for cafés and restaurants in this map area.";
+"search.error.unavailable" = "Places are unavailable. Please try again.";
+"search.error.throttled" = "Too many searches. Please try again shortly.";
+"search.error.history" = "Search history could not be updated on this device.";
+"search.error.query" = "Enter between 2 and 200 characters to search.";
+"search.nearby.cafe" = "Cafés";
+"search.nearby.restaurant" = "Restaurants";

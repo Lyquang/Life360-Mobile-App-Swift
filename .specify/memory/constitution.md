@@ -1,18 +1,85 @@
 # Hiến chương FamilyTracker iOS
 
-Tài liệu này tóm tắt quy trình cho Spec Kit. [AI_RULES.md](../../AI_RULES.md) là quy chuẩn repo; khi có khác biệt, áp dụng `AI_RULES.md` cùng chỉ dẫn hiện hành của người dùng. Trạng thái thực tế được ghi trong [PROGRESS.md](../../PROGRESS.md); code và hợp đồng backend được xác minh là nguồn kiểm chứng, không suy luận từ tài liệu mẫu.
+## Core Principles
 
-## Nguyên tắc
+### I. Clean Code và kiến trúc hiện có
 
-1. **MVVM-C và Clean Architecture:** View chỉ hiển thị/binding; ViewModel quản lý trạng thái trên MainActor; Coordinator điều hướng; Domain độc lập UI; Data/Core hiện thực repository và dịch vụ. Tái sử dụng thành phần sẵn có.
-2. **Nền tảng:** iOS 16 theo project hiện tại; SwiftUI, Combine/`ObservableObject` tại những phần đang sử dụng. Không tự đưa API chỉ có từ iOS 17 vào tính năng hỗ trợ iOS 16.
-3. **Mạng và phiên:** request qua APIClient/repository, token trong Keychain, refresh dùng cơ chế chung. Xử lý lỗi có kiểu, hủy và phản hồi cũ; không tự đoán contract backend.
-4. **Riêng tư và vị trí:** không log token, tọa độ hoặc nội dung nhạy cảm. Tôn trọng quyền, pause và vòng đời; không tự vượt cơ chế bảo vệ vị trí vì SOS. Không khẳng định push nền, tiêu thụ pin hay delivery nếu chưa kiểm chứng.
-5. **Đa ngôn ngữ:** mọi nội dung do app sở hữu, kể cả accessibility, dùng `L10n.tr` và key trong cả vi/en. Nội dung người dùng và hộp thoại hệ thống có quy tắc riêng trong `AI_RULES.md`.
-6. **Phân tích theo bằng chứng:** đọc spec liên quan trong `.spec/`, dùng `rg`, AST/graph khi có ích và xác minh bằng code. Công cụ graph chỉ là chỉ mục, không thay thế code hoặc contract.
-7. **Chất lượng và kiểm chứng:** kiểm tra phù hợp với rủi ro và thay đổi. Chạy build/test/lint cần thiết; nếu XCTest target hay thiết bị không khả dụng, báo rõ. Không đặt ngưỡng coverage hoặc tuyên bố test đã chạy khi chưa có bằng chứng.
-8. **Quy trình:** cập nhật spec và `PROGRESS.md`; tôn trọng yêu cầu plan-first, duyệt từng giai đoạn, không tự commit/push khi chưa được yêu cầu. Cần xin duyệt chỉ khi yêu cầu của người dùng hoặc quy định áp dụng thực sự đòi hỏi.
+Ưu tiên correctness, maintainability, readability, reusability, performance phù hợp,
+simplicity và testability. Tên có nghĩa, control flow đơn giản, trách nhiệm gắn kết;
+không tối ưu để ít dòng nhất. Giữ MVVM-C + Clean Architecture: View hiển thị/binding,
+ViewModel quản lý state trên MainActor, Coordinator điều hướng, Domain độc lập UI,
+Data/Core hiện thực repository và dịch vụ. Không tự đổi kiến trúc vì quy tắc mới;
+vi phạm cũ là phát hiện cần đánh giá trong phạm vi, không phải quyền refactor toàn app.
 
-## Quản trị
+### II. DRY, KISS, YAGNI và tái sử dụng UI
 
-Quy tắc nguồn nằm ở `AI_RULES.md`; sửa tài liệu này khi quy chuẩn liên quan thay đổi. Không chuyển các quy tắc, ngưỡng test hoặc ngôn ngữ từ dự án mẫu sang FamilyTracker mà không có căn cứ.
+Tìm trong `Presentation/Common`, `Presentation/Components` và các scene liên quan
+trước khi tạo component. Dùng FTDesignSystem và composition, API nhỏ, chỉ mở rộng
+khi không làm hỏng consumer. Chấp nhận lặp nhỏ thay vì abstraction sai; không tạo
+God component, wrapper không cần thiết hoặc tính năng dự phòng chưa được yêu cầu.
+
+### III. Tái sử dụng logic và state ownership
+
+Dùng UseCase/repository/APIClient, refresh coordinator, formatter, validation và
+cache hiện có. Giữ Combine/ObservableObject tại nơi đang dùng. Phân biệt local UI,
+shared session, server, derived và persistent state; mỗi dữ liệu có một owner.
+Chỉ trích xuất logic thật sự dùng chung; không thêm thư viện state/network cạnh tranh.
+
+### IV. Performance bằng bằng chứng
+
+Đánh giá render/list identity, camera/map overlays, cancellation, phản hồi cũ,
+request trùng, pagination, image decode/cache, startup, memory và lifecycle theo rủi ro.
+Vị trí nền phải giữ motion/battery adaptation và offline policy. Không thêm cache,
+polling, memoization hoặc dependency nếu chưa có lý do. Khi tuyên bố cải thiện phải
+có vấn đề gốc, cách đo, thay đổi, kết quả và trade-off; chưa đo phải ghi rõ.
+
+### V. API contract correctness
+
+Ưu tiên contract/version đã được duyệt → tài liệu Backend được cung cấp → Mobile
+client/types → hành vi test được phép xác minh. Không đoán endpoint, field, nullability,
+status, auth, socket event hoặc dữ liệu production giả. Ghi nguồn/revision thật, mapping
+và câu hỏi trong feature; conflict phải hỏi bên nào cần đổi. Tái sử dụng client,
+DTO/mapper, lỗi có kiểu, refresh/session fencing; không đặt HTTP trong View.
+Không sửa Backend từ Mobile; tạo change request khi cần Backend hỗ trợ.
+
+### VI. Scope và refactoring có kiểm soát
+
+Đọc hành vi/test/consumer trước khi sửa; ghi rõ phạm vi, public interface, rollback
+và regression. Giữ hành vi trừ khi đã được duyệt, sửa theo feature boundary. Đề xuất
+refactor lớn riêng; không gộp dọn toàn app vào một feature hoặc setup workflow.
+
+### VII. Human approval và workflow
+
+STANDARD là mặc định; SMALL chỉ cho lỗi/UI nhỏ có phạm vi rõ; COMPLEX thêm review
+kiến trúc và milestone. Trước feature implementation hoặc refactor đáng kể, spec,
+interview nếu cần, API mapping, plan và tasks phải nhất quán, đã analyze và được người
+dùng duyệt rõ phạm vi. Thiếu duyệt: AWAITING_APPROVAL. Không tự sinh duyệt, không hỏi
+lại phần đã được duyệt trong session. Thay đổi material về behavior, architecture,
+API assumption cần duyệt lại. Setup approval không duyệt feature đang làm dở.
+
+### VIII. Nền tảng, chất lượng, riêng tư và tài liệu
+
+Hỗ trợ iOS 16; không tự dùng API iOS 17-only. Giữ MainActor, Sendable/actor isolation,
+huỷ task và cleanup listener/timer. Không log token, tọa độ, địa chỉ hoặc dữ liệu riêng.
+Nội dung app có vi/en qua L10n.tr, accessibility và định dạng theo locale đã chọn.
+Chạy kiểm tra có thật theo thay đổi; không giả định file XCTest đã chạy được. Ghi
+passed/failed/skipped và hạn chế device/UI/performance. Tính năng đáng kể có study.md
+bằng tiếng Việt, liên kết source thật; chỉ ghi hoàn thành theo bằng chứng.
+
+## Workflow và nguồn tài liệu
+
+`.specify/README.md` hướng dẫn SMALL/STANDARD/COMPLEX, API và daily usage.
+`tasks.md` là nguồn trạng thái task; feature `progress.md` giữ phase, approval,
+contract/refactor/docs status và remaining work; root `PROGRESS.md` chỉ tổng hợp.
+Giữ spec.md/plan.md/tasks.md và supporting artifacts native; không xoá spec cũ hoặc
+sao chép toàn bộ Backend docs vào từng feature. Interview bổ sung phải đồng bộ các
+quyết định với Clarifications native trong spec.md.
+
+## Governance
+
+`AI_RULES.md` là quy chuẩn kỹ thuật chi tiết; chỉ dẫn hiện hành của người dùng ưu tiên.
+Thay đổi hiến chương phải ghi lý do, version/date, tác động tới template và kiểm tra
+liên quan. Không tự áp dụng quy tắc mới hồi tố để rewrite code cũ. Không tự commit,
+push, đổi branch, nâng dependency app hoặc triển khai tính năng trong setup.
+
+**Version**: 1.0.0 | **Ratified**: 2026-11-13 | **Last Amended**: 2026-11-13

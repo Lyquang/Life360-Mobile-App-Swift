@@ -84,6 +84,7 @@ final class MainTabCoordinator: ObservableObject {
     }
 
     func stop() {
+        map.stop()
         container.sosLocation.cancel()
         container.sosIntentLifecycle?.stop()
         sosEventsTask?.cancel()

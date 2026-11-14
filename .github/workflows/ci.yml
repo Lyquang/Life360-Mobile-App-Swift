@@ -76,6 +76,9 @@ jobs:
             "${build_command[@]}"
           fi
 
+      - name: Run place search and history tests
+        run: bash scripts/test_place_search.sh
+
       - name: Run networking contract tests
         run: bash scripts/test_networking.sh
 

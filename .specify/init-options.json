@@ -1,4 +1,8 @@
 {
+  "ai": "codex",
+  "ai_skills": true,
   "feature_numbering": "sequential",
-  "script": "sh"
+  "integration": "codex",
+  "script": "sh",
+  "speckit_version": "1.4.0"
 }

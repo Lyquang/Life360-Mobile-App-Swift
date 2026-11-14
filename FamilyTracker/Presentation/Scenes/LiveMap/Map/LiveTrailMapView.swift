@@ -8,9 +8,11 @@ struct LiveTrailMapView: UIViewRepresentable {
     let currentUserId: String
     let members: [MemberLocation]
     let drawing: TrailDrawing
+    var selectedPlace: PlaceSearchResult? = nil
     let bottomInset: CGFloat
     let onSelectMember: (MemberLocation) -> Void
     let onUserMoved: () -> Void
+    var onRegionChanged: (MKCoordinateRegion) -> Void = { _ in }
 
     func makeCoordinator() -> Renderer { Renderer() }
 
@@ -25,8 +27,8 @@ struct LiveTrailMapView: UIViewRepresentable {
     func updateUIView(_ map: MKMapView, context: Context) {
         context.coordinator.update(region: region, trackingUser: trackingUser,
                                    currentUserId: currentUserId, members: members,
-                                   drawing: drawing, bottomInset: bottomInset, onSelectMember: onSelectMember,
-                                   onUserMoved: onUserMoved)
+                                   drawing: drawing, selectedPlace: selectedPlace, bottomInset: bottomInset, onSelectMember: onSelectMember,
+                                   onUserMoved: onUserMoved, onRegionChanged: onRegionChanged)
     }
 
     static func dismantleUIView(_ map: MKMapView, coordinator: Renderer) {
@@ -73,6 +75,8 @@ struct LiveTrailMapView: UIViewRepresentable {
         private var roles = [ObjectIdentifier: (TrailDrawing.Style, Bool)]()
         private var members = [String: MemberAnnotation]()
         private var endpoints = [String: TrailAnnotation]()
+        private var searchPin: MKPointAnnotation?
+        private var onRegionChanged: ((MKCoordinateRegion) -> Void)?
         private var lastRegion: MKCoordinateRegion?
         private var lastBottomInset: CGFloat?
         private var isMovingProgrammatically = false
@@ -81,13 +85,15 @@ struct LiveTrailMapView: UIViewRepresentable {
         private var onUserMoved: (() -> Void)?
 
         func update(region: MKCoordinateRegion, trackingUser: Bool, currentUserId: String,
-                    members: [MemberLocation], drawing: TrailDrawing, bottomInset: CGFloat,
+                    members: [MemberLocation], drawing: TrailDrawing, selectedPlace: PlaceSearchResult?, bottomInset: CGFloat,
                     onSelectMember: @escaping (MemberLocation) -> Void,
-                    onUserMoved: @escaping () -> Void) {
+                    onUserMoved: @escaping () -> Void,
+                    onRegionChanged: @escaping (MKCoordinateRegion) -> Void) {
             guard let map else { return }
             self.currentUserId = currentUserId
             self.onSelectMember = onSelectMember
             self.onUserMoved = onUserMoved
+            self.onRegionChanged = onRegionChanged
             if let old = lastRegion {
                 if abs(old.center.latitude - region.center.latitude) > 0.000001 ||
                     abs(old.center.longitude - region.center.longitude) > 0.000001 ||
@@ -105,6 +111,7 @@ struct LiveTrailMapView: UIViewRepresentable {
             map.userTrackingMode = trackingUser ? .follow : .none
             syncMembers(members, on: map)
             syncTrail(drawing, on: map)
+            syncSearchPlace(selectedPlace, on: map)
         }
 
         private func moveCamera(_ region: MKCoordinateRegion, bottomInset: CGFloat, on map: MKMapView) {
@@ -126,6 +133,7 @@ struct LiveTrailMapView: UIViewRepresentable {
 
         func detach() {
             if let map {
+                if let searchPin { map.removeAnnotation(searchPin) }
                 map.removeOverlays(map.overlays)
                 map.removeAnnotations(Array(members.values) + Array(endpoints.values))
             }
@@ -133,9 +141,29 @@ struct LiveTrailMapView: UIViewRepresentable {
             roles.removeAll()
             members.removeAll()
             endpoints.removeAll()
+            searchPin = nil
+            onRegionChanged = nil
             onSelectMember = nil
             onUserMoved = nil
             map = nil
+        }
+
+        private func syncSearchPlace(_ place: PlaceSearchResult?, on map: MKMapView) {
+            guard let place else {
+                if let searchPin { map.removeAnnotation(searchPin) }
+                searchPin = nil
+                return
+            }
+            if let searchPin, searchPin.title == place.name,
+               searchPin.coordinate.latitude == place.point.latitude,
+               searchPin.coordinate.longitude == place.point.longitude { return }
+            if let searchPin { map.removeAnnotation(searchPin) }
+            let marker = MKPointAnnotation()
+            marker.coordinate = place.point.coordinate
+            marker.title = place.name
+            marker.subtitle = place.address
+            searchPin = marker
+            map.addAnnotation(marker)
         }
 
         private func syncMembers(_ latest: [MemberLocation], on map: MKMapView) {
@@ -220,6 +248,17 @@ struct LiveTrailMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            if let searchPin, annotation === searchPin {
+                let view = (mapView.dequeueReusableAnnotationView(withIdentifier: "search-place") as? MKMarkerAnnotationView) ??
+                    MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "search-place")
+                view.annotation = annotation
+                view.markerTintColor = UIColor(FTColors.primary)
+                view.glyphImage = UIImage(systemName: "mappin")
+                view.canShowCallout = true
+                view.displayPriority = .required
+                view.accessibilityLabel = searchPin.title
+                return view
+            }
             if let marker = annotation as? MemberAnnotation {
                 let view = mapView.dequeueReusableAnnotationView(withIdentifier: "member") ??
                     MKAnnotationView(annotation: marker, reuseIdentifier: "member")
@@ -267,6 +306,10 @@ struct LiveTrailMapView: UIViewRepresentable {
         }
 
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            let region = mapView.region
+            let callback = onRegionChanged
+            // A nonanimated camera change can call this during updateUIView.
+            DispatchQueue.main.async { callback?(region) }
             if isMovingProgrammatically { isMovingProgrammatically = false }
             else if mapView.userTrackingMode == .follow { return }
             else { onUserMoved?() }

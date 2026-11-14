@@ -27,8 +27,6 @@ Legend:
 
 - `[x]` Engineering CI: unsigned Xcode 26.2 Simulator build, networking/localization
   contract tests, SwiftLint baseline, full-history Gitleaks scan and weekly Dependabot.
-  Pull requests targeting main run CI even when they only change documentation;
-  documentation-only pushes to main remain excluded by the existing path filters.
 
 - `[x]` Vietnamese / English localization: app picker, persisted preference,
   purpose strings and `L10n.tr` with safe missing-key fallback; localized Auth,
@@ -174,37 +172,12 @@ Legend:
   pass; saved XCTest target and physical-device checks remain.
 - `[-]` Emergency SOS: SOS use cases, alert banner, coordinator-driven emergency flow.
   S1 adds typed SOS REST endpoints, DTOs, repository and mock contract coverage;
-  Debug/Release Simulator builds and networking/localization scripts pass. XCTest remains
+  Debug/Release Simulator builds and networking/localization scripts pass. The
+  existing SOS UI still uses the legacy flow until a later cutover. XCTest remains
   blocked by the scheme's missing Test action. User confirmed backend flags and
   transactions on 2026-10-29; production responses remain unverified.
   S2a adds owner/session-scoped durable pending intents and a deterministic retry
-  policy. S2b adds a single-flight foreground runner with persist-before-send,
-  bounded retry and cooldown, now wired to UI and session lifecycle.
-  S3 adds a session-scoped REST recovery controller with full incident pagination,
-  revision fences, responder paging, 403/404 cleanup and read-side rate-limit
-  cooldown. S4a connects authenticated lifecycle and deduplicated `sos_alert`/
-  `sos:updated` invalidations to detail recovery.
-  S4b retains backend `sos`/`eventId` metadata for REST and realtime chat,
-  bounds message/event deduplication and resets event IDs by session generation.
-  SOS create/respond/close now require an expected auth session generation; the
-  runner retains and rechecks that generation across retries.
-  S5 adds an independent, cancellable one-shot SOS location provider with an
-  eight-second fix timeout and no cached-location fallback, now wired to the SOS UI.
-  Permission and actual GPS behavior require device testing.
-  S6a wires the SOS intent runner to authenticated startup and session cleanup;
-  queued lifecycle operations prevent a previous logout from clearing a newer
-  session. Device/integration verification remains pending.
-  S6b/S7 add REST-only creation and assistance/closure, one-shot opt-in location,
-  detail/responder UI, SOS chat cards, incident-based notification routing and
-  legacy SOS queue filtering. Validation on two real devices and production is
-  still required; background delivery depends on the app actually running (no APNs).
-  SOS map routing can follow the sender's existing realtime updates with a measured
-  timestamp. Automatic SOS-scoped sharing after consent is not implemented: the
-  backend currently exposes only an account-wide switch with no expiring SOS lease.
-  Review scoped SOS permission errors by incident and added tests for stale or
-  malformed realtime timestamps; device and XCTest validation remain outstanding.
-  Backend contract request for confirmed temporary SOS location sharing is in
-  `study/sos-live-location-backend-request.md`; the proposed endpoints are not deployed APIs.
+  policy; it is not wired to SOS sending or session lifecycle yet.
 - `[-]` Background Service: motion-aware location, socket bridge, push notification routing, offline queue.
 - `[x]` Realtime location/battery architecture study: cross-checked Mobile and
   sibling Backend flows, current thresholds, optional Redis cache, Mongo history,
@@ -227,7 +200,7 @@ Legend:
   settings model. Update root SwiftUI locale without replacing coordinator/state
   identity. Use explicit localized bundles for non-View strings; keep user/server
   content verbatim. OS-owned dialogs follow the OS-selected language. See
-  `.spec/003-app-language/references/app-language.md` and `LOCALIZATION.md`.
+  `.spec/app-language.md` and `LOCALIZATION.md`.
 
 - 2026-10-12: Both Debug and Release default to deployed REST `/api/v1` and the
   deployed Socket.IO host. Localhost is available only through the explicit
@@ -237,7 +210,7 @@ Legend:
   DebugCoordinator owns console/export presentation. Release keeps NoopNetworkLogger.
   No automatic LLM transmission; export contains a prompt plus at most 100 events.
   Native Pulse sharing and manually enabled remote logging remain available.
-  See `.spec/007-debugger/references/pulse-debugger.md` and `TOOLING.md` section 7.
+  See `.spec/pulse-debugger.md` and `TOOLING.md` section 7.
 
 ### Pulse Verification
 
@@ -279,7 +252,7 @@ Legend:
 - Unsigned Debug build for generic iOS Simulator: PASS with Xcode 26.2.
   Initial sandbox build could not resolve packages; the authorized retry succeeded.
 - No production API mutations or live-account integration tests were performed.
-- Full endpoint inventory and continuation scope: `.spec/002-api-auth/references/api-integration.md`.
+- Full endpoint inventory and continuation scope: `.spec/api-integration.md`.
 
 ### Follow-up Findings For Phases 2 And 3
 
@@ -295,11 +268,55 @@ Legend:
 
 ## Current Agent Notes
 
+- 2026-11-14: Fixed the networking contract CI harness compilation failure by
+  restoring 23 omitted SOS production/support/check source entries to the
+  explicit swiftc input list in scripts/test_networking.sh. The existing tests
+  already reference SOSIntentRunner, its error types and five SOS check groups.
+  Updated the two deployed-host expectations to the version2-0 backend already
+  configured in AppEnvironment; application behavior/configuration is unchanged.
+  Verification: bash syntax, git diff --check and the actual networking script
+  pass with Xcode 26.2; 26 documented REST examples decoded/round-tripped and the
+  REST/SOS, auth refresh, media retry, decoding/error checks completed. No hosted
+  Actions run, commit or push was performed.
+
+- 2026-11-13: Fixed the Code Quality job's SwiftLint startup failure by pinning
+  its runner to ubuntu-24.04. SwiftLint 0.65.1's dynamic Linux release requires
+  libxml2.so.2, which is unavailable on Ubuntu 26.04 (upstream issue #6966).
+  Kept the existing tool versions, archive checksums and lint/secret-scan commands.
+  Verified workflow YAML and all embedded Bash syntax; in an isolated Ubuntu 24.04
+  amd64 container with runtime packages, the exact pinned archive passed SHA-256,
+  `swiftlint version` returned 0.65.1 and `swiftlint lint --help` succeeded.
+  The hosted GitHub Actions job and full lint run were not executed locally.
+
+- 2026-11-13: Completed the explicitly approved Spec Kit workflow setup only.
+  Installed official specify-cli 1.4.0 from tag v1.4.0, Codex integration (nine
+  native skills), the FamilyTracker mobile preset and bundled SDD workflow with
+  a project analysis/approval/verification/convergence overlay. Preserved `.spec/`
+  through a reviewed local path override; added AGENTS.md, constitution, workflow
+  guide, supporting templates and setup report at `.specify/setup-report.md`.
+  `bash scripts/test_specify.sh` passes native provenance/composition, isolated
+  feature creation/selection and a real paused approval gate. Compared 387 existing
+  app/test/API/spec files with the Phase B baseline: unchanged. App builds, device
+  checks and model-dispatched feature runs were intentionally not performed.
+  This setup approval does not authorize any pending application feature.
+
+- 2026-11-12: Removed the root Graphify output for an unrelated React Native/Expo
+  project, the stale FamilyTracker graph/cache, and the optional local Python
+  Graphify virtual environment (approximately 175 MB combined). Added root
+  ignore entries for all three generated directories. No application source
+  or build configuration depends on these directories; verified removal and
+  Git ignore rules.
+
+- 2026-11-12: Removed nine reference specification files copied from an external
+  project and updated `.spec/README.md` to use the local FamilyTracker templates.
+  Verified the removed sample has no remaining references in maintained docs or
+  source outside generated graph artifacts. Application code was unchanged.
+
 - 2026-10-14: Implemented approved P7A and updated the P7 roadmap with D1/D2,
   long `Retry-After` handling and lifecycle/account rules. Debug/Release unsigned
   Simulator builds, contract scripts, Swift parsing, targeted lint and diff check
   pass. XCTest source exists but the project has no `FamilyTrackerTests` target;
-  no project-file changes were made. See `.spec/005-location/references/location-offline-buffer.md` and
+  no project-file changes were made. See `.spec/location-offline-buffer.md` and
   `study/location/P7-offline-location-buffer.md`.
 
 - 2026-10-13: Completed approved P4B. Integrated `LocationSendPolicy` into the
@@ -313,17 +330,17 @@ Legend:
   returning reasoned send/hold/drop decisions and exposed `MotionState` through
   `DeviceLocationRepository`. No pending timer, app-state integration, diagnostics
   reason counters or send behavior migration was performed. See
-  `.spec/005-location/references/location-send-policy.md` and `study/location/P4-location-send-policy.md`.
+  `.spec/location-send-policy.md` and `study/location/P4-location-send-policy.md`.
 
 - 2026-10-13: Replaced the heartbeat's cancellation-swallowing `try?` with an
   injected sleeper and explicit pre/post-sleep cancellation exits. Added lifecycle
   regression source for pending sleep, wake/stop race, failed server logout, double
   start and stop/restart. Location authorization revocation routes to the same
-  `ShareLocationUseCase.stop()`. See `.spec/005-location/references/location-heartbeat-cancellation.md` and
+  `ShareLocationUseCase.stop()`. See `.spec/location-heartbeat-cancellation.md` and
   `study/location/P3-heartbeat-cancellation.md`.
 
 - 2026-10-13: Implemented approved P2 without changing GPS policy, send threshold,
-  socket payload, backend or UI. See `.spec/005-location/references/location-diagnostics.md` and
+  socket payload, backend or UI. See `.spec/location-diagnostics.md` and
   `study/location/P2-location-diagnostics.md` for counter definitions and the
   device baseline worksheet. SwiftLint is not installed and the saved Xcode
   project still lacks a runnable `FamilyTrackerTests` target.
@@ -332,7 +349,7 @@ Legend:
   repository fix stream, preserving the GeoPoint projection for other screens.
   Regression source covers CLLocation metadata (including negative speed/course),
   old send decisions, compatibility projection and `update_location` payload.
-  See `.spec/005-location/references/location-fix.md` and `study/location/P1-location-fix.md`.
+  See `.spec/location-fix.md` and `study/location/P1-location-fix.md`.
 
 - 2026-10-12: Implemented the approved Refresh Token Rotation plan in iOS 16/Combine.
   Added atomic token-pair Keychain updates with legacy JWT fallback, refresh error
@@ -342,7 +359,7 @@ Legend:
   localization contracts, unsigned Simulator build and SwiftLint passed. XCTest source
   was added under `FamilyTrackerTests`, but `xcodebuild test` reports the checked-in
   scheme is not configured for Test Action; no project target was created by the agent.
-  See `study/refresh-token-interview-notes.md` and `.spec/002-api-auth/references/refresh-token-rotation.md`.
+  See `study/refresh-token-interview-notes.md` and `.spec/refresh-token-rotation.md`.
 
 - 2026-10-12: Audited the new Refresh Token Rotation contract against the iOS session,
   networking, Socket.IO and Pulse code. Wrote the gap analysis and G1-G5 approval plan
@@ -463,3 +480,13 @@ When finishing a task:
 1. Mark affected feature status.
 2. Add or update an architecture decision when design changes.
 3. Add a short note for important verification results or known gaps.
+
+
+## Native MapKit place search/history — 2026-11-12
+
+- User explicitly requested full implementation of the first feature after earlier design-only scope. Implemented native Swift/MapKit search/history only; preserved unrelated dirty script/progress/spec-cleanup edits. Read canonical AI_RULES/specs and used local skeleton/targeted source discovery. `ast-grep`/Graphify CLI were not available on PATH; the old root mobile graph belongs to a foreign project and was not used as evidence or edited.
+- Added pure Domain search models/ports/use cases, Core MKLocalSearchCompleter/MKLocalSearch adapter with bounded deadline/cancellation/MainActor callback bridging, Data repository and hashed-account UserDefaults query cache. Cache stores only submitted/selected query and last-used time, max20/30days, normalized dedup/expiry/corruption recovery/delete/clear, no server/DB/POI snapshot or new GPS service.
+- Added localized search sheet with nearby cafe/restaurant actions, loading/empty/error/retry and recent-query controls. AppContainer wires dependencies; MapCoordinator owns presentation/focus/selected place; LiveMap/renderer show an independent pin/card and visible-region bias. Session stop cancels/revokes old model and clears own cache before async logout; repeated teardown cannot erase later-session history. SOS/member deeplinks dismiss search. Existing tracked trail/member data and backend API are unchanged.
+- Verification: bash scripts/test_place_search.sh passed 21 deterministic executable tests; unsigned Debug Simulator build passed (Xcode26.2, iOS16 target, cached packages, automatic package updates disabled); 13 changed/new production Swift files pass strict lint under the same repo rules; localization passed with existing Homebrew Ruby, 550 matching keys/20 added and zero literal/parity/duplicate/missing-key findings. Native public Ben Thanh Market macOS adapter smoke returned 7 completions, 1 resolved place and 1 text-search result without user/device GPS or backend credentials.
+- Existing system Ruby2.6 cannot run scanner filter_map; used installed newer Ruby without changing scripts or installing dependencies. Working-tree networking script already omits SOS source/check files and fails compilation; preserved it. Committed HEAD harness copied into /tmp passed REST/SOS/refresh/media checks against current sources (26 documented REST fixtures). Whole-tree strict lint still finds unrelated baseline spacing violations; scoped changed-source lint is clean. No claim that the current networking script or full XCTest suite passes.
+- Added search test step to existing CI; no Xcode project/test-target changes, dependency installation, commit/push/deployment, production-account mutation or Graphify refresh. Physical-device/interactive UI/VoiceOver/weak-network/region coverage remains manual, listed in .spec/013-place-search/quickstart.md. Backend specs/roadmap updated to actual implementation and remaining scope.

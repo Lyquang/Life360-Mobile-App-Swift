@@ -8,6 +8,9 @@ final class MapCoordinator: NavigationCoordinator {
 
     @Published var path = NavigationPath()
 
+    @Published var searchPresented = false
+    @Published private(set) var selectedPlace: PlaceSearchResult?
+    let placeSearch: PlaceSearchViewModel
     let currentUser: User
     let viewModel: LiveMapViewModel
     var onRequestSOS: (() -> Void)?
@@ -17,6 +20,7 @@ final class MapCoordinator: NavigationCoordinator {
     init(container: AppContainer, currentUser: User) {
         self.container = container
         self.currentUser = currentUser
+        placeSearch = container.makePlaceSearchViewModel(accountID: currentUser.id)
         viewModel = LiveMapViewModel(
             currentUserId: currentUser.id,
             observeMemberLocations: container.observeMemberLocations,
@@ -26,6 +30,32 @@ final class MapCoordinator: NavigationCoordinator {
             fetchLiveTrail: container.fetchLiveTrail,
             realtime: container.realtime
         )
+    }
+
+    func openSearch(in region: PlaceSearchRegion) {
+        placeSearch.open(in: region)
+        guard placeSearch.isActive else { return }
+        searchPresented = true
+    }
+
+    func closeSearch() {
+        placeSearch.stop()
+        searchPresented = false
+    }
+
+    func selectSearchResult(_ result: PlaceSearchResult) {
+        guard placeSearch.accept(result) else { return }
+        selectedPlace = result
+        viewModel.focus(on: result.point)
+        searchPresented = false
+    }
+
+    func clearSelectedPlace() { selectedPlace = nil }
+
+    func stop() {
+        searchPresented = false
+        selectedPlace = nil
+        placeSearch.endSession()
     }
 
     func showJourney(of member: MemberLocation) {
@@ -41,6 +71,8 @@ final class MapCoordinator: NavigationCoordinator {
     }
 
     func focus(onMember userId: String) {
+        closeSearch()
+        clearSelectedPlace()
         popToRoot()
         if let member = viewModel.memberLocations.first(where: { $0.id == userId }) {
             viewModel.centerOnMember(member)
@@ -48,6 +80,8 @@ final class MapCoordinator: NavigationCoordinator {
     }
 
     func followSOSMember(_ userID: String, fallback: GeoPoint?, recordedAt: Date?) {
+        closeSearch()
+        clearSelectedPlace()
         popToRoot()
         viewModel.followSOSMember(userID, fallback: fallback, recordedAt: recordedAt)
     }
@@ -66,6 +100,13 @@ struct MapCoordinatorView: View {
     var body: some View {
         NavigationStack(path: $coordinator.path) {
             LiveMapView(viewModel: coordinator.viewModel, coordinator: coordinator)
+                .sheet(isPresented: $coordinator.searchPresented, onDismiss: coordinator.closeSearch) {
+                    NavigationStack {
+                        PlaceSearchView(viewModel: coordinator.placeSearch,
+                                        onClose: coordinator.closeSearch,
+                                        onSelect: coordinator.selectSearchResult)
+                    }
+                }
                 .navigationDestination(for: MapCoordinator.Route.self) { route in
                     switch route {
                     case let .memberJourney(userId, name):
