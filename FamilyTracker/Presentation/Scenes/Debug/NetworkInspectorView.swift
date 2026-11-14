@@ -8,6 +8,13 @@ struct NetworkInspectorView: View {
     var body: some View {
         ConsoleView()
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    NavigationLink(destination: coordinator.monitoringView()) {
+                        Image(systemName: "chart.bar.xaxis").frame(width: 44, height: 44)
+                    }
+                    .accessibilityLabel(L10n.tr("monitor.title"))
+                    .accessibilityIdentifier("pulse.monitoring")
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: coordinator.exportForAI) { Image(systemName: "doc.badge.arrow.up") }
                         .accessibilityLabel("Export JSON for AI")

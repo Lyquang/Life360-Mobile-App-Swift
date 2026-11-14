@@ -1,0 +1,31 @@
+{
+  "version": "v1",
+  "status": "PROPOSED",
+  "proposal_ids": [
+    "M01",
+    "M02",
+    "M03",
+    "M04",
+    "M05",
+    "M06"
+  ],
+  "sha256": {
+    "mockups/appearance-dark.png": "08418f24962ffe13abffbf49129ff72fd342bdc894660e4d619489f7a86599c2",
+    "mockups/appearance-light.png": "625b63efb8726ab955467e6681cc84e150ed06db616d63f1094bd514c0ceb01f",
+    "mockups/index.html": "6dd01a5f78200ca3acb09963618de05639e1d9bf2c1affa06e2f27251ab1de3b",
+    "mockups/map-dark.png": "a8fb773bbfea2790f750460933faf5e1aa95bc785ea700567d59a33e44210809",
+    "mockups/map-light.png": "6238e9802746d356798543bb4ee5a2dd919a58821d64833ab7c4c29d46a5ae50",
+    "mockups/map-review.html": "b477ad2c8fc5e1c834d14061d0ff35502568b9164b0c2c032d1e0b3682689786",
+    "mockups/map-review.png": "ff186d6f94731a38ec57fdc99bf84193bf6cb65a9c5890f191977000d7ec2074",
+    "mockups/member-dark.png": "ef9f4b5243a46f23f5329bf795cbe55e6b174eef02c5b5cc578fe1ce6266c418",
+    "mockups/member-light.png": "86aecce2625a8b6f1d040620a2cf1fc95bb2c845af142334c6191d76160c490d",
+    "mockups/network-comparison.html": "e5bd9401b37aa4687256608fc613956032bdcd1ed65cf1cdf17eddf858085a30",
+    "mockups/network-comparison.png": "7333b0540ecd0dfdcba351dd5914a77ed5495ae78dd6548e5127ded7ef1d4cfb",
+    "mockups/offline-dark.png": "5a86f9f1c558e3ac5fdfe44134e374638981682d43fce1064b9e2f9c7573e68d",
+    "mockups/offline-light.png": "55ee3096cd8f741157cd0f0188aae984639527d77e38c24ec39d8c1f5c00b169",
+    "mockups/profile-dark.png": "f86f7f79b63c84eea9bb588f2a816f5d6d9812c6eb57c3e93102160c1d17ec4f",
+    "mockups/profile-light.png": "0fa149d115ab22ad95d16d4118082b746da90514e37f115eeac0794c6b91974b",
+    "mockups/search-dark.png": "c413f6290d48bb723576db2176ac4bb4978624aaf0c6701ca9b74daddbd7d06b",
+    "mockups/search-light.png": "35ed2b1e520875c9f8d23fc062095be16b268405e1d53e7662a9021b0cad76ea"
+  }
+}

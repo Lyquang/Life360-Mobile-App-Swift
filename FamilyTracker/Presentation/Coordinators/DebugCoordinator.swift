@@ -40,27 +40,16 @@ struct DebugOverlay: ViewModifier {
             .onAppear {
                 if ProcessInfo.processInfo.arguments.contains("-PulseConsole") { coordinator.open() }
             }
-            .safeAreaInset(edge: .top, alignment: .trailing, spacing: 0) {
-                Button(action: coordinator.open) {
-                    Image(systemName: "waveform.path.ecg")
-                        .frame(width: 44, height: 44)
-                        .background(.regularMaterial, in: Circle())
-                }
-                .accessibilityLabel("Open Pulse Debugger")
-                .accessibilityIdentifier("pulse.open")
-                .help("Pulse (Command-Shift-L)")
-                .keyboardShortcut("l", modifiers: [.command, .shift])
-                .padding(.trailing, 12)
+            .background {
+                // Keep the developer shortcut without occupying app safe-area space.
+                Button(action: coordinator.open) { Color.clear.frame(width: 1, height: 1) }
+                    .keyboardShortcut("l", modifiers: [.command, .shift])
+                    .accessibilityHidden(true)
+                    .opacity(0)
             }
             .sheet(isPresented: $coordinator.isPresented) {
                 NavigationStack {
                     NetworkInspectorView()
-                        .toolbar {
-                            NavigationLink(destination: coordinator.monitoringView()) {
-                                Image(systemName: "chart.bar.xaxis").frame(width: 44, height: 44)
-                            }
-                            .accessibilityLabel(L10n.tr("monitor.title"))
-                        }
                 }
             }
     }

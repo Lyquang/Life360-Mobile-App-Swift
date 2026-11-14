@@ -2,6 +2,7 @@ import MapKit
 import SwiftUI
 
 struct LiveTrailMapView: UIViewRepresentable {
+    @Environment(\.colorScheme) private var colorScheme
     let region: MKCoordinateRegion
     let trackingUser: Bool
     let showsUserLocation: Bool
@@ -25,6 +26,10 @@ struct LiveTrailMapView: UIViewRepresentable {
     }
 
     func updateUIView(_ map: MKMapView, context: Context) {
+        let style: UIUserInterfaceStyle = colorScheme == .dark ? .dark : .light
+        map.overrideUserInterfaceStyle = style
+        map.layoutMargins = UIEdgeInsets(top: 8, left: 8, bottom: bottomInset + 16, right: 8)
+        context.coordinator.updateAppearance(style)
         context.coordinator.update(region: region, trackingUser: trackingUser,
                                    currentUserId: currentUserId, members: members,
                                    drawing: drawing, selectedPlace: selectedPlace, bottomInset: bottomInset, onSelectMember: onSelectMember,
@@ -78,7 +83,6 @@ struct LiveTrailMapView: UIViewRepresentable {
         private var searchPin: MKPointAnnotation?
         private var onRegionChanged: ((MKCoordinateRegion) -> Void)?
         private var lastRegion: MKCoordinateRegion?
-        private var lastBottomInset: CGFloat?
         private var isMovingProgrammatically = false
         private var currentUserId = ""
         private var onSelectMember: ((MemberLocation) -> Void)?
@@ -97,8 +101,7 @@ struct LiveTrailMapView: UIViewRepresentable {
             if let old = lastRegion {
                 if abs(old.center.latitude - region.center.latitude) > 0.000001 ||
                     abs(old.center.longitude - region.center.longitude) > 0.000001 ||
-                    abs(old.span.latitudeDelta - region.span.latitudeDelta) > 0.000001 ||
-                    lastBottomInset != bottomInset {
+                    abs(old.span.latitudeDelta - region.span.latitudeDelta) > 0.000001 {
                     isMovingProgrammatically = true
                     moveCamera(region, bottomInset: bottomInset, on: map)
                 }
@@ -107,7 +110,6 @@ struct LiveTrailMapView: UIViewRepresentable {
                 moveCamera(region, bottomInset: bottomInset, on: map)
             }
             lastRegion = region
-            lastBottomInset = bottomInset
             map.userTrackingMode = trackingUser ? .follow : .none
             syncMembers(members, on: map)
             syncTrail(drawing, on: map)
@@ -129,6 +131,12 @@ struct LiveTrailMapView: UIViewRepresentable {
                                   edgePadding: UIEdgeInsets(top: 24, left: 24,
                                                             bottom: bottomInset + 24, right: 24),
                                   animated: false)
+        }
+
+        func updateAppearance(_ style: UIUserInterfaceStyle) {
+            for marker in members.values {
+                marker.host?.overrideUserInterfaceStyle = style
+            }
         }
 
         func detach() {
@@ -281,6 +289,7 @@ struct LiveTrailMapView: UIViewRepresentable {
             guard let marker = view.annotation as? MemberAnnotation else { return }
             let content = MapMemberPin(memberLocation: member, isCurrentUser: member.id == currentUserId)
             if let host = marker.host {
+                host.overrideUserInterfaceStyle = map?.traitCollection.userInterfaceStyle ?? .unspecified
                 host.rootView = content
                 if host.view.superview !== view {
                     view.subviews.forEach { $0.removeFromSuperview() }
@@ -289,12 +298,13 @@ struct LiveTrailMapView: UIViewRepresentable {
                 return
             }
             let host = UIHostingController(rootView: content)
+            host.overrideUserInterfaceStyle = map?.traitCollection.userInterfaceStyle ?? .unspecified
             marker.host = host
             host.view.backgroundColor = .clear
-            host.view.frame = CGRect(x: 0, y: 0, width: 64, height: 72)
+            host.view.frame = CGRect(x: 0, y: 0, width: 80, height: 88)
             view.subviews.forEach { $0.removeFromSuperview() }
             view.frame = host.view.frame
-            view.centerOffset = CGPoint(x: 0, y: -36)
+            view.centerOffset = CGPoint(x: 0, y: -44)
             view.addSubview(host.view)
             view.accessibilityLabel = member.name
         }

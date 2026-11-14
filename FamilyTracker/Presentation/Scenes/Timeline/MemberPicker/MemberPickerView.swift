@@ -101,7 +101,7 @@ struct JourneyMemberRow: View {
                         .frame(width: 46, height: 46)
                     Text(String(name.prefix(2)).uppercased())
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                 }
 
                 VStack(alignment: .leading, spacing: 3) {
@@ -112,7 +112,7 @@ struct JourneyMemberRow: View {
                         if isMe {
                             Text(verbatim: L10n.tr("common.me"))
                                 .font(FTFont.caption())
-                                .foregroundColor(.white)
+                                .foregroundColor(FTColors.onPrimary)
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
                                 .background(FTColors.primary)

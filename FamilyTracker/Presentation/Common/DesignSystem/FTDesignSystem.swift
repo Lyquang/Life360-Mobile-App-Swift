@@ -11,18 +11,22 @@ import SwiftUI
 
 // MARK: - Colors
 struct FTColors {
-    // Màu chính: Indigo đậm (sang trọng, hiện đại)
-    static let primary     = Color(red: 0.38, green: 0.30, blue: 0.95)  // #6145F2
-    
-    // Màu phụ: Xanh lá (online, thành công)
-    static let accent      = Color(red: 0.06, green: 0.78, blue: 0.55)  // #10C78C
-    
-    // Màu nguy hiểm: Đỏ san hô (SOS, lỗi)
-    static let danger      = Color(red: 0.96, green: 0.30, blue: 0.30)  // #F54D4D
-    
-    // Màu cảnh báo: Cam vàng (pin thấp, warning)
-    static let warning     = Color(red: 0.98, green: 0.65, blue: 0.14)  // #FAA623
-    
+    // One adaptive palette shared by app controls, sheets and map overlays.
+    static let primary = adaptive(light: 0x5843D6, dark: 0xB8ABFF)
+    static let onPrimary = adaptive(light: 0xFFFFFF, dark: 0x19132E)
+    static let accent = adaptive(light: 0x087A58, dark: 0x55DBAF)
+    static let danger = adaptive(light: 0xB52835, dark: 0xFF9AA4)
+    static let warning = adaptive(light: 0x895200, dark: 0xF6BE65)
+
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(UIColor { traits in
+            let value = traits.userInterfaceStyle == .dark ? dark : light
+            return UIColor(red: CGFloat((value >> 16) & 255) / 255,
+                           green: CGFloat((value >> 8) & 255) / 255,
+                           blue: CGFloat(value & 255) / 255, alpha: 1)
+        })
+    }
+
     // Màu nền
     static let background  = Color(UIColor.systemBackground)
     static let card        = Color(UIColor.secondarySystemBackground)
@@ -38,21 +42,21 @@ struct FTColors {
 
     // Shared authentication backdrop; preserves the existing palette.
     static let authBackground = LinearGradient(
-        colors: [Color(red: 0.05, green: 0.05, blue: 0.15), Color(red: 0.10, green: 0.05, blue: 0.25)],
+        colors: [adaptive(light: 0xF2F2F7, dark: 0x101115), adaptive(light: 0xFFFFFF, dark: 0x171722)],
         startPoint: .top,
         endPoint: .bottom
     )
 
     // Gradient chính (dùng cho header, button)
     static let primaryGradient = LinearGradient(
-        colors: [Color(red: 0.38, green: 0.30, blue: 0.95), Color(red: 0.55, green: 0.20, blue: 0.95)],
+        colors: [primary, primary],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
     
     // Gradient nguy hiểm
     static let dangerGradient = LinearGradient(
-        colors: [Color(red: 0.96, green: 0.30, blue: 0.30), Color(red: 0.98, green: 0.15, blue: 0.50)],
+        colors: [danger, danger],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
@@ -123,7 +127,7 @@ struct PrimaryButtonModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .font(FTFont.headline())
-            .foregroundColor(.white)
+            .foregroundColor(FTColors.onPrimary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 16)
             .background(isLoading ? FTColors.primary.opacity(0.6) : FTColors.primary)

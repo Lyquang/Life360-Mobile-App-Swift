@@ -29,23 +29,23 @@ struct SOSAlertBanner: View {
                     
                     Image(systemName: "sos")
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                 }
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text(verbatim: L10n.tr("sos.alert.title"))
                         .font(FTFont.headline())
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                     
                     Text(verbatim: L10n.tr("sos.alert.from_member", alert.name) + ": " + alert.message)
                         .font(FTFont.subheadline())
-                        .foregroundColor(.white.opacity(0.9))
+                        .foregroundColor(FTColors.onPrimary.opacity(0.9))
                         .lineLimit(2)
                     
                     if let groupName = alert.groupName {
                         Text(verbatim: L10n.tr("sos.alert.group", groupName))
                             .font(FTFont.caption())
-                            .foregroundColor(.white.opacity(0.7))
+                            .foregroundColor(FTColors.onPrimary.opacity(0.7))
                     }
                 }
                 
@@ -55,7 +55,7 @@ struct SOSAlertBanner: View {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                         .padding(8)
                         .background(Color.white.opacity(0.2))
                         .clipShape(Circle())
@@ -76,7 +76,7 @@ struct SOSAlertBanner: View {
                         Text(verbatim: L10n.tr("sos.alert.view_map"))
                             .font(FTFont.subheadline())
                     }
-                    .foregroundColor(.white)
+                    .foregroundColor(FTColors.onPrimary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                 }

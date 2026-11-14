@@ -121,9 +121,9 @@ private struct SplashView: View {
             VStack(spacing: FTSpacing.md) {
                 Image(systemName: "location.fill.viewfinder")
                     .font(.system(size: 48))
-                    .foregroundColor(.white)
+                    .foregroundColor(FTColors.onPrimary)
                 ProgressView()
-                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    .progressViewStyle(CircularProgressViewStyle(tint: FTColors.onPrimary))
             }
         }
     }

@@ -79,7 +79,7 @@ struct PlacesView: View {
                 Button(action: onAddPlace) {
                     Image(systemName: "plus")
                         .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                         .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
                         .background(FTColors.primaryGradient)
                         .clipShape(Circle())

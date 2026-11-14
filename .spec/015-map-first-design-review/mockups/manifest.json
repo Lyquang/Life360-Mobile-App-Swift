@@ -1,0 +1,86 @@
+[
+  {
+    "key": "map-light",
+    "code": "M01",
+    "title": "Bản đồ · mặc định",
+    "mode": "light",
+    "note": "Search luôn ở vùng trên. Recenter và SOS giữ ngoài panel. Không có nút Pulse nổi; tab Thêm minh hoạ overflow của sáu destination hiện có."
+  },
+  {
+    "key": "map-dark",
+    "code": "M01",
+    "title": "Bản đồ · mặc định",
+    "mode": "dark",
+    "note": "Search luôn ở vùng trên. Recenter và SOS giữ ngoài panel. Không có nút Pulse nổi; tab Thêm minh hoạ overflow của sáu destination hiện có."
+  },
+  {
+    "key": "member-light",
+    "code": "M02",
+    "title": "Chi tiết thành viên",
+    "mode": "light",
+    "note": "Tách thời điểm cập nhật khỏi online. Xem vị trí chỉ căn lại bản đồ; Lộ trình giữ route hiện có. Không thêm chỉ đường từng chặng."
+  },
+  {
+    "key": "member-dark",
+    "code": "M02",
+    "title": "Chi tiết thành viên",
+    "mode": "dark",
+    "note": "Tách thời điểm cập nhật khỏi online. Xem vị trí chỉ căn lại bản đồ; Lộ trình giữ route hiện có. Không thêm chỉ đường từng chặng."
+  },
+  {
+    "key": "search-light",
+    "code": "M03",
+    "title": "Tìm địa điểm",
+    "mode": "light",
+    "note": "Giữ entry trên cùng; sheet kết quả có Huỷ và phần bản đồ còn nhìn thấy. Bàn phím/vị trí attribution chỉ minh hoạ, cần native QA."
+  },
+  {
+    "key": "search-dark",
+    "code": "M03",
+    "title": "Tìm địa điểm",
+    "mode": "dark",
+    "note": "Giữ entry trên cùng; sheet kết quả có Huỷ và phần bản đồ còn nhìn thấy. Bàn phím/vị trí attribution chỉ minh hoạ, cần native QA."
+  },
+  {
+    "key": "profile-light",
+    "code": "M04",
+    "title": "Cá nhân · cài đặt",
+    "mode": "light",
+    "note": "Thêm Giao diện vào cài đặt; dùng lại mục Nhà phát triển cho Pulse. Lựa chọn chia sẻ chỉ là fixture, không thay consent."
+  },
+  {
+    "key": "profile-dark",
+    "code": "M04",
+    "title": "Cá nhân · cài đặt",
+    "mode": "dark",
+    "note": "Thêm Giao diện vào cài đặt; dùng lại mục Nhà phát triển cho Pulse. Lựa chọn chia sẻ chỉ là fixture, không thay consent."
+  },
+  {
+    "key": "appearance-light",
+    "code": "M05",
+    "title": "Lựa chọn giao diện",
+    "mode": "light",
+    "note": "Theo hệ thống là mặc định. Ba lựa chọn lưu trên thiết bị; proposal chưa tích hợp vào app. Tương tác ở đây chỉ là bản thử HTML."
+  },
+  {
+    "key": "appearance-dark",
+    "code": "M05",
+    "title": "Lựa chọn giao diện",
+    "mode": "dark",
+    "note": "Theo hệ thống là mặc định. Ba lựa chọn lưu trên thiết bị; proposal chưa tích hợp vào app. Tương tác ở đây chỉ là bản thử HTML."
+  },
+  {
+    "key": "offline-light",
+    "code": "M06",
+    "title": "Bản đồ · mất realtime",
+    "mode": "light",
+    "note": "Thông báo kết nối ở đúng ngữ cảnh. Giữ timestamp cuối; không biến mất mạng của máy này thành trạng thái offline của mọi thành viên."
+  },
+  {
+    "key": "offline-dark",
+    "code": "M06",
+    "title": "Bản đồ · mất realtime",
+    "mode": "dark",
+    "note": "Thông báo kết nối ở đúng ngữ cảnh. Giữ timestamp cuối; không biến mất mạng của máy này thành trạng thái offline của mọi thành viên."
+  }
+]

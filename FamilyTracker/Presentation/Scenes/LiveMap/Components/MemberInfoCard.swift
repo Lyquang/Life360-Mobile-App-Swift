@@ -1,75 +1,85 @@
 import SwiftUI
 
-/// Floating card shown when a member pin is tapped.
+enum MemberLocationText {
+    static func updated(_ timestamp: String, language: AppLanguage) -> String {
+        guard let date = ISO8601.date(from: timestamp) else {
+            return L10n.tr("map.member.unknown_time", language: language)
+        }
+        let formatted: String
+        if Calendar.current.isDateInToday(date) {
+            formatted = L10n.time(date, language: language)
+        } else {
+            let formatter = DateFormatter()
+            formatter.locale = language.locale
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            formatted = formatter.string(from: date)
+        }
+        return L10n.tr("members.updated_at", formatted, language: language)
+    }
+}
+
+/// Contents of the map's selected-member panel. The parent owns scrolling/height.
 struct MemberInfoCard: View {
+    @Environment(\.locale) private var locale
+    @Environment(\.dynamicTypeSize) private var textSize
     let member: MemberLocation
     let onDismiss: () -> Void
     let onNavigate: () -> Void
     let onShowJourney: () -> Void
 
     var body: some View {
-        HStack(spacing: FTSpacing.md) {
-            MemberAvatarView(name: member.name, size: .large, isOnline: true, batteryLevel: member.batteryLevel)
-
-            VStack(alignment: .leading, spacing: FTSpacing.xs) {
-                Text(member.name)
-                    .font(FTFont.headline())
-                    .foregroundColor(FTColors.textPrimary)
-
-                Text(verbatim: L10n.tr("common.coordinates",
-                                       String(format: "%.4f", member.latitude),
-                                       String(format: "%.4f", member.longitude)))
-                    .font(FTFont.caption())
-                    .foregroundColor(FTColors.textSecondary)
-
-                HStack(spacing: FTSpacing.sm) {
-                    if let battery = member.batteryLevel {
-                        BatteryIndicatorView(level: battery)
-                    }
-                    Text(verbatim: updatedText)
-                        .font(FTFont.caption())
-                        .foregroundColor(FTColors.textTertiary)
+        VStack(alignment: .leading, spacing: FTSpacing.md) {
+            HStack(alignment: .top, spacing: FTSpacing.md) {
+                MemberAvatarView(name: member.name, size: .large, isOnline: nil, batteryLevel: nil)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: FTSpacing.xs) {
+                    Text(verbatim: member.name).font(FTFont.title2())
+                    Text(verbatim: MemberLocationText.updated(member.timestamp, language: AppLanguage(locale: locale)))
+                        .font(FTFont.subheadline()).foregroundColor(FTColors.textSecondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark").font(.system(size: 18, weight: .medium))
+                        .frame(width: FTControl.minimumTarget, height: FTControl.minimumTarget)
+                        .background(FTColors.surface, in: Circle())
+                }
+                .accessibilityLabel(Text(verbatim: L10n.tr("common.action.close", language: AppLanguage(locale: locale))))
+            }
+            actionLayout {
+                Label {
+                    AppLocalizedText("map.member.recorded_position")
+                } icon: { Image(systemName: "mappin.circle").accessibilityHidden(true) }
+                    .font(FTFont.body())
+                Spacer(minLength: 0)
+                if let battery = member.batteryLevel {
+                    Label {
+                        Text(verbatim: L10n.tr("common.battery_percent", battery, language: AppLanguage(locale: locale)))
+                    } icon: { Image(systemName: "battery.100").accessibilityHidden(true) }
+                        .font(FTFont.subheadline()).foregroundColor(FTColors.textSecondary)
                 }
             }
-
-            Spacer()
-
-            VStack(spacing: FTSpacing.sm) {
-                circleButton(icon: "location.fill", action: onNavigate)
-                circleButton(icon: "figure.walk.motion", action: onShowJourney)
+            AppLocalizedText("map.member.recorded_hint")
+                .font(FTFont.footnote()).foregroundColor(FTColors.textSecondary)
+            DisclosureGroup {
+                Text(verbatim: L10n.tr("common.coordinates", String(format: "%.4f", member.latitude),
+                                      String(format: "%.4f", member.longitude), language: AppLanguage(locale: locale)))
+                    .font(FTFont.footnote())
+                    .textSelection(.enabled)
+            } label: { AppLocalizedText("map.member.coordinates") }
+                .font(FTFont.footnote())
+            actionLayout {
+                FTButton(title: "map.action.view_position", isLoading: false, action: onNavigate)
+                FTButton(title: "map.action.journey", isLoading: false, action: onShowJourney, style: .outline)
             }
         }
+        .foregroundColor(FTColors.textPrimary)
         .padding(FTSpacing.md)
-        .ftCard()
-        .padding(.horizontal, FTSpacing.md)
-        .overlay(alignment: .topTrailing) {
-            Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 12))
-                    .foregroundColor(FTColors.textTertiary)
-                    .padding(6)
-                    .background(FTColors.surface)
-                    .clipShape(Circle())
-            }
-            .offset(x: -8, y: -8)
-        }
+        .accessibilityIdentifier("map.member_detail")
     }
 
-    private var updatedText: String {
-        guard ISO8601.date(from: member.timestamp) != nil else {
-            return L10n.tr("map.location.just_updated")
-        }
-        return L10n.tr("members.updated_at", DisplayFormat.time(iso: member.timestamp))
-    }
-
-    private func circleButton(icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.white)
-                .frame(width: 40, height: 40)
-                .background(FTColors.primary)
-                .clipShape(Circle())
-        }
+    private var actionLayout: AnyLayout {
+        textSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: FTSpacing.sm))
+            : AnyLayout(HStackLayout(spacing: FTSpacing.sm))
     }
 }

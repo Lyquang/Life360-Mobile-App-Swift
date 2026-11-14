@@ -564,3 +564,30 @@
 "chat.action.attach_photo" = "Attach a photo";
 "chat.action.send" = "Send message";
 "chat.action.sending" = "Sending message";
+
+/* Approved map-first design v1 */
+"appearance.title" = "Appearance";
+"appearance.option.system" = "System";
+"appearance.option.light" = "Light";
+"appearance.option.dark" = "Dark";
+"appearance.description.system" = "Follow your iPhone appearance";
+"appearance.description.light" = "Always use light appearance";
+"appearance.description.dark" = "Always use dark appearance";
+"appearance.footer.device" = "Your choice is saved on this device and applies to screens, maps, and sheets.";
+"map.member.unknown_time" = "Update time unknown";
+"map.member.recorded_position" = "Position on the map";
+"map.member.recorded_hint" = "This is the last recorded position.";
+"map.member.coordinates" = "Show coordinates";
+"map.action.view_position" = "View position";
+"map.action.journey" = "Journey";
+"map.action.recenter" = "Recenter on my location";
+"map.action.members" = "Show members";
+"map.action.all_members" = "View all";
+"map.action.collapse_members" = "Collapse";
+"map.members.title" = "Members";
+"map.connection.disconnected" = "Realtime disconnected";
+"map.connection.last_known" = "Locations may not be up to date.";
+"map.tracking.following" = "Following my location";
+"map.tracking.browsing" = "Browsing the map";
+"map.members.empty" = "No member locations yet";
+"map.action.request_sos" = "Request SOS";

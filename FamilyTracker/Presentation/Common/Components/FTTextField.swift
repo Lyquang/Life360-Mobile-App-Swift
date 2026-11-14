@@ -217,7 +217,7 @@ struct FTButton: View {
     
     private var foregroundColor: Color {
         switch style {
-        case .primary, .danger: return .white
+        case .primary, .danger: return FTColors.onPrimary
         case .outline, .ghost: return FTColors.primary
         }
     }

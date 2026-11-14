@@ -106,6 +106,8 @@ struct MapCoordinatorView: View {
                                         onClose: coordinator.closeSearch,
                                         onSelect: coordinator.selectSearchResult)
                     }
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                 }
                 .navigationDestination(for: MapCoordinator.Route.self) { route in
                     switch route {

@@ -59,7 +59,7 @@ struct FTEmptyView: View {
                 Button(action: action) {
                     AppLocalizedText(actionTitle)
                         .font(FTFont.headline())
-                        .foregroundColor(.white)
+                        .foregroundColor(FTColors.onPrimary)
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(minHeight: FTControl.minimumTarget)

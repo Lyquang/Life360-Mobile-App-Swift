@@ -22,7 +22,7 @@ struct GroupDetailView: View {
                                 .frame(width: 80, height: 80)
                             Image(systemName: "person.3.fill")
                                 .font(.system(size: 32))
-                                .foregroundColor(.white)
+                                .foregroundColor(FTColors.onPrimary)
                         }
 
                         Text(group.name)

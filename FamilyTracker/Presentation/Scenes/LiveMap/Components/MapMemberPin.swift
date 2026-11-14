@@ -16,24 +16,32 @@ struct MapMemberPin: View {
 
                 MemberAvatarView(
                     name: memberLocation.name,
-                    size: .large,
-                    isOnline: true,
+                    size: .medium,
+                    isOnline: nil,
                     batteryLevel: memberLocation.batteryLevel
                 )
                 .overlay(
                     Circle()
                         .stroke(
-                            isCurrentUser ? FTColors.primary : Color.white,
+                            isCurrentUser ? FTColors.primary : FTColors.background,
                             lineWidth: isCurrentUser ? 3 : 2
                         )
                 )
             }
 
             Triangle()
-                .fill(Color.white)
+                .fill(FTColors.background)
                 .frame(width: 12, height: 6)
                 .shadow(color: Color.black.opacity(0.1), radius: 2)
+            Text(verbatim: memberLocation.name)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .foregroundColor(FTColors.textPrimary)
+                .lineLimit(1)
+                .padding(.horizontal, 5).padding(.vertical, 2)
+                .background(FTColors.background, in: Capsule())
+                .accessibilityHidden(true)
         }
+        .frame(width: 80)
         .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 4)
     }
 }

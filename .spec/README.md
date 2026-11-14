@@ -19,6 +19,7 @@ Thư mục này chứa đặc tả tính năng của FamilyTracker. Workflow đa
 | Thông báo | [012-notifications/spec.md](012-notifications/spec.md) | Quyền, thông báo và điều hướng |
 | Tìm địa điểm | [013-place-search/spec.md](013-place-search/spec.md) | Native MapKit search và history cache 20 mục/30 ngày |
 | UI/UX iOS | [014-ios-design-quality/spec.md](014-ios-design-quality/spec.md) | Design workflow, screen audit, shared accessibility và visual QA |
+| Duyệt thiết kế map-first | [015-map-first-design-review/spec.md](015-map-first-design-review/spec.md) | M01–M06 v1 đã duyệt/triển khai; audit và evidence native QA |
 
 Mỗi nhóm dùng `spec.md` làm điểm vào, `plan.md` cho kiến trúc, `tasks.md` cho checklist, `research.md` cho nguồn, `data-model.md` cho trạng thái, `quickstart.md` cho kiểm thử và `checklists/requirements.md` để rà soát. `contracts/` liên kết tới tài liệu backend hiện có khi phù hợp. Nội dung cũ được giữ nguyên trong `references/`; kết quả và quyết định cũ có thể đã bị thay thế, cần đối chiếu `PROGRESS.md`, code và hợp đồng hiện tại.
 

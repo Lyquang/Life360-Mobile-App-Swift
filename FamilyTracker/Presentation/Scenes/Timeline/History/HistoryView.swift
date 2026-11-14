@@ -265,7 +265,7 @@ struct HistoryTimelineRow: View {
     private func tag(_ text: String, color: Color) -> some View {
         AppLocalizedText(text)
             .font(FTFont.caption())
-            .foregroundColor(.white)
+            .foregroundColor(FTColors.onPrimary)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .background(color)

@@ -75,7 +75,7 @@ struct EmergencyPresentation: ViewModifier {
                 if let id = coordinator.incomingID {
                     Button { coordinator.open(id) } label: {
                         Label(L10n.tr("sos.new.alert"), systemImage: "exclamationmark.triangle.fill")
-                            .font(.headline).foregroundColor(.white)
+                            .font(.headline).foregroundColor(FTColors.onPrimary)
                             .frame(maxWidth: .infinity, minHeight: 52)
                             .background(FTColors.dangerGradient).cornerRadius(FTRadius.lg)
                     }.padding(FTSpacing.md)

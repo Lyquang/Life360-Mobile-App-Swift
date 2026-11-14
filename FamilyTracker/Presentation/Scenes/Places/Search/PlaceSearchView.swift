@@ -24,6 +24,11 @@ struct PlaceSearchView: View {
                     }
                     .accessibilityLabel(L10n.tr("search.action.clear_query"))
                 }
+                Button(L10n.tr("common.cancel"), action: onClose)
+                    .font(FTFont.subheadline())
+                    .frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel(L10n.tr("search.action.close"))
+                    .accessibilityIdentifier("search.close")
             }
             .padding(.horizontal, FTSpacing.md)
             .frame(minHeight: 52)
@@ -104,14 +109,8 @@ struct PlaceSearchView: View {
             .listStyle(.insetGrouped)
             .scrollDismissesKeyboard(.interactively)
         }
-        .navigationTitle(Text(verbatim: L10n.tr("search.title")))
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button(L10n.tr("common.cancel"), action: onClose)
-                    .accessibilityLabel(L10n.tr("search.action.close"))
-            }
-        }
+        .background(FTColors.background)
+        .toolbar(.hidden, for: .navigationBar)
         .task { focused = true }
     }
 

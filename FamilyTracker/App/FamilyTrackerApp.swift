@@ -10,6 +10,8 @@ struct FamilyTrackerApp: App {
     @StateObject private var appCoordinator = AppCoordinator(container: CompositionRoot.container)
     @StateObject private var languageSettings = CompositionRoot.container.languageSettings
 
+    @StateObject private var appearanceSettings = AppearanceSettings()
+
     var body: some Scene {
         WindowGroup {
             AppCoordinatorView(coordinator: appCoordinator)
@@ -17,6 +19,8 @@ struct FamilyTrackerApp: App {
                 .modifier(DebugOverlay())
                 #endif
                 .environmentObject(languageSettings)
+                .environmentObject(appearanceSettings)
+                .preferredColorScheme(appearanceSettings.selection.colorScheme)
                 .environment(\.locale, languageSettings.language.locale)
                 .onChange(of: scenePhase) { phase in
                     guard phase == .active, appCoordinator.state == .authenticated else { return }

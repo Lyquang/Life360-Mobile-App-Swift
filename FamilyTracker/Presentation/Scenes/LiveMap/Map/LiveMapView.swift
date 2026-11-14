@@ -1,137 +1,52 @@
-// MARK: - LiveMapView.swift
-// Full-screen map with realtime member positions. Navigation/SOS are delegated to MapCoordinator.
-
 import SwiftUI
 import MapKit
 
 struct LiveMapView: View {
     @ObservedObject var viewModel: LiveMapViewModel
     @ObservedObject var coordinator: MapCoordinator
-
+    @Environment(\.dynamicTypeSize) private var textSize
     @State private var showMemberList = false
-    @State private var selectedMember: MemberLocation?
+    @State private var selectedMemberID: String?
     @State private var visibleSearchRegion: PlaceSearchRegion?
+    @State private var panelHeight: CGFloat = 0
+
+    private var selectedMember: MemberLocation? {
+        viewModel.memberLocations.first { $0.id == selectedMemberID }
+    }
 
     var body: some View {
-        ZStack(alignment: .top) {
-            LiveTrailMapView(
-                region: viewModel.mapRegion,
-                trackingUser: viewModel.isTrackingUser,
-                showsUserLocation: true,
-                currentUserId: viewModel.currentUserId,
-                members: viewModel.memberLocations,
-                drawing: viewModel.trailDrawing,
-                selectedPlace: coordinator.selectedPlace,
-                bottomInset: coordinator.selectedPlace == nil ? 0 : 180,
-                onSelectMember: { member in
-                    withAnimation(.spring()) {
-                        coordinator.clearSelectedPlace()
-                        selectedMember = member
-                        viewModel.centerOnMember(member)
-                    }
-                },
-                onUserMoved: viewModel.userMovedMap,
-                onRegionChanged: { region in
-                    let next = PlaceSearchRegion(
-                        center: GeoPoint(latitude: region.center.latitude, longitude: region.center.longitude),
-                        latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta)
-                    if visibleSearchRegion != next { visibleSearchRegion = next }
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                LiveTrailMapView(
+                    region: viewModel.mapRegion, trackingUser: viewModel.isTrackingUser,
+                    showsUserLocation: true, currentUserId: viewModel.currentUserId,
+                    members: viewModel.memberLocations, drawing: viewModel.trailDrawing,
+                    selectedPlace: coordinator.selectedPlace, bottomInset: panelHeight,
+                    onSelectMember: selectMember, onUserMoved: viewModel.userMovedMap,
+                    onRegionChanged: updateSearchRegion
+                )
+                .ignoresSafeArea(edges: .top)
+                VStack(spacing: FTSpacing.sm) {
+                    Spacer(minLength: FTSpacing.sm)
+                    controls
+                    bottomPanel(availableHeight: geometry.size.height)
+                        .background(FTColors.background, in: RoundedRectangle(cornerRadius: FTRadius.xl))
+                        .background(GeometryReader { proxy in
+                            Color.clear.preference(key: MapPanelHeight.self, value: proxy.size.height)
+                        })
                 }
-            )
-            .ignoresSafeArea()
-
-            LinearGradient(colors: [Color.black.opacity(0.5), Color.clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 120)
-                .ignoresSafeArea()
-
-            header
-
-            if viewModel.sosFollowActive {
-                VStack(spacing: 2) {
-                    if let date = viewModel.sosLocationUpdatedAt {
-                        Text(verbatim: L10n.tr("sos.live.updated", DisplayFormat.time(date)))
-                    } else {
-                        Text(verbatim: L10n.tr("sos.live.no_time"))
-                    }
-                    if !viewModel.isConnected { Text(verbatim: L10n.tr("sos.live.offline")) }
-                }
-                .font(FTFont.caption()).foregroundColor(FTColors.textPrimary)
-                .padding(FTSpacing.sm).background(FTColors.background).cornerRadius(FTRadius.md)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                .padding(.top, 225)
-                .allowsHitTesting(false)
+                .padding(.horizontal, FTSpacing.sm).padding(.bottom, FTSpacing.sm)
             }
-
-            if viewModel.trailUnavailable {
-                Button(action: viewModel.refreshTrail) {
-                    Label(L10n.tr("trail.unavailable"), systemImage: "arrow.clockwise")
-                        .font(FTFont.caption())
-                        .foregroundColor(FTColors.textPrimary)
-                        .padding(FTSpacing.sm)
-                        .frame(minHeight: 44)
-                        .background(FTColors.background)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(.top, 175)
-                .padding(.horizontal, FTSpacing.md)
+            .onPreferenceChange(MapPanelHeight.self) { height in
+                if abs(panelHeight - height) > 1 { panelHeight = height }
             }
-            if viewModel.trailDrawing.lines.contains(where: { $0.style == .gps }) {
-                Text(verbatim: L10n.tr("trail.raw.label"))
-                    .font(FTFont.caption())
-                    .foregroundColor(FTColors.textPrimary)
-                    .padding(FTSpacing.sm)
-                    .background(FTColors.background)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(.top, viewModel.trailUnavailable ? 232 : 175)
-                    .padding(.leading, FTSpacing.md)
-                    .allowsHitTesting(false)
-            }
-
-            controls
-
-            if let member = selectedMember {
-                VStack {
-                    Spacer()
-                    MemberInfoCard(
-                        member: member,
-                        onDismiss: { selectedMember = nil },
-                        onNavigate: { viewModel.centerOnMember(member) },
-                        onShowJourney: { coordinator.showJourney(of: member) }
-                    )
-                    .padding(.bottom, 80)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                }
-            }
-
-            if let place = coordinator.selectedPlace {
-                VStack {
-                    Spacer()
-                    HStack(alignment: .top, spacing: FTSpacing.sm) {
-                        Image(systemName: "mappin.circle.fill")
-                            .foregroundColor(FTColors.primary).accessibilityHidden(true)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(verbatim: place.name).font(FTFont.headline())
-                            if !place.address.isEmpty {
-                                Text(verbatim: place.address).font(FTFont.caption()).lineLimit(3)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        Button(action: coordinator.clearSelectedPlace) {
-                            Image(systemName: "xmark").frame(minWidth: 44, minHeight: 44)
-                        }
-                        .accessibilityLabel(L10n.tr("search.action.clear_place"))
-                    }
-                    .padding(FTSpacing.md)
-                    .background(FTColors.background)
-                    .cornerRadius(FTRadius.lg)
-                    .padding(.horizontal, FTSpacing.md)
-                    .padding(.bottom, 80)
-                    .accessibilityIdentifier("search.selected_place")
-                }
-            }
-
-            if showMemberList {
-                memberList
+        }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: FTSpacing.sm) {
+                LiveMapHeader(memberCount: viewModel.memberLocations.count,
+                              onMembers: { showMemberList.toggle(); selectedMemberID = nil; coordinator.clearSelectedPlace() },
+                              onSearch: openSearch)
+                statusNotices.padding(.horizontal, FTSpacing.md)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -142,151 +57,84 @@ struct LiveMapView: View {
         }
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        VStack(spacing: FTSpacing.sm) {
-            HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("FamilyTracker")
-                        .font(.system(size: 20, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(viewModel.isConnected ? FTColors.accent : FTColors.danger)
-                            .frame(width: 6, height: 6)
-                        AppLocalizedText(viewModel.isConnected ? "Đang kết nối" : "Offline")
-                            .font(FTFont.caption()).foregroundColor(.white.opacity(0.7))
-                    }
-                }
-                Spacer()
-                Button {
-                    withAnimation(.spring()) { showMemberList.toggle() }
-                } label: {
-                    HStack(spacing: FTSpacing.xs) {
-                        Image(systemName: "person.2.fill")
-                        Text(verbatim: viewModel.memberLocations.count.formatted(.number.locale(L10n.language.locale)))
-                            .font(FTFont.subheadline())
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 12).padding(.vertical, 8)
-                    .background(.ultraThinMaterial).cornerRadius(FTRadius.full)
-                }
-            }
-            Button {
-                selectedMember = nil
-                let region = viewModel.mapRegion
-                coordinator.openSearch(in: visibleSearchRegion ?? PlaceSearchRegion(
-                    center: GeoPoint(latitude: region.center.latitude, longitude: region.center.longitude),
-                    latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta))
-            } label: {
-                HStack(spacing: FTSpacing.sm) {
-                    Image(systemName: "magnifyingglass")
-                    Text(verbatim: L10n.tr("search.field.placeholder"))
-                    Spacer()
-                }
-                .foregroundColor(FTColors.textPrimary)
-                .padding(.horizontal, FTSpacing.md)
-                .frame(minHeight: 48)
-                .background(FTColors.background)
-                .cornerRadius(FTRadius.lg)
-            }
-            .accessibilityIdentifier("map.search")
+    @ViewBuilder private var statusNotices: some View {
+        if viewModel.connectionState == .disconnected { MapConnectionNotice() }
+        if viewModel.sosFollowActive {
+            Text(verbatim: viewModel.sosLocationUpdatedAt.map { L10n.tr("sos.live.updated", DisplayFormat.time($0)) }
+                 ?? L10n.tr("sos.live.no_time"))
+                .font(FTFont.caption()).padding(FTSpacing.sm).background(FTColors.background)
         }
-        .padding(.horizontal, FTSpacing.md)
-        .padding(.top, 55)
+        if viewModel.trailUnavailable {
+            Button(action: viewModel.refreshTrail) {
+                Label(L10n.tr("trail.unavailable"), systemImage: "arrow.clockwise")
+                    .font(FTFont.caption()).padding(FTSpacing.sm).frame(minHeight: 44)
+                    .background(FTColors.background, in: RoundedRectangle(cornerRadius: FTRadius.sm))
+            }
+        }
+        if viewModel.trailDrawing.lines.contains(where: { $0.style == .gps }) {
+            AppLocalizedText("trail.raw.label").font(FTFont.caption())
+                .padding(FTSpacing.xs).background(FTColors.background)
+        }
     }
-
-    // MARK: - Controls
 
     private var controls: some View {
-        VStack(spacing: FTSpacing.sm) {
-            Spacer()
-
-            mapControlButton(
-                icon: viewModel.isTrackingUser ? "location.fill" : "location",
-                color: viewModel.isTrackingUser ? FTColors.primary : FTColors.textSecondary,
-                action: { coordinator.clearSelectedPlace(); viewModel.centerOnUser() }
-            )
-
-            mapControlButton(icon: "sos", color: FTColors.danger, action: coordinator.requestSOS)
-        }
-        .padding(.trailing, FTSpacing.md)
-        .padding(.bottom, 120)
-        .frame(maxWidth: .infinity, alignment: .trailing)
+        LiveMapControls(tracking: viewModel.isTrackingUser,
+                        onRecenter: { coordinator.clearSelectedPlace(); viewModel.centerOnUser() },
+                        onSOS: coordinator.requestSOS)
     }
 
-    private func mapControlButton(icon: String, color: Color, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .semibold))
-                .foregroundColor(color)
-                .frame(width: 44, height: 44)
-                .background(.ultraThinMaterial)
-                .clipShape(Circle())
-                .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-        }
-    }
-
-    // MARK: - Member list overlay
-
-    private var memberList: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text(verbatim: L10n.tr("members.online.title"))
-                    .font(FTFont.headline())
-                Spacer()
-                Button {
-                    withAnimation { showMemberList = false }
-                } label: {
-                    Image(systemName: "xmark")
-                        .foregroundColor(FTColors.textSecondary)
-                }
+    @ViewBuilder private func bottomPanel(availableHeight: CGFloat) -> some View {
+        if let member = selectedMember {
+            ScrollView {
+                MemberInfoCard(member: member, onDismiss: { selectedMemberID = nil },
+                               onNavigate: { viewModel.centerOnMember(member) },
+                               onShowJourney: { coordinator.showJourney(of: member) })
             }
-            .padding(FTSpacing.md)
-
-            if viewModel.memberLocations.isEmpty {
-                Text(verbatim: L10n.tr("members.online.empty"))
-                    .font(FTFont.subheadline())
-                    .foregroundColor(FTColors.textSecondary)
-                    .padding(FTSpacing.xl)
-            } else {
-                ForEach(viewModel.memberLocations) { member in
-                    Button {
-                        selectedMember = member
-                        viewModel.centerOnMember(member)
-                        withAnimation { showMemberList = false }
-                    } label: {
-                        HStack(spacing: FTSpacing.md) {
-                            MemberAvatarView(name: member.name, size: .medium, isOnline: true, batteryLevel: member.batteryLevel)
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(member.name)
-                                    .font(FTFont.subheadline())
-                                    .foregroundColor(FTColors.textPrimary)
-                                Text(verbatim: L10n.tr("members.updated_at", DisplayFormat.time(iso: member.timestamp)))
-                                    .font(FTFont.caption())
-                                    .foregroundColor(FTColors.textSecondary)
-                            }
-
-                            Spacer()
-
-                            if let battery = member.batteryLevel {
-                                BatteryIndicatorView(level: battery)
-                            }
-                        }
-                        .padding(.horizontal, FTSpacing.md)
-                        .padding(.vertical, FTSpacing.sm)
-                    }
-                    Divider().padding(.leading, 72)
-                }
+            .frame(height: min(availableHeight * 0.62, textSize.isAccessibilitySize ? 420 : 300))
+        } else if let place = coordinator.selectedPlace {
+            ScrollView {
+                HStack(alignment: .top, spacing: FTSpacing.sm) {
+                    Image(systemName: "mappin.circle.fill").foregroundColor(FTColors.primary).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: FTSpacing.xs) {
+                        Text(verbatim: place.name).font(FTFont.headline())
+                        if !place.address.isEmpty { Text(verbatim: place.address).font(FTFont.footnote()) }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                    Button(action: coordinator.clearSelectedPlace) { Image(systemName: "xmark").frame(width: 44, height: 44) }
+                        .accessibilityLabel(L10n.tr("search.action.clear_place"))
+                }.padding(FTSpacing.md)
             }
+            .frame(height: min(availableHeight * 0.35, textSize.isAccessibilitySize ? 260 : 160))
+            .accessibilityIdentifier("search.selected_place")
+        } else {
+            MapMembersPanel(members: viewModel.memberLocations, expanded: showMemberList,
+                            onToggle: { showMemberList.toggle() }, onSelect: selectMember)
+                .frame(height: viewModel.memberLocations.isEmpty ? 116 :
+                    (showMemberList || textSize.isAccessibilitySize ? availableHeight * 0.62 : 142))
         }
-        .background(FTColors.card)
-        .cornerRadius(FTRadius.xl)
-        .shadow(color: Color.black.opacity(0.2), radius: 20)
-        .padding(.horizontal, FTSpacing.md)
-        .padding(.top, 100)
-        .transition(.move(edge: .top).combined(with: .opacity))
     }
+
+    private func selectMember(_ member: MemberLocation) {
+        coordinator.clearSelectedPlace()
+        selectedMemberID = member.id
+        viewModel.centerOnMember(member)
+    }
+
+    private func openSearch() {
+        selectedMemberID = nil
+        let region = viewModel.mapRegion
+        coordinator.openSearch(in: visibleSearchRegion ?? PlaceSearchRegion(
+            center: GeoPoint(latitude: region.center.latitude, longitude: region.center.longitude),
+            latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta))
+    }
+
+    private func updateSearchRegion(_ region: MKCoordinateRegion) {
+        let next = PlaceSearchRegion(center: GeoPoint(latitude: region.center.latitude, longitude: region.center.longitude),
+                                     latitudeDelta: region.span.latitudeDelta, longitudeDelta: region.span.longitudeDelta)
+        if visibleSearchRegion != next { visibleSearchRegion = next }
+    }
+}
+
+private struct MapPanelHeight: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
