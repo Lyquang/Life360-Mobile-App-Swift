@@ -27,15 +27,16 @@
 		<string>_pulse._tcp</string>
 	</array>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>FamilyTracker cần vị trí nền để cập nhật liên tục.</string>
+	<string>FamilyTracker dùng vị trí nền cho chia sẻ Circle hoặc dẫn đường khi bạn bật từng dịch vụ.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>FamilyTracker cần vị trí của bạn để chia sẻ với gia đình.</string>
+	<string>FamilyTracker dùng vị trí khi bạn bật chia sẻ với gia đình hoặc tìm đường riêng.</string>
 	<key>NSMotionUsageDescription</key>
 	<string>FamilyTracker dùng dữ liệu chuyển động để tiết kiệm pin khi bạn đứng yên.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>FamilyTracker cần quyền micro để gửi tin nhắn thoại.</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>audio</string>
 		<string>location</string>
 		<string>remote-notification</string>
 	</array>

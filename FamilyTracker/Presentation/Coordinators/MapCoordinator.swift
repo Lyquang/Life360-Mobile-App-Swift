@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 
 @MainActor
 final class MapCoordinator: NavigationCoordinator {
@@ -11,16 +12,25 @@ final class MapCoordinator: NavigationCoordinator {
     @Published var searchPresented = false
     @Published private(set) var selectedPlace: PlaceSearchResult?
     let placeSearch: PlaceSearchViewModel
+    let routeNavigation: RouteNavigationViewModel
     let currentUser: User
     let viewModel: LiveMapViewModel
     var onRequestSOS: (() -> Void)?
 
     private let container: AppContainer
+    private var routeChange: AnyCancellable?
 
     init(container: AppContainer, currentUser: User) {
         self.container = container
         self.currentUser = currentUser
         placeSearch = container.makePlaceSearchViewModel(accountID: currentUser.id)
+        routeNavigation = RouteNavigationViewModel(
+            ownerID: currentUser.id,
+            repository: container.routePreviewRepository,
+            location: container.deviceLocation,
+            connectivity: container.routeConnectivity,
+            sessionGeneration: { [weak session = container.session] in session?.sessionGeneration ?? -1 }
+        )
         viewModel = LiveMapViewModel(
             currentUserId: currentUser.id,
             observeMemberLocations: container.observeMemberLocations,
@@ -30,9 +40,16 @@ final class MapCoordinator: NavigationCoordinator {
             fetchLiveTrail: container.fetchLiveTrail,
             realtime: container.realtime
         )
+        routeChange = routeNavigation.objectWillChange.sink { [weak self] in
+            self?.objectWillChange.send()
+        }
+        container.onNavigationAuthorizationDenied = { [weak routeNavigation] in
+            routeNavigation?.end()
+        }
     }
 
     func openSearch(in region: PlaceSearchRegion) {
+        guard !routeNavigation.active else { return }
         placeSearch.open(in: region)
         guard placeSearch.isActive else { return }
         searchPresented = true
@@ -44,15 +61,31 @@ final class MapCoordinator: NavigationCoordinator {
     }
 
     func selectSearchResult(_ result: PlaceSearchResult) {
+        guard !routeNavigation.active else { return }
         guard placeSearch.accept(result) else { return }
         selectedPlace = result
         viewModel.focus(on: result.point)
         searchPresented = false
     }
 
-    func clearSelectedPlace() { selectedPlace = nil }
+    func clearSelectedPlace() {
+        routeNavigation.end()
+        selectedPlace = nil
+    }
+
+    func planRouteToSelectedPlace() {
+        guard let selectedPlace else { return }
+        routeNavigation.open(destination: selectedPlace.point)
+    }
+
+    func startNavigation() {
+        routeNavigation.start()
+        if routeNavigation.active { viewModel.centerOnUser() }
+    }
 
     func stop() {
+        routeNavigation.end()
+        container.onNavigationAuthorizationDenied = nil
         searchPresented = false
         selectedPlace = nil
         placeSearch.endSession()

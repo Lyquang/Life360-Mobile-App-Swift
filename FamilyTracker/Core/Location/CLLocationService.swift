@@ -8,6 +8,7 @@ protocol LocationService: AnyObject {
     var onMotionChange: ((MotionActivity) -> Void)? { get set }
     var onAuthorizationChange: ((CLAuthorizationStatus) -> Void)? { get set }
     func requestAuthorization()
+    func requestNavigationAuthorization()
     func start()
     func stop()
     func requestFreshLocation()
@@ -15,6 +16,7 @@ protocol LocationService: AnyObject {
 
 extension LocationService {
     func requestFreshLocation() {}
+    func requestNavigationAuthorization() { requestAuthorization() }
 }
 
 /// CLLocationManager + CoreMotion. GPS accuracy adapts to activity/battery; stationary users fall back
@@ -71,7 +73,14 @@ final class CLLocationService: NSObject, LocationService {
         }
     }
 
+    func requestNavigationAuthorization() {
+        if manager.authorizationStatus == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        }
+    }
+
     func start() {
+        guard !isRunning else { return }
         isRunning = true
         configureBackgroundUpdates()
         motion.start { [weak self] activity in

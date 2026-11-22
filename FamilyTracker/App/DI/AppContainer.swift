@@ -39,6 +39,7 @@ final class AppContainer {
     let pushService: PushNotificationService
     private let socketClient: SocketIOClientAdapter
     private let locationService: CLLocationService
+    var onNavigationAuthorizationDenied: (() -> Void)?
 
     // MARK: Data
     let session: KeychainSessionRepository
@@ -47,6 +48,8 @@ final class AppContainer {
     let authRepository: AuthRepository
     let circleRepository: CircleRepository
     let placeRepository: PlaceRepository
+    let routePreviewRepository: RoutePreviewRepository
+    let routeConnectivity: RouteConnectivity
     let historyRepository: HistoryRepository
     let liveTrailRepository: LiveTrailRepository
     let locationSharingRepository: LocationSharingRepository
@@ -190,6 +193,8 @@ final class AppContainer {
         authRepository = AuthRepositoryImpl(api: api)
         circleRepository = CircleRepositoryImpl(api: api)
         placeRepository = PlaceRepositoryImpl(api: api)
+        routePreviewRepository = BackendRoutePreviewRepository(api: api)
+        routeConnectivity = RouteConnectivityMonitor()
         historyRepository = HistoryRepositoryImpl(api: api)
         liveTrailRepository = LiveTrailRepositoryImpl(api: api)
         locationSharingRepository = LocationSharingRepositoryImpl(api: api)
@@ -258,9 +263,12 @@ final class AppContainer {
         )
         let locationSharing = shareLocation
         events.onExpire = { [weak locationSharing] in locationSharing?.stop() }
-        locationService.onAuthorizationChange = { status in
+        locationService.onAuthorizationChange = { [weak self] status in
             guard status == .denied || status == .restricted else { return }
-            Task { @MainActor in locationSharing.stop() }
+            Task { @MainActor in
+                locationSharing.stop()
+                self?.onNavigationAuthorizationDenied?()
+            }
         }
     }
 

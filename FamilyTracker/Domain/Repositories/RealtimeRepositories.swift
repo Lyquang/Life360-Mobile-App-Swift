@@ -31,8 +31,11 @@ protocol DeviceLocationRepository: AnyObject {
     var lastKnownFix: LocationFix? { get }
     var currentMotionState: MotionState { get }
     func requestPermission()
+    func requestNavigationPermission()
     func startTracking()
     func stopTracking()
+    func startNavigationTracking()
+    func stopNavigationTracking()
     func requestFreshLocation()
     func observeLocations() -> AsyncStream<GeoPoint>
     func observeFixes() -> AsyncStream<LocationFix>
@@ -41,6 +44,9 @@ protocol DeviceLocationRepository: AnyObject {
 
 extension DeviceLocationRepository {
     func requestFreshLocation() {}
+    func requestNavigationPermission() { requestPermission() }
+    func startNavigationTracking() { startTracking() }
+    func stopNavigationTracking() { stopTracking() }
 }
 
 @MainActor

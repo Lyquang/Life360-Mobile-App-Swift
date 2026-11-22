@@ -1,5 +1,5 @@
 "NSLocalNetworkUsageDescription" = "Connect to Pulse on your Mac to view logs when you enable Remote Logging.";
-"NSLocationAlwaysAndWhenInUseUsageDescription" = "FamilyTracker uses background location to keep your family updated.";
-"NSLocationWhenInUseUsageDescription" = "FamilyTracker uses your location to share it with your family.";
+"NSLocationAlwaysAndWhenInUseUsageDescription" = "FamilyTracker uses background location for Circle sharing or navigation when you enable each service.";
+"NSLocationWhenInUseUsageDescription" = "FamilyTracker uses your location when you enable family sharing or private directions.";
 "NSMotionUsageDescription" = "FamilyTracker uses motion activity to reduce battery use when you are stationary.";
 "NSMicrophoneUsageDescription" = "FamilyTracker uses the microphone to record voice notes.";

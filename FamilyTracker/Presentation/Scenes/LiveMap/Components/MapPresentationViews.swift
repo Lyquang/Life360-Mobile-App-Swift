@@ -6,6 +6,7 @@ struct LiveMapHeader: View {
     let memberCount: Int
     let onMembers: () -> Void
     let onSearch: () -> Void
+    var searchDisabled = false
 
     var body: some View {
         VStack(spacing: FTSpacing.sm) {
@@ -36,6 +37,8 @@ struct LiveMapHeader: View {
                 .background(FTColors.background, in: RoundedRectangle(cornerRadius: FTRadius.md))
                 .overlay(RoundedRectangle(cornerRadius: FTRadius.md).stroke(FTColors.separator, lineWidth: 0.5))
             }
+            .disabled(searchDisabled)
+            .opacity(searchDisabled ? 0.5 : 1)
             .accessibilityIdentifier("map.search")
         }
         .foregroundColor(FTColors.textPrimary)

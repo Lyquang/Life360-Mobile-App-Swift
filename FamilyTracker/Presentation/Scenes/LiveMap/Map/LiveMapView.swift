@@ -18,10 +18,13 @@ struct LiveMapView: View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
                 LiveTrailMapView(
-                    region: viewModel.mapRegion, trackingUser: viewModel.isTrackingUser,
+                    region: viewModel.mapRegion,
+                    trackingUser: coordinator.routeNavigation.active || viewModel.isTrackingUser,
+                    navigating: coordinator.routeNavigation.active,
                     showsUserLocation: true, currentUserId: viewModel.currentUserId,
                     members: viewModel.memberLocations, drawing: viewModel.trailDrawing,
-                    selectedPlace: coordinator.selectedPlace, bottomInset: panelHeight,
+                    selectedPlace: coordinator.selectedPlace,
+                    routeGeometry: coordinator.routeNavigation.geometry, bottomInset: panelHeight,
                     onSelectMember: selectMember, onUserMoved: viewModel.userMovedMap,
                     onRegionChanged: updateSearchRegion
                 )
@@ -44,9 +47,18 @@ struct LiveMapView: View {
         .safeAreaInset(edge: .top, spacing: 0) {
             VStack(spacing: FTSpacing.sm) {
                 LiveMapHeader(memberCount: viewModel.memberLocations.count,
-                              onMembers: { showMemberList.toggle(); selectedMemberID = nil; coordinator.clearSelectedPlace() },
-                              onSearch: openSearch)
-                statusNotices.padding(.horizontal, FTSpacing.md)
+                              onMembers: {
+                                  showMemberList.toggle(); selectedMemberID = nil
+                                  if !coordinator.routeNavigation.active { coordinator.clearSelectedPlace() }
+                              },
+                              onSearch: openSearch,
+                              searchDisabled: coordinator.routeNavigation.active)
+                if coordinator.routeNavigation.active {
+                    RouteManeuverBanner(viewModel: coordinator.routeNavigation)
+                        .padding(.horizontal, FTSpacing.sm)
+                } else {
+                    statusNotices.padding(.horizontal, FTSpacing.md)
+                }
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -79,7 +91,10 @@ struct LiveMapView: View {
 
     private var controls: some View {
         LiveMapControls(tracking: viewModel.isTrackingUser,
-                        onRecenter: { coordinator.clearSelectedPlace(); viewModel.centerOnUser() },
+                        onRecenter: {
+                            if !coordinator.routeNavigation.active { coordinator.clearSelectedPlace() }
+                            viewModel.centerOnUser()
+                        },
                         onSOS: coordinator.requestSOS)
     }
 
@@ -91,6 +106,11 @@ struct LiveMapView: View {
                                onShowJourney: { coordinator.showJourney(of: member) })
             }
             .frame(height: min(availableHeight * 0.62, textSize.isAccessibilitySize ? 420 : 300))
+        } else if coordinator.routeNavigation.destination != nil {
+            RouteNavigationView(viewModel: coordinator.routeNavigation,
+                                onStart: coordinator.startNavigation,
+                                onClose: coordinator.clearSelectedPlace)
+                .frame(maxHeight: availableHeight * (coordinator.routeNavigation.active ? 0.35 : 0.65))
         } else if let place = coordinator.selectedPlace {
             ScrollView {
                 HStack(alignment: .top, spacing: FTSpacing.sm) {
@@ -102,8 +122,13 @@ struct LiveMapView: View {
                     Button(action: coordinator.clearSelectedPlace) { Image(systemName: "xmark").frame(width: 44, height: 44) }
                         .accessibilityLabel(L10n.tr("search.action.clear_place"))
                 }.padding(FTSpacing.md)
+                Button(action: coordinator.planRouteToSelectedPlace) {
+                    Label(L10n.tr("route.action.plan"), systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .padding(.horizontal, FTSpacing.md)
             }
-            .frame(height: min(availableHeight * 0.35, textSize.isAccessibilitySize ? 260 : 160))
+            .frame(height: min(availableHeight * 0.4, textSize.isAccessibilitySize ? 300 : 210))
             .accessibilityIdentifier("search.selected_place")
         } else {
             MapMembersPanel(members: viewModel.memberLocations, expanded: showMemberList,
@@ -114,6 +139,7 @@ struct LiveMapView: View {
     }
 
     private func selectMember(_ member: MemberLocation) {
+        guard !coordinator.routeNavigation.active else { return }
         coordinator.clearSelectedPlace()
         selectedMemberID = member.id
         viewModel.centerOnMember(member)

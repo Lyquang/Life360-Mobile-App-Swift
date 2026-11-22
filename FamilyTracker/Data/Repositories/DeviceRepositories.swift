@@ -6,6 +6,8 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
     private let broadcaster = AsyncBroadcaster<GeoPoint>()
     private let fixBroadcaster = AsyncBroadcaster<LocationFix>()
     private let motionBroadcaster = AsyncBroadcaster<MotionState>()
+    private var sharingTracking = false
+    private var navigationTracking = false
 
     init(service: LocationService) {
         self.service = service
@@ -34,8 +36,23 @@ final class DeviceLocationRepositoryImpl: DeviceLocationRepository {
     var currentMotionState: MotionState { Self.motionState(service.currentMotionActivity) }
 
     func requestPermission() { service.requestAuthorization() }
-    func startTracking() { service.start() }
-    func stopTracking() { service.stop() }
+    func requestNavigationPermission() { service.requestNavigationAuthorization() }
+    func startTracking() {
+        sharingTracking = true
+        service.start()
+    }
+    func stopTracking() {
+        sharingTracking = false
+        if !navigationTracking { service.stop() }
+    }
+    func startNavigationTracking() {
+        navigationTracking = true
+        service.start()
+    }
+    func stopNavigationTracking() {
+        navigationTracking = false
+        if !sharingTracking { service.stop() }
+    }
     func requestFreshLocation() { service.requestFreshLocation() }
     func observeLocations() -> AsyncStream<GeoPoint> { broadcaster.stream() }
     func observeFixes() -> AsyncStream<LocationFix> { fixBroadcaster.stream() }

@@ -18,6 +18,7 @@ Thư mục này chứa đặc tả tính năng của FamilyTracker. Workflow đa
 | Giám sát | [011-mobile-monitoring/spec.md](011-mobile-monitoring/spec.md) | Pin, mạng và hiệu năng |
 | Thông báo | [012-notifications/spec.md](012-notifications/spec.md) | Quyền, thông báo và điều hướng |
 | Tìm địa điểm | [013-place-search/spec.md](013-place-search/spec.md) | Native MapKit search và history cache 20 mục/30 ngày |
+| Tìm tuyến và dẫn đường | [016-route-navigation/spec.md](016-route-navigation/spec.md) | Draft: TomTom v1 qua Backend, MapKit preview và voice navigation; chờ contract/plan/approval |
 | UI/UX iOS | [014-ios-design-quality/spec.md](014-ios-design-quality/spec.md) | Design workflow, screen audit, shared accessibility và visual QA |
 | Duyệt thiết kế map-first | [015-map-first-design-review/spec.md](015-map-first-design-review/spec.md) | M01–M06 v1 đã duyệt/triển khai; audit và evidence native QA |
 
