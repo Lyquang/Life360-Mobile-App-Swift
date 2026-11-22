@@ -532,3 +532,7 @@ When finishing a task:
   scope hiện có trên nhánh `feat/route-navigation`, giữ các activation/device limits
   trong `.spec/016-route-navigation/verification.md`; không có Backend changes.
 - Local route domain/ViewModel, lint và localization641keys PASS; chờ PR CI.
+
+- Publication checkpoint: commit `eeaafd2` pushed to `feat/route-navigation`; PR
+  creation blocked by GitHub token permissions (HTTP403). No PR/merge performed;
+  main remains unchanged. Await an authenticated GitHub account/token permitting PRs.

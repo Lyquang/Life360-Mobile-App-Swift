@@ -71,3 +71,9 @@ là toàn bộ route-navigation Mobile working tree hiện tại; không sửa B
 SwiftLint và localization641key vi/en đã chạy lại và PASS; GitHub CI sẽ quyết định
 build/quality cho commit được đưa vào PR. Không tải thêm runtime hoặc mở ma trận
 thiết bị. Tình trạng feature readiness/manual checks ở trên vẫn giữ nguyên.
+
+Publication result: code commit `eeaafd2` was pushed to `origin/feat/route-navigation`.
+GitHub rejected PR creation via both GraphQL and REST with HTTP403 / “Resource not
+accessible by personal access token”. No PR was created, no PR CI started, and main
+was not merged or pushed directly. Remaining action requires GitHub authentication
+with permission to create/merge pull requests; user-requested PR-first order is kept.
