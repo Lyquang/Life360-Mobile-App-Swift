@@ -1,5 +1,9 @@
 # Project Progress - FamilyTracker iOS
 
+## Route documentation false positive — 2026-11-23
+
+- Reviewed Gitleaks finding `generic-api-key` at historical commit `eeaafd2`, `.spec/016-route-navigation/progress.md:7`. The line describes TomTom Routing API v1 and travel modes; it contains no credential. Added only that exact historical fingerprint to `.gitleaksignore` in `27b96be`, preserving detection for new values. `git diff --check` passed and the GitHub Code Quality run for `27b96be` completed successfully; iOS CI was still running at the last check.
+
 AI agents must update this file after every completed task or commit-equivalent change.
 
 Legend:
