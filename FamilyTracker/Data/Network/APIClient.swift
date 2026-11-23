@@ -75,6 +75,8 @@ final class URLSessionAPIClient: APIClient {
         if let expectedGeneration, sentGeneration != expectedGeneration { throw CancellationError() }
         let method = endpoint.method.rawValue
         let url = request.url?.absoluteString ?? endpoint.path
+        var diagnosticRequest = request
+        if endpoint.path == "/routes/preview" { diagnosticRequest.httpBody = nil }
         let requestId = UUID()
         let startedAt = Date()
         let group = RESTMetricGroup.classify(endpoint.path)
@@ -102,7 +104,7 @@ final class URLSessionAPIClient: APIClient {
                 await metrics.record(.increment(.requestFailure))
                 await metrics.record(.latency(group, milliseconds: Self.elapsedMilliseconds(since: startedAt)))
             }
-            logger.logHTTP(request: request, response: nil, data: nil, error: error,
+            logger.logHTTP(request: diagnosticRequest, response: nil, data: nil, error: error,
                            duration: Date().timeIntervalSince(startedAt))
             if let expectedGeneration, tokenProvider.sessionGeneration != expectedGeneration {
                 throw CancellationError()
@@ -132,10 +134,12 @@ final class URLSessionAPIClient: APIClient {
         if let metrics, !(200..<300).contains(http.statusCode) {
             await metrics.record(.increment(.requestFailure))
         }
-        logger.logHTTP(request: request, response: response, data: data, error: nil,
+        // Route responses contain private coordinates; diagnostics only need status/duration.
+        let diagnosticData = endpoint.path == "/routes/preview" ? nil : data
+        logger.logHTTP(request: diagnosticRequest, response: response, data: diagnosticData, error: nil,
                        duration: Date().timeIntervalSince(startedAt))
         logger.logResponse(id: requestId, method: method, url: url, statusCode: http.statusCode,
-                           data: endpoint.requiresAuth ? data : Data(),
+                           data: endpoint.requiresAuth && endpoint.path != "/routes/preview" ? data : Data(),
                            duration: Date().timeIntervalSince(startedAt))
 
         let decoder = BackendJSONCoding.makeDecoder()

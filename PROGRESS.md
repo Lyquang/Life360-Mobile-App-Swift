@@ -1,5 +1,9 @@
 # Project Progress - FamilyTracker iOS
 
+## Route documentation false positive — 2026-11-23
+
+- Reviewed Gitleaks finding `generic-api-key` at historical commit `eeaafd2`, `.spec/016-route-navigation/progress.md:7`. The line describes TomTom Routing API v1 and travel modes; it contains no credential. Added only that exact historical fingerprint to `.gitleaksignore` in `27b96be`, preserving detection for new values. `git diff --check` passed and the GitHub Code Quality run for `27b96be` completed successfully; iOS CI was still running at the last check.
+
 AI agents must update this file after every completed task or commit-equivalent change.
 
 Legend:
@@ -9,6 +13,13 @@ Legend:
 - `[ ]` Not started
 
 ## Feature Status
+
+- `[-]` 2026-11-14 — [Route navigation](.spec/016-route-navigation/progress.md):
+  user authorized routing-scoped Mobile work; feature spec created from confirmed
+  Vietnam/free-tier/TomTom v1/mode/voice/offline/privacy requirements. Backend key
+  returned public Hanoi route samples, but exact Backend API contract, account
+  terms/billing, `TRAVEL_MODE=other` decision and iOS plan approval remain open.
+  No Swift changes or iOS build/test in this discovery step.
 
 - `[x]` 2026-11-14 — [Map-first M01–M06 v1](.spec/015-map-first-design-review/progress.md):
   đã được user duyệt và hiện thực: safe-area map/search/member panels, persisted
@@ -505,3 +516,27 @@ When finishing a task:
 - Verification: bash scripts/test_place_search.sh passed 21 deterministic executable tests; unsigned Debug Simulator build passed (Xcode26.2, iOS16 target, cached packages, automatic package updates disabled); 13 changed/new production Swift files pass strict lint under the same repo rules; localization passed with existing Homebrew Ruby, 550 matching keys/20 added and zero literal/parity/duplicate/missing-key findings. Native public Ben Thanh Market macOS adapter smoke returned 7 completions, 1 resolved place and 1 text-search result without user/device GPS or backend credentials.
 - Existing system Ruby2.6 cannot run scanner filter_map; used installed newer Ruby without changing scripts or installing dependencies. Working-tree networking script already omits SOS source/check files and fails compilation; preserved it. Committed HEAD harness copied into /tmp passed REST/SOS/refresh/media checks against current sources (26 documented REST fixtures). Whole-tree strict lint still finds unrelated baseline spacing violations; scoped changed-source lint is clean. No claim that the current networking script or full XCTest suite passes.
 - Added search test step to existing CI; no Xcode project/test-target changes, dependency installation, commit/push/deployment, production-account mutation or Graphify refresh. Physical-device/interactive UI/VoiceOver/weak-network/region coverage remains manual, listed in .spec/013-place-search/quickstart.md. Backend specs/roadmap updated to actual implementation and remaining scope.
+
+## Route navigation local implementation — 2026-11-14
+
+- User approved Revision 2 of Backend preview and linked Mobile plan. Implemented MapKit route selection, mode alternatives, private navigation location, vi/en coded voice, bounded online reroute, stable arrival and loaded-route offline continuity. Backend API handoff supplies the actual DTO; TomTom key remains server-side.
+- Simulator Debug build, standalone route domain/DTO checks, localization (638 matching vi/en keys) and SwiftLint passed. No XCTest target exists in the app scheme; `xcodebuild test` was not run. See `.spec/016-route-navigation/verification.md` for evidence and remaining checks.
+- Provider account terms, Vietnam motorcycle road pilot, real iPhone background voice, privacy/account-switch integration and accessibility review remain. Stage IMPLEMENTING; no commit/push, deployment or paid billing claim for this incomplete function.
+
+## Route iPhone diagnosis — 2026-11-15
+
+- Later iPhone screenshot proves authenticated TomTom preview and active route overlay now work after Render deployed the new Backend. The active UI/voice gap prompted a scoped MapKit update: compact trip summary, prominent top maneuver banner, heading-follow camera with pitch, voice toggle and immediate departure speech independent of a later GPS callback. Tests/build/localization pass; new binary was installed on the iPhone but command-line launch was denied while the device was locked. Actual audible voice, driving and background behavior remain unverified. Render deploy-hook CI remains a separate configuration issue.
+
+- User screenshot showed route preview unavailable. Mobile points at Render production URL; live unauthenticated preview returns 404 while health returns 200. Backend routing commit `785cf39` is on GitHub `main`, but CI Render Deploy Hook failed and service still lacks the route. No private GPS/token was used in the public probe.
+- After explicit device authorization, signed Debug app installation and launch on the paired iPhone succeeded; process remained running. This establishes startup only, not route/voice/background behavior. Await successful Render deploy and actual iPhone route retry.
+
+## Mobile publication — 2026-11-22
+
+- User yêu cầu commit/push Mobile và merge qua PR. Publication gồm route-navigation
+  scope hiện có trên nhánh `feat/route-navigation`, giữ các activation/device limits
+  trong `.spec/016-route-navigation/verification.md`; không có Backend changes.
+- Local route domain/ViewModel, lint và localization641keys PASS; chờ PR CI.
+
+- Publication checkpoint: commit `eeaafd2` pushed to `feat/route-navigation`; PR
+  creation blocked by GitHub token permissions (HTTP403). No PR/merge performed;
+  main remains unchanged. Await an authenticated GitHub account/token permitting PRs.

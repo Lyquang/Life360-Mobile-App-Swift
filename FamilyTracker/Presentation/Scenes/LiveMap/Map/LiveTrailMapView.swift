@@ -5,11 +5,13 @@ struct LiveTrailMapView: UIViewRepresentable {
     @Environment(\.colorScheme) private var colorScheme
     let region: MKCoordinateRegion
     let trackingUser: Bool
+    var navigating = false
     let showsUserLocation: Bool
     let currentUserId: String
     let members: [MemberLocation]
     let drawing: TrailDrawing
     var selectedPlace: PlaceSearchResult? = nil
+    var routeGeometry: [GeoPoint] = []
     let bottomInset: CGFloat
     let onSelectMember: (MemberLocation) -> Void
     let onUserMoved: () -> Void
@@ -30,9 +32,10 @@ struct LiveTrailMapView: UIViewRepresentable {
         map.overrideUserInterfaceStyle = style
         map.layoutMargins = UIEdgeInsets(top: 8, left: 8, bottom: bottomInset + 16, right: 8)
         context.coordinator.updateAppearance(style)
-        context.coordinator.update(region: region, trackingUser: trackingUser,
+        context.coordinator.update(region: region, trackingUser: trackingUser, navigating: navigating,
                                    currentUserId: currentUserId, members: members,
-                                   drawing: drawing, selectedPlace: selectedPlace, bottomInset: bottomInset, onSelectMember: onSelectMember,
+                                   drawing: drawing, selectedPlace: selectedPlace,
+                                   routeGeometry: routeGeometry, bottomInset: bottomInset, onSelectMember: onSelectMember,
                                    onUserMoved: onUserMoved, onRegionChanged: onRegionChanged)
     }
 
@@ -81,6 +84,8 @@ struct LiveTrailMapView: UIViewRepresentable {
         private var members = [String: MemberAnnotation]()
         private var endpoints = [String: TrailAnnotation]()
         private var searchPin: MKPointAnnotation?
+        private var routePolyline: MKPolyline?
+        private var renderedRoute: [GeoPoint] = []
         private var onRegionChanged: ((MKCoordinateRegion) -> Void)?
         private var lastRegion: MKCoordinateRegion?
         private var isMovingProgrammatically = false
@@ -88,8 +93,9 @@ struct LiveTrailMapView: UIViewRepresentable {
         private var onSelectMember: ((MemberLocation) -> Void)?
         private var onUserMoved: (() -> Void)?
 
-        func update(region: MKCoordinateRegion, trackingUser: Bool, currentUserId: String,
-                    members: [MemberLocation], drawing: TrailDrawing, selectedPlace: PlaceSearchResult?, bottomInset: CGFloat,
+        func update(region: MKCoordinateRegion, trackingUser: Bool, navigating: Bool, currentUserId: String,
+                    members: [MemberLocation], drawing: TrailDrawing, selectedPlace: PlaceSearchResult?,
+                    routeGeometry: [GeoPoint], bottomInset: CGFloat,
                     onSelectMember: @escaping (MemberLocation) -> Void,
                     onUserMoved: @escaping () -> Void,
                     onRegionChanged: @escaping (MKCoordinateRegion) -> Void) {
@@ -110,10 +116,19 @@ struct LiveTrailMapView: UIViewRepresentable {
                 moveCamera(region, bottomInset: bottomInset, on: map)
             }
             lastRegion = region
-            map.userTrackingMode = trackingUser ? .follow : .none
+            let trackingMode: MKUserTrackingMode = navigating ? .followWithHeading :
+                (trackingUser ? .follow : .none)
+            if map.userTrackingMode != trackingMode { map.userTrackingMode = trackingMode }
+            let desiredPitch: CGFloat = navigating ? 40 : 0
+            if abs(map.camera.pitch - desiredPitch) > 1 {
+                let camera = map.camera
+                camera.pitch = desiredPitch
+                map.setCamera(camera, animated: false)
+            }
             syncMembers(members, on: map)
             syncTrail(drawing, on: map)
             syncSearchPlace(selectedPlace, on: map)
+            syncRoute(routeGeometry, on: map)
         }
 
         private func moveCamera(_ region: MKCoordinateRegion, bottomInset: CGFloat, on map: MKMapView) {
@@ -142,6 +157,7 @@ struct LiveTrailMapView: UIViewRepresentable {
         func detach() {
             if let map {
                 if let searchPin { map.removeAnnotation(searchPin) }
+                if let routePolyline { map.removeOverlay(routePolyline) }
                 map.removeOverlays(map.overlays)
                 map.removeAnnotations(Array(members.values) + Array(endpoints.values))
             }
@@ -150,6 +166,8 @@ struct LiveTrailMapView: UIViewRepresentable {
             members.removeAll()
             endpoints.removeAll()
             searchPin = nil
+            routePolyline = nil
+            renderedRoute = []
             onRegionChanged = nil
             onSelectMember = nil
             onUserMoved = nil
@@ -172,6 +190,21 @@ struct LiveTrailMapView: UIViewRepresentable {
             marker.subtitle = place.address
             searchPin = marker
             map.addAnnotation(marker)
+        }
+
+        private func syncRoute(_ points: [GeoPoint], on map: MKMapView) {
+            guard points != renderedRoute else { return }
+            if let routePolyline { map.removeOverlay(routePolyline) }
+            routePolyline = nil
+            renderedRoute = points
+            guard points.count >= 2 else { return }
+            var coordinates = points.map(\.coordinate)
+            let line = MKPolyline(coordinates: &coordinates, count: coordinates.count)
+            routePolyline = line
+            map.addOverlay(line, level: .aboveRoads)
+            map.setVisibleMapRect(line.boundingMapRect,
+                                  edgePadding: UIEdgeInsets(top: 90, left: 32, bottom: 220, right: 32),
+                                  animated: true)
         }
 
         private func syncMembers(_ latest: [MemberLocation], on map: MKMapView) {
@@ -244,6 +277,13 @@ struct LiveTrailMapView: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
             guard let line = overlay as? MKPolyline else { return MKOverlayRenderer(overlay: overlay) }
             let renderer = MKPolylineRenderer(polyline: line)
+            if line === routePolyline {
+                renderer.strokeColor = UIColor(FTColors.primary)
+                renderer.lineWidth = 7
+                renderer.lineCap = .round
+                renderer.lineJoin = .round
+                return renderer
+            }
             if let (style, casing) = roles[ObjectIdentifier(line)] {
                 renderer.lineWidth = casing ? 10 : 6
                 renderer.strokeColor = casing ? UIColor(FTColors.background) :
@@ -321,7 +361,7 @@ struct LiveTrailMapView: UIViewRepresentable {
             // A nonanimated camera change can call this during updateUIView.
             DispatchQueue.main.async { callback?(region) }
             if isMovingProgrammatically { isMovingProgrammatically = false }
-            else if mapView.userTrackingMode == .follow { return }
+            else if mapView.userTrackingMode != .none { return }
             else { onUserMoved?() }
         }
     }
